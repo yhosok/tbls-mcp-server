@@ -1,0 +1,8 @@
+{
+  "schemaDir": "/path/to/tbls/output",
+  "logLevel": "info",
+  "database": {
+    "type": "mysql",
+    "connectionString": "mysql://username:password@localhost:3306/database_name"
+  }
+}
