@@ -9,65 +9,389 @@ A Model Context Protocol (MCP) server that provides access to database schema in
 - **SQL Query Execution**: Execute SELECT queries on MySQL and SQLite databases with built-in security
 - **Type Safety**: Full TypeScript implementation with zod validation
 - **Error Handling**: Robust error handling using neverthrow Result types
+- **MCP Compatible**: Works with Claude Desktop, Cline, and other MCP clients
+
+## MCP Server Configuration
+
+To use this server with MCP clients, add the following configuration:
+
+### Claude Desktop
+
+Add to your Claude Desktop configuration file (`claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "tbls": {
+      "command": "npx",
+      "args": [
+        "github:yhosok/tbls-mcp-server",
+        "--schema-dir", "/path/to/your/tbls/output",
+        "--database-url", "mysql://user:password@localhost:3306/database"
+      ]
+    }
+  }
+}
+```
+
+### Cline (VS Code Extension)
+
+Add to your Cline MCP settings:
+
+```json
+{
+  "tbls": {
+    "command": "npx",
+    "args": [
+      "github:yhosok/tbls-mcp-server",
+      "--schema-dir", "/path/to/your/tbls/output"
+    ]
+  }
+}
+```
+
+### Configuration File Method
+
+Alternatively, create a `.tbls-mcp-server.json` configuration file and use:
+
+```json
+{
+  "mcpServers": {
+    "tbls": {
+      "command": "npx",
+      "args": ["github:yhosok/tbls-mcp-server"]
+    }
+  }
+}
+```
 
 ## Installation
 
-### Via npx (Recommended)
+### Prerequisites
+
+- Node.js 18 or higher
+- [tbls](https://github.com/k1LoW/tbls) installed and configured
+- Database access (MySQL or SQLite) - optional for SQL query features
+
+### Via npx (Recommended for MCP)
 
 ```bash
-npx tbls-mcp-server
+npx github:yhosok/tbls-mcp-server --schema-dir /path/to/tbls/output
 ```
 
-### Local Installation
+### Clone and Run Locally
 
 ```bash
-npm install -g tbls-mcp-server
+git clone https://github.com/yhosok/tbls-mcp-server.git
+cd tbls-mcp-server
+npm install
+npm run build
+node dist/index.js --schema-dir /path/to/tbls/output
+```
+
+### Local Development Installation
+
+```bash
+git clone https://github.com/your-username/tbls-mcp-server.git
+cd tbls-mcp-server
+npm install
+npm run build
 ```
 
 ## Usage
 
-### Basic Usage
+### Basic Usage (Schema Information Only)
 
 ```bash
-tbls-mcp-server --schema-dir /path/to/tbls/output
+npx github:yhosok/tbls-mcp-server --schema-dir /path/to/tbls/output
 ```
 
-### With Database Connection
+### With Database Connection (Full Features)
 
 ```bash
-tbls-mcp-server \
+npx github:yhosok/tbls-mcp-server \
   --schema-dir /path/to/tbls/output \
   --database-url mysql://user:pass@localhost:3306/mydb
 ```
 
+### Using Configuration File
+
+```bash
+npx github:yhosok/tbls-mcp-server --config .tbls-mcp-server.json
+```
+
+## Examples
+
+### Setting up with tbls
+
+First, generate schema documentation using tbls:
+
+```bash
+# Install tbls
+go install github.com/k1LoW/tbls@latest
+
+# Generate schema documentation (default output: ./dbdoc)
+tbls doc mysql://user:pass@localhost:3306/mydb
+
+# Or specify custom output directory
+tbls doc mysql://user:pass@localhost:3306/mydb ./custom/schema/path
+
+# Start MCP server
+npx github:yhosok/tbls-mcp-server --schema-dir ./dbdoc/schema
+```
+
+### Directory Structure
+
+Expected tbls output directory structure (based on default `dbdoc` path):
+
+```
+./dbdoc/
+└── schema/                     # Schema directory (default structure)
+    ├── README.md              # Main schema overview with table list
+    ├── users.md               # Individual table documentation
+    ├── users.svg              # Table relationship diagram (if generated)
+    ├── posts.md               # Individual table documentation
+    ├── posts.svg              # Table relationship diagram
+    ├── comments.md            # Individual table documentation
+    ├── comments.svg           # Table relationship diagram
+    ├── [table_name].md        # Each table gets its own markdown file
+    └── schema.json            # Machine-readable schema (if generated)
+```
+
+**Note**:
+- The default output directory is `dbdoc`, but can be customized using `--doc-path` in tbls or `docPath` in `.tbls.yml`
+- Each table gets its own `.md` file containing detailed column information
+- SVG relationship diagrams are generated for each table (optional)
+- The main `README.md` contains an overview and table of contents
+- There's typically only one schema directory (not multiple like `public/`, `backup/` etc.) unless your database has multiple schemas
+
+### Using with Claude Desktop
+
+1. **Configure Claude Desktop**:
+   ```json
+   {
+     "mcpServers": {
+       "tbls": {
+         "command": "npx",
+         "args": [
+           "github:yhosok/tbls-mcp-server",
+           "--schema-dir", "/Users/username/projects/myapp/dbdoc/schema",
+           "--database-url", "mysql://user:password@localhost:3306/myapp"
+         ]
+       }
+     }
+   }
+   ```
+
+2. **Restart Claude Desktop** and the tbls server will be available
+
+3. **Query your database schema**:
+   - "Show me all tables in the database"
+   - "What columns does the users table have?"
+   - "Show me the relationship between users and posts"
+   - "Execute: SELECT COUNT(*) FROM users WHERE active = true"
+
+### Common SQL Queries
+
+**Schema exploration**:
+```sql
+-- MySQL
+SHOW TABLES;
+SHOW COLUMNS FROM users;
+SELECT * FROM information_schema.table_constraints WHERE table_name = 'users';
+
+-- SQLite
+SELECT name FROM sqlite_master WHERE type='table';
+PRAGMA table_info(users);
+```
+
+**Data analysis**:
+```sql
+-- User statistics
+SELECT
+  COUNT(*) as total_users,
+  COUNT(CASE WHEN active = 1 THEN 1 END) as active_users,
+  COUNT(CASE WHEN created_at > DATE_SUB(NOW(), INTERVAL 30 DAY) THEN 1 END) as recent_users
+FROM users;
+
+-- Popular posts
+SELECT p.title, p.created_at, COUNT(c.id) as comment_count
+FROM posts p
+LEFT JOIN comments c ON p.id = c.post_id
+GROUP BY p.id
+ORDER BY comment_count DESC
+LIMIT 10;
+```
+
 ## MCP Resources
 
-The server provides the following MCP resources:
+The server exposes tbls-generated schema information through the following MCP resources:
 
-### Schema List
+### 1. Schema List
 - **URI**: `schema://list`
-- **Description**: List all available database schemas
+- **Description**: Lists all available database schemas
+- **Content**: JSON array of schema names
+- **Example Response**:
+  ```json
+  [
+    "public",
+    "analytics",
+    "user_data"
+  ]
+  ```
 
-### Table List
+### 2. Schema Tables
 - **URI**: `schema://{schema_name}/tables`
-- **Description**: List all tables in a specific schema
+- **Description**: Lists all tables in a specific schema
+- **Content**: JSON array of table names with basic information
+- **Example Response**:
+  ```json
+  [
+    {
+      "name": "users",
+      "type": "table",
+      "comment": "User account information"
+    },
+    {
+      "name": "posts",
+      "type": "table",
+      "comment": "Blog posts and articles"
+    }
+  ]
+  ```
 
-### Table Information
+### 3. Table Information
 - **URI**: `table://{schema_name}/{table_name}`
-- **Description**: Detailed table information including columns, types, and constraints
+- **Description**: Detailed table information including columns, types, constraints, and relationships
+- **Content**: Complete table schema with column definitions
+- **Example Response**:
+  ```json
+  {
+    "name": "users",
+    "type": "table",
+    "comment": "User account information",
+    "columns": [
+      {
+        "name": "id",
+        "type": "int(11)",
+        "nullable": false,
+        "primary": true,
+        "comment": "Primary key"
+      },
+      {
+        "name": "email",
+        "type": "varchar(255)",
+        "nullable": false,
+        "unique": true,
+        "comment": "User email address"
+      }
+    ],
+    "constraints": [
+      {
+        "name": "PRIMARY",
+        "type": "PRIMARY KEY",
+        "columns": ["id"]
+      }
+    ]
+  }
+  ```
 
-### Index Information
+### 4. Table Indexes
 - **URI**: `table://{schema_name}/{table_name}/indexes`
 - **Description**: Index information for a specific table
+- **Content**: Array of indexes with their properties
+- **Example Response**:
+  ```json
+  [
+    {
+      "name": "PRIMARY",
+      "type": "PRIMARY KEY",
+      "columns": ["id"],
+      "unique": true
+    },
+    {
+      "name": "idx_email",
+      "type": "INDEX",
+      "columns": ["email"],
+      "unique": true
+    }
+  ]
+  ```
 
 ## MCP Tools
 
-### SQL Query Execution
-- **Name**: `execute-sql`
-- **Description**: Execute SELECT queries on connected databases
-- **Security**: Only SELECT statements are allowed for security reasons
+The server provides SQL query execution capabilities when a database connection is configured:
+
+### SQL Query Tool (`execute-sql`)
+
+**Purpose**: Execute SELECT queries on connected MySQL or SQLite databases with comprehensive security features.
+
+**Security Features**:
+- ✅ **SELECT queries only** - INSERT, UPDATE, DELETE, DROP, etc. are blocked
+- ✅ **Parameterized queries** prevent SQL injection attacks
+- ✅ **Query timeout protection** prevents long-running queries
+- ✅ **Multiple statement prevention** blocks compound SQL injection
+- ✅ **Input sanitization** removes dangerous patterns
+
+**Supported Databases**:
+- MySQL (via connection string or individual parameters)
+- SQLite (file path or :memory: database)
+
+**Parameters**:
+- `query` (required): SQL SELECT query to execute
+- `parameters` (optional): Array of parameters for prepared statements
+- `timeout` (optional): Query timeout in milliseconds (1000-300000, default: 30000)
+
+**Usage Examples**:
+
+```json
+{
+  "query": "SELECT * FROM users WHERE active = ?",
+  "parameters": [true]
+}
+```
+
+```json
+{
+  "query": "SELECT u.name, COUNT(p.id) as post_count FROM users u LEFT JOIN posts p ON u.id = p.user_id GROUP BY u.id",
+  "parameters": []
+}
+```
+
+```json
+{
+  "query": "SHOW TABLES",
+  "parameters": [],
+  "timeout": 10000
+}
+```
+
+**Response Format**:
+```json
+{
+  "rows": [
+    {"id": 1, "name": "John Doe", "email": "john@example.com"},
+    {"id": 2, "name": "Jane Smith", "email": "jane@example.com"}
+  ],
+  "rowCount": 2,
+  "columns": [
+    {"name": "id", "type": "int"},
+    {"name": "name", "type": "varchar"},
+    {"name": "email", "type": "varchar"}
+  ]
+}
+```
 
 ## Configuration
+
+### Command Line Arguments
+
+- `--schema-dir <path>`: Directory containing tbls markdown files (required)
+- `--database-url <url>`: Database connection string (optional)
+- `--log-level <level>`: Set logging level (debug, info, warn, error, default: info)
+- `--config <path>`: Path to configuration file
+- `--help`: Show help information
+- `--version`: Show version information
 
 ### Environment Variables
 
@@ -77,15 +401,94 @@ The server provides the following MCP resources:
 
 ### Configuration File
 
-Create a `.tbls-mcp-server.json` file:
+Create a `.tbls-mcp-server.json` file in your project root:
 
 ```json
 {
   "schemaDir": "/path/to/tbls/output",
-  "databaseUrl": "mysql://user:pass@localhost:3306/mydb",
-  "logLevel": "info"
+  "logLevel": "info",
+  "database": {
+    "type": "mysql",
+    "connectionString": "mysql://username:password@localhost:3306/database_name"
+  }
 }
 ```
+
+#### Database Configuration Options
+
+**MySQL:**
+```json
+{
+  "database": {
+    "type": "mysql",
+    "connectionString": "mysql://user:password@host:port/database"
+  }
+}
+```
+
+**SQLite:**
+```json
+{
+  "database": {
+    "type": "sqlite",
+    "connectionString": "sqlite:///path/to/database.db"
+  }
+}
+```
+
+## Troubleshooting
+
+### Common Issues
+
+**Server fails to start**:
+- Verify Node.js version (18+ required)
+- Check that the schema directory exists and contains tbls-generated files
+- Ensure database connection string is valid (if using database features)
+
+**No resources available**:
+- Confirm tbls has generated markdown files in the specified directory
+- Check file permissions on the schema directory
+- Enable debug logging: `--log-level debug`
+
+**Database connection issues**:
+- Test database connectivity outside of the MCP server
+- Verify connection string format
+- Check firewall and network access
+- Ensure database user has appropriate permissions (SELECT at minimum)
+
+**SQL queries fail**:
+- Only SELECT statements are allowed
+- Use parameterized queries with `?` placeholders
+- Check query timeout settings
+- Review query syntax for your database type
+
+**Claude Desktop integration issues**:
+- Restart Claude Desktop after configuration changes
+- Check configuration file syntax (valid JSON)
+- Verify file paths are absolute and accessible
+- Check Claude Desktop logs for error messages
+
+### Debug Mode
+
+Enable debug logging to troubleshoot issues:
+
+```bash
+tbls-mcp-server --schema-dir /path/to/schema --log-level debug
+```
+
+This will output detailed information about:
+- Configuration loading
+- Resource discovery
+- Database connections
+- SQL query execution
+- Error details
+
+### Support
+
+For issues and questions:
+- Check the [GitHub Issues](https://github.com/your-username/tbls-mcp-server/issues)
+- Review [tbls documentation](https://github.com/k1LoW/tbls)
+- Consult [MCP specification](https://modelcontextprotocol.io/)
 
 ## Development
 
