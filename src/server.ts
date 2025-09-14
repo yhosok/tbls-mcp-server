@@ -83,9 +83,34 @@ export class TblsMcpServer {
               description: `List of tables in the ${schema.name} schema`,
             });
 
-            // Note: Individual table and index resources are discovered dynamically
-            // when tables are listed, so we don't add them here to avoid pre-scanning
-            // all tables, which could be expensive for large schemas
+            // Discover individual table and index resources for each schema
+            try {
+              const tablesResult = await handleSchemaTablesResource(this.config.schemaDir, schema.name);
+              if (tablesResult.isOk()) {
+                const tables = tablesResult.value.tables;
+
+                for (const table of tables) {
+                  // Add individual table resource
+                  resources.push({
+                    uri: `table://${schema.name}/${table.name}`,
+                    mimeType: 'application/json',
+                    name: `${table.name} table (${schema.name} schema)`,
+                    description: `Detailed information about the ${table.name} table including columns, indexes, and relationships`,
+                  });
+
+                  // Add table indexes resource
+                  resources.push({
+                    uri: `table://${schema.name}/${table.name}/indexes`,
+                    mimeType: 'application/json',
+                    name: `${table.name} table indexes (${schema.name} schema)`,
+                    description: `Index information for the ${table.name} table`,
+                  });
+                }
+              }
+            } catch (tableError) {
+              // Log warning but continue processing other schemas
+              console.warn(`Warning: Could not discover tables for schema ${schema.name}:`, tableError);
+            }
           }
         }
       } catch (error) {
