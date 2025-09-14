@@ -7,6 +7,7 @@ import {
   ListToolsRequestSchema,
   McpError,
   ReadResourceRequestSchema,
+  ReadResourceResult,
 } from '@modelcontextprotocol/sdk/types.js';
 
 import { ServerConfig } from './schemas/config.js';
@@ -215,7 +216,7 @@ export class TblsMcpServer {
   /**
    * Handle schema://list resource
    */
-  private async handleSchemaListResource() {
+  private async handleSchemaListResource(): Promise<ReadResourceResult> {
     const result = await handleSchemaListResource(this.config.schemaDir);
 
     if (result.isErr()) {
@@ -239,9 +240,9 @@ export class TblsMcpServer {
   /**
    * Handle schema://{schema_name}/tables resource
    */
-  private async handleSchemaTablesResource(uri: string) {
+  private async handleSchemaTablesResource(uri: string): Promise<ReadResourceResult> {
     // Parse schema name from URI: schema://schema_name/tables
-    const match = uri.match(/^schema:\/\/([^\/]+)\/tables$/);
+    const match = uri.match(/^schema:\/\/([^/]+)\/tables$/);
     if (!match) {
       throw new McpError(
         ErrorCode.InvalidRequest,
@@ -273,9 +274,9 @@ export class TblsMcpServer {
   /**
    * Handle table://{schema}/{table} resource
    */
-  private async handleTableInfoResource(uri: string) {
+  private async handleTableInfoResource(uri: string): Promise<ReadResourceResult> {
     // Parse schema and table name from URI: table://schema_name/table_name
-    const match = uri.match(/^table:\/\/([^\/]+)\/([^\/]+)$/);
+    const match = uri.match(/^table:\/\/([^/]+)\/([^/]+)$/);
     if (!match) {
       throw new McpError(
         ErrorCode.InvalidRequest,
@@ -307,9 +308,9 @@ export class TblsMcpServer {
   /**
    * Handle table://{schema}/{table}/indexes resource
    */
-  private async handleTableIndexesResource(uri: string) {
+  private async handleTableIndexesResource(uri: string): Promise<ReadResourceResult> {
     // Parse schema and table name from URI: table://schema_name/table_name/indexes
-    const match = uri.match(/^table:\/\/([^\/]+)\/([^\/]+)\/indexes$/);
+    const match = uri.match(/^table:\/\/([^/]+)\/([^/]+)\/indexes$/);
     if (!match) {
       throw new McpError(
         ErrorCode.InvalidRequest,

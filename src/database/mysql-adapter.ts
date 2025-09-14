@@ -220,7 +220,7 @@ export const isMySQLConnectionAlive = async (
     try {
       await promisePool.execute('SELECT 1');
       return true;
-    } catch (error) {
+    } catch {
       return false;
     }
   }, 'Failed to check MySQL connection status');

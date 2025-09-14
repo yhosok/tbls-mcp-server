@@ -4,6 +4,39 @@ import { QueryResult, SqlQueryRequest, validateSqlQuery, sanitizeQuery, validate
 import { getPooledConnection, executeQuery } from '../database/connection';
 import { safeExecuteAsync } from '../utils/result';
 
+// Type for MCP tool input
+interface SqlQueryToolInput {
+  query: string;
+  parameters?: unknown[];
+  timeout?: number;
+}
+
+// Type for database connection info
+interface DatabaseConnectionInfo {
+  connected: boolean;
+  version: string;
+  serverInfo?: {
+    connectionId?: number;
+    host?: string;
+    database?: string;
+  };
+}
+
+// Type for query metadata
+interface QueryMetadata {
+  startTime: number;
+  context?: {
+    userId?: string;
+    sessionId?: string;
+    source?: string;
+  };
+  sanitized: boolean;
+  validated: boolean;
+  executed: boolean;
+  endTime: number | null;
+  duration?: number;
+}
+
 /**
  * Default query timeout in milliseconds (30 seconds)
  */
@@ -114,7 +147,7 @@ export interface SqlQueryTool {
     };
     required: string[];
   };
-  handler: (input: any) => Promise<Result<QueryResult, Error>>;
+  handler: (input: SqlQueryToolInput) => Promise<Result<QueryResult, Error>>;
 }
 
 /**
@@ -174,7 +207,7 @@ export const createSqlQueryTool = (config: DatabaseConfig): SqlQueryTool => {
       },
       required: ['query'],
     },
-    handler: async (input: any): Promise<Result<QueryResult, Error>> => {
+    handler: async (input: SqlQueryToolInput): Promise<Result<QueryResult, Error>> => {
       try {
         const request: SqlQueryRequest = {
           query: input.query,
@@ -345,7 +378,7 @@ export const getDatabaseSchemaInfo = async (
  */
 export const validateDatabaseConnection = async (
   config: DatabaseConfig
-): Promise<Result<{ connected: boolean; version: string; serverInfo?: any }, Error>> => {
+): Promise<Result<DatabaseConnectionInfo, Error>> => {
   return safeExecuteAsync(async () => {
     const versionQuery = config.type === 'mysql'
       ? 'SELECT VERSION() as version, CONNECTION_ID() as connection_id'
@@ -360,7 +393,7 @@ export const validateDatabaseConnection = async (
     return {
       connected: true,
       version: row[0] as string,
-      serverInfo: config.type === 'mysql' ? { connectionId: row[1] } : undefined,
+      serverInfo: config.type === 'mysql' ? { connectionId: row[1] as number } : undefined,
     };
   }, 'Database connection validation failed');
 };
@@ -376,7 +409,7 @@ export const executeSafeQuery = async (
   request: SqlQueryRequest,
   config: DatabaseConfig,
   context?: { userId?: string; sessionId?: string; source?: string }
-): Promise<Result<QueryResult & { metadata: any }, Error>> => {
+): Promise<Result<QueryResult & { metadata: QueryMetadata }, Error>> => {
   const startTime = Date.now();
   const metadata = {
     startTime,

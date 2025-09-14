@@ -143,7 +143,7 @@ export const sanitizeColumnName = (columnName: string): Result<string, string> =
  * Connection string validation schema
  */
 const MySQLConnectionStringSchema = z.string().regex(
-  /^mysql:\/\/[^@\/]+@[^@\/:]+(:\d+)?\/[^\/]+$/,
+  /^mysql:\/\/[^@/]+@[^@/:]+(:\d+)?\/[^/]+$/,
   'Invalid MySQL connection string format'
 );
 
@@ -249,7 +249,7 @@ export const parseConnectionString = (connectionString: string): Result<ParsedCo
         password: url.password || undefined,
         database: database,
       });
-    } catch (error) {
+    } catch {
       return err('Invalid MySQL connection string format');
     }
   }

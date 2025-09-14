@@ -98,22 +98,24 @@ export const createConnection = async (
 ): Promise<Result<DatabaseConnection, Error>> => {
   return safeExecuteAsync(async () => {
     switch (config.type) {
-      case 'mysql':
+      case 'mysql': {
         const mysqlResult = await createMySQLConnection(config);
         if (mysqlResult.isErr()) {
           throw mysqlResult.error;
         }
         return mysqlResult.value;
+      }
 
-      case 'sqlite':
+      case 'sqlite': {
         const sqliteResult = await createSQLiteConnection(config);
         if (sqliteResult.isErr()) {
           throw sqliteResult.error;
         }
         return sqliteResult.value;
+      }
 
       default:
-        throw new Error(`Unsupported database type: ${(config as any).type}`);
+        throw new Error(`Unsupported database type: ${(config as Record<string, unknown>).type}`);
     }
   }, 'Failed to create database connection');
 };
@@ -153,22 +155,24 @@ export const executeQuery = async (
 
   return safeExecuteAsync(async () => {
     switch (connection.type) {
-      case 'mysql':
+      case 'mysql': {
         const mysqlResult = await executeMySQLQuery(connection, trimmedQuery, params, timeoutMs);
         if (mysqlResult.isErr()) {
           throw mysqlResult.error;
         }
         return mysqlResult.value;
+      }
 
-      case 'sqlite':
+      case 'sqlite': {
         const sqliteResult = await executeSQLiteQuery(connection, trimmedQuery, params, timeoutMs);
         if (sqliteResult.isErr()) {
           throw sqliteResult.error;
         }
         return sqliteResult.value;
+      }
 
       default:
-        throw new Error(`Unsupported connection type: ${(connection as any).type}`);
+        throw new Error(`Unsupported connection type: ${(connection as Record<string, unknown>).type}`);
     }
   }, 'Query execution failed');
 };
@@ -183,22 +187,24 @@ export const closeConnection = async (
 ): Promise<Result<void, Error>> => {
   return safeExecuteAsync(async () => {
     switch (connection.type) {
-      case 'mysql':
+      case 'mysql': {
         const mysqlResult = await closeMySQLConnection(connection);
         if (mysqlResult.isErr()) {
           throw mysqlResult.error;
         }
         break;
+      }
 
-      case 'sqlite':
+      case 'sqlite': {
         const sqliteResult = await closeSQLiteConnection(connection);
         if (sqliteResult.isErr()) {
           throw sqliteResult.error;
         }
         break;
+      }
 
       default:
-        throw new Error(`Unsupported connection type: ${(connection as any).type}`);
+        throw new Error(`Unsupported connection type: ${(connection as Record<string, unknown>).type}`);
     }
   }, 'Failed to close database connection');
 };

@@ -4,7 +4,7 @@ import { Result, ok, err } from 'neverthrow';
 /**
  * Database column schema representing column information from tbls markdown
  */
-export const DatabaseColumn = z.object({
+export const DatabaseColumnSchema = z.object({
   name: z.string().min(1),
   type: z.string().min(1),
   nullable: z.boolean().default(true),
@@ -16,12 +16,12 @@ export const DatabaseColumn = z.object({
   precision: z.number().int().positive().nullable().default(null),
   scale: z.number().int().min(0).nullable().default(null),
 });
-export type DatabaseColumn = z.infer<typeof DatabaseColumn>;
+export type DatabaseColumn = z.infer<typeof DatabaseColumnSchema>;
 
 /**
  * Database index schema representing index information from tbls markdown
  */
-export const DatabaseIndex = z.object({
+export const DatabaseIndexSchema = z.object({
   name: z.string().min(1),
   columns: z.array(z.string().min(1)).min(1, 'Index must have at least one column'),
   isUnique: z.boolean().default(false),
@@ -29,12 +29,12 @@ export const DatabaseIndex = z.object({
   type: z.string().optional(),
   comment: z.string().nullable().optional(),
 });
-export type DatabaseIndex = z.infer<typeof DatabaseIndex>;
+export type DatabaseIndex = z.infer<typeof DatabaseIndexSchema>;
 
 /**
  * Database relation schema representing foreign key relationships
  */
-export const DatabaseRelation = z.object({
+export const DatabaseRelationSchema = z.object({
   type: z.enum(['belongsTo', 'hasMany', 'hasOne']),
   table: z.string().min(1),
   columns: z.array(z.string().min(1)).min(1),
@@ -42,115 +42,115 @@ export const DatabaseRelation = z.object({
   referencedColumns: z.array(z.string().min(1)).min(1),
   constraintName: z.string().optional(),
 });
-export type DatabaseRelation = z.infer<typeof DatabaseRelation>;
+export type DatabaseRelation = z.infer<typeof DatabaseRelationSchema>;
 
 /**
  * Database table schema representing complete table information from tbls markdown
  */
-export const DatabaseTable = z.object({
+export const DatabaseTableSchema = z.object({
   name: z.string().min(1),
   comment: z.string().nullable().optional(),
-  columns: z.array(DatabaseColumn).min(1, 'Table must have at least one column'),
-  indexes: z.array(DatabaseIndex).default([]),
-  relations: z.array(DatabaseRelation).default([]),
+  columns: z.array(DatabaseColumnSchema).min(1, 'Table must have at least one column'),
+  indexes: z.array(DatabaseIndexSchema).default([]),
+  relations: z.array(DatabaseRelationSchema).default([]),
 });
-export type DatabaseTable = z.infer<typeof DatabaseTable>;
+export type DatabaseTable = z.infer<typeof DatabaseTableSchema>;
 
 /**
  * Table reference schema for schema overview
  */
-export const TableReference = z.object({
+export const TableReferenceSchema = z.object({
   name: z.string().min(1),
   comment: z.string().nullable().default(null),
   columnCount: z.number().int().min(0).nullable().default(null),
 });
-export type TableReference = z.infer<typeof TableReference>;
+export type TableReference = z.infer<typeof TableReferenceSchema>;
 
 /**
  * Schema metadata schema
  */
-export const SchemaMetadata = z.object({
+export const SchemaMetadataSchema = z.object({
   name: z.string().min(1),
   tableCount: z.number().int().min(0).nullable().default(null),
   generated: z.string().datetime().nullable().default(null),
   version: z.string().nullable().optional(),
   description: z.string().nullable().optional(),
 });
-export type SchemaMetadata = z.infer<typeof SchemaMetadata>;
+export type SchemaMetadata = z.infer<typeof SchemaMetadataSchema>;
 
 /**
  * Complete database schema representing the structure parsed from tbls markdown
  */
-export const DatabaseSchema = z.object({
-  metadata: SchemaMetadata,
-  tables: z.array(DatabaseTable),
-  tableReferences: z.array(TableReference),
+export const DatabaseSchemaSchema = z.object({
+  metadata: SchemaMetadataSchema,
+  tables: z.array(DatabaseTableSchema),
+  tableReferences: z.array(TableReferenceSchema),
 });
-export type DatabaseSchema = z.infer<typeof DatabaseSchema>;
+export type DatabaseSchema = z.infer<typeof DatabaseSchemaSchema>;
 
 /**
  * Query result schema for SQL execution results
  */
-export const QueryResult = z.object({
+export const QueryResultSchema = z.object({
   columns: z.array(z.string()),
   rows: z.array(z.array(z.unknown())),
   rowCount: z.number().int().min(0),
   executionTimeMs: z.number().min(0).optional(),
 });
-export type QueryResult = z.infer<typeof QueryResult>;
+export type QueryResult = z.infer<typeof QueryResultSchema>;
 
 /**
  * SQL query request schema
  */
-export const SqlQueryRequest = z.object({
+export const SqlQueryRequestSchema = z.object({
   query: z.string().min(1, 'SQL query cannot be empty'),
   parameters: z.array(z.unknown()).default([]),
 });
-export type SqlQueryRequest = z.infer<typeof SqlQueryRequest>;
+export type SqlQueryRequest = z.infer<typeof SqlQueryRequestSchema>;
 
 /**
  * Resource URI schemas for MCP resources
  */
-export const SchemaListUri = z.literal('schema://list');
-export const SchemaTablesUri = z.string().regex(/^schema:\/\/[^\/]+\/tables$/);
-export const TableInfoUri = z.string().regex(/^table:\/\/[^\/]+\/[^\/]+$/);
-export const TableIndexesUri = z.string().regex(/^table:\/\/[^\/]+\/[^\/]+\/indexes$/);
+export const SchemaListUriSchema = z.literal('schema://list');
+export const SchemaTablesUriSchema = z.string().regex(/^schema:\/\/[^/]+\/tables$/);
+export const TableInfoUriSchema = z.string().regex(/^table:\/\/[^/]+\/[^/]+$/);
+export const TableIndexesUriSchema = z.string().regex(/^table:\/\/[^/]+\/[^/]+\/indexes$/);
 
-export type SchemaListUri = z.infer<typeof SchemaListUri>;
-export type SchemaTablesUri = z.infer<typeof SchemaTablesUri>;
-export type TableInfoUri = z.infer<typeof TableInfoUri>;
-export type TableIndexesUri = z.infer<typeof TableIndexesUri>;
+export type SchemaListUri = z.infer<typeof SchemaListUriSchema>;
+export type SchemaTablesUri = z.infer<typeof SchemaTablesUriSchema>;
+export type TableInfoUri = z.infer<typeof TableInfoUriSchema>;
+export type TableIndexesUri = z.infer<typeof TableIndexesUriSchema>;
 
 /**
  * MCP Resource content schemas
  */
-export const SchemaListResource = z.object({
+export const SchemaListResourceSchema = z.object({
   schemas: z.array(z.object({
     name: z.string(),
     tableCount: z.number().int().min(0).optional(),
     description: z.string().nullable().optional(),
   })),
 });
-export type SchemaListResource = z.infer<typeof SchemaListResource>;
+export type SchemaListResource = z.infer<typeof SchemaListResourceSchema>;
 
-export const SchemaTablesResource = z.object({
+export const SchemaTablesResourceSchema = z.object({
   schemaName: z.string(),
-  tables: z.array(TableReference),
+  tables: z.array(TableReferenceSchema),
 });
-export type SchemaTablesResource = z.infer<typeof SchemaTablesResource>;
+export type SchemaTablesResource = z.infer<typeof SchemaTablesResourceSchema>;
 
-export const TableInfoResource = z.object({
+export const TableInfoResourceSchema = z.object({
   schemaName: z.string(),
-  table: DatabaseTable,
+  table: DatabaseTableSchema,
 });
-export type TableInfoResource = z.infer<typeof TableInfoResource>;
+export type TableInfoResource = z.infer<typeof TableInfoResourceSchema>;
 
-export const TableIndexesResource = z.object({
+export const TableIndexesResourceSchema = z.object({
   schemaName: z.string(),
   tableName: z.string(),
-  indexes: z.array(DatabaseIndex),
+  indexes: z.array(DatabaseIndexSchema),
 });
-export type TableIndexesResource = z.infer<typeof TableIndexesResource>;
+export type TableIndexesResource = z.infer<typeof TableIndexesResourceSchema>;
 
 /**
  * Validates table data using neverthrow Result
@@ -159,7 +159,7 @@ export type TableIndexesResource = z.infer<typeof TableIndexesResource>;
  */
 export const validateTableData = (data: unknown): Result<DatabaseTable, string> => {
   try {
-    const validated = DatabaseTable.parse(data);
+    const validated = DatabaseTableSchema.parse(data);
     return ok(validated);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -179,7 +179,7 @@ export const validateTableData = (data: unknown): Result<DatabaseTable, string> 
  */
 export const validateSchemaData = (data: unknown): Result<DatabaseSchema, string> => {
   try {
-    const validated = DatabaseSchema.parse(data);
+    const validated = DatabaseSchemaSchema.parse(data);
     return ok(validated);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -199,7 +199,7 @@ export const validateSchemaData = (data: unknown): Result<DatabaseSchema, string
  */
 export const validateQueryResult = (data: unknown): Result<QueryResult, string> => {
   try {
-    const validated = QueryResult.parse(data);
+    const validated = QueryResultSchema.parse(data);
     return ok(validated);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -219,7 +219,7 @@ export const validateQueryResult = (data: unknown): Result<QueryResult, string> 
  */
 export const validateSqlQueryRequest = (data: unknown): Result<SqlQueryRequest, string> => {
   try {
-    const validated = SqlQueryRequest.parse(data);
+    const validated = SqlQueryRequestSchema.parse(data);
     return ok(validated);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -283,7 +283,7 @@ export const sanitizeQuery = (query: string): Result<string, Error> => {
   }
 
   // Basic sanitization: normalize whitespace while preserving string literals
-  let sanitized = query.trim();
+  const sanitized = query.trim();
 
   if (sanitized.length === 0) {
     return err(new Error('Query cannot be empty after sanitization'));

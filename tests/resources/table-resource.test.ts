@@ -6,7 +6,7 @@ import {
   handleSchemaTablesResource,
   handleTableInfoResource
 } from '../../src/resources/table-resource';
-import { SchemaTablesResource, TableInfoResource } from '../../src/schemas/database';
+import type { SchemaTablesResource, TableInfoResource } from '../../src/schemas/database';
 
 describe('Table Resource Handlers', () => {
   let tempDir: string;
@@ -102,7 +102,7 @@ Generated at: 2024-01-15T10:30:00Z
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
-        expect(result.error.message).toContain('Schema directory or README.md not found');
+        expect(result.error.message).toContain('No schema file found');
       }
     });
 
@@ -302,7 +302,7 @@ Generated at: 2024-01-15T10:30:00Z by tbls
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
-        expect(result.error.message).toContain('Table file not found');
+        expect(result.error.message).toContain('No schema file found');
       }
     });
 
@@ -366,7 +366,7 @@ Generated at: 2024-01-15T10:30:00Z by tbls
 
         expect(result.isErr()).toBe(true);
         if (result.isErr()) {
-          expect(result.error.message).toContain('Failed to read table file');
+          expect(result.error.message).toContain('Failed to parse table');
         }
       } finally {
         // Restore permissions for cleanup

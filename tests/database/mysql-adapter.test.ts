@@ -4,7 +4,7 @@ import {
   closeMySQLConnection,
   MySQLConnection,
 } from '../../src/database/mysql-adapter';
-import { DatabaseConfig } from '../../src/schemas/config';
+import type { DatabaseConfig } from '../../src/schemas/config';
 
 // Mock mysql2
 jest.mock('mysql2', () => ({

@@ -4,7 +4,7 @@ import {
   closeConnection,
   ConnectionPool,
 } from '../../src/database/connection';
-import { DatabaseConfig } from '../../src/schemas/config';
+import type { DatabaseConfig } from '../../src/schemas/config';
 
 // Mock implementations for testing
 jest.mock('mysql2', () => ({

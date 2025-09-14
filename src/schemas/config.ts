@@ -4,8 +4,8 @@ import { Result, ok, err } from 'neverthrow';
 /**
  * Log level enumeration
  */
-export const LogLevel = z.enum(['debug', 'info', 'warn', 'error']);
-export type LogLevel = z.infer<typeof LogLevel>;
+export const LogLevelSchema = z.enum(['debug', 'info', 'warn', 'error']);
+export type LogLevel = z.infer<typeof LogLevelSchema>;
 
 /**
  * MySQL database configuration schema
@@ -53,18 +53,18 @@ const SQLiteConfig = z.object({
 /**
  * Database configuration schema (union of MySQL and SQLite)
  */
-export const DatabaseConfig = z.union([MySQLConfig, SQLiteConfig]);
-export type DatabaseConfig = z.infer<typeof DatabaseConfig>;
+export const DatabaseConfigSchema = z.union([MySQLConfig, SQLiteConfig]);
+export type DatabaseConfig = z.infer<typeof DatabaseConfigSchema>;
 
 /**
  * Server configuration schema
  */
-export const ServerConfig = z.object({
+export const ServerConfigSchema = z.object({
   schemaDir: z.string().min(1, 'Schema directory path cannot be empty'),
-  logLevel: LogLevel.default('info'),
-  database: DatabaseConfig.optional(),
+  logLevel: LogLevelSchema.default('info'),
+  database: DatabaseConfigSchema.optional(),
 });
-export type ServerConfig = z.infer<typeof ServerConfig>;
+export type ServerConfig = z.infer<typeof ServerConfigSchema>;
 
 /**
  * Validates server configuration using neverthrow Result
@@ -75,7 +75,7 @@ export const validateServerConfig = (
   config: unknown
 ): Result<ServerConfig, string> => {
   try {
-    const validated = ServerConfig.parse(config);
+    const validated = ServerConfigSchema.parse(config);
     return ok(validated);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -97,7 +97,7 @@ export const validateDatabaseConfig = (
   config: unknown
 ): Result<DatabaseConfig, string> => {
   try {
-    const validated = DatabaseConfig.parse(config);
+    const validated = DatabaseConfigSchema.parse(config);
     return ok(validated);
   } catch (error) {
     if (error instanceof z.ZodError) {

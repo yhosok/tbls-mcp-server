@@ -1,11 +1,11 @@
 import {
-  DatabaseColumn,
-  DatabaseIndex,
-  DatabaseTable,
-  DatabaseSchema,
-  DatabaseRelation,
-  TableReference,
-  SchemaMetadata,
+  DatabaseColumnSchema,
+  DatabaseIndexSchema,
+  DatabaseTableSchema,
+  DatabaseSchemaSchema,
+  DatabaseRelationSchema,
+  TableReferenceSchema,
+  SchemaMetadataSchema,
   validateTableData,
   validateSchemaData,
 } from '../../src/schemas/database';
@@ -25,7 +25,7 @@ describe('database schemas', () => {
         precision: null,
         scale: null,
       };
-      expect(DatabaseColumn.parse(column)).toEqual(column);
+      expect(DatabaseColumnSchema.parse(column)).toEqual(column);
     });
 
     it('should validate minimal column definition', () => {
@@ -33,7 +33,7 @@ describe('database schemas', () => {
         name: 'username',
         type: 'VARCHAR',
       };
-      const parsed = DatabaseColumn.parse(column);
+      const parsed = DatabaseColumnSchema.parse(column);
       expect(parsed.name).toBe('username');
       expect(parsed.type).toBe('VARCHAR');
       expect(parsed.nullable).toBe(true); // default
@@ -48,7 +48,7 @@ describe('database schemas', () => {
         maxLength: 255,
         nullable: false,
       };
-      expect(DatabaseColumn.parse(column)).toEqual({
+      expect(DatabaseColumnSchema.parse(column)).toEqual({
         ...column,
         defaultValue: null,
         comment: null,
@@ -68,13 +68,13 @@ describe('database schemas', () => {
         nullable: false,
         defaultValue: '0.00',
       };
-      expect(DatabaseColumn.parse(column)).toMatchObject(column);
+      expect(DatabaseColumnSchema.parse(column)).toMatchObject(column);
     });
 
     it('should require name and type', () => {
-      expect(() => DatabaseColumn.parse({})).toThrow();
-      expect(() => DatabaseColumn.parse({ name: 'test' })).toThrow();
-      expect(() => DatabaseColumn.parse({ type: 'VARCHAR' })).toThrow();
+      expect(() => DatabaseColumnSchema.parse({})).toThrow();
+      expect(() => DatabaseColumnSchema.parse({ name: 'test' })).toThrow();
+      expect(() => DatabaseColumnSchema.parse({ type: 'VARCHAR' })).toThrow();
     });
   });
 
@@ -88,7 +88,7 @@ describe('database schemas', () => {
         type: 'BTREE',
         comment: 'Unique index on user email',
       };
-      expect(DatabaseIndex.parse(index)).toEqual(index);
+      expect(DatabaseIndexSchema.parse(index)).toEqual(index);
     });
 
     it('should validate minimal index definition', () => {
@@ -96,7 +96,7 @@ describe('database schemas', () => {
         name: 'idx_created_at',
         columns: ['created_at'],
       };
-      const parsed = DatabaseIndex.parse(index);
+      const parsed = DatabaseIndexSchema.parse(index);
       expect(parsed.name).toBe('idx_created_at');
       expect(parsed.columns).toEqual(['created_at']);
       expect(parsed.isUnique).toBe(false); // default
@@ -109,13 +109,13 @@ describe('database schemas', () => {
         columns: ['user_id', 'status'],
         isUnique: false,
       };
-      expect(DatabaseIndex.parse(index)).toMatchObject(index);
+      expect(DatabaseIndexSchema.parse(index)).toMatchObject(index);
     });
 
     it('should require name and columns', () => {
-      expect(() => DatabaseIndex.parse({})).toThrow();
-      expect(() => DatabaseIndex.parse({ name: 'test' })).toThrow();
-      expect(() => DatabaseIndex.parse({ columns: ['id'] })).toThrow();
+      expect(() => DatabaseIndexSchema.parse({})).toThrow();
+      expect(() => DatabaseIndexSchema.parse({ name: 'test' })).toThrow();
+      expect(() => DatabaseIndexSchema.parse({ columns: ['id'] })).toThrow();
     });
 
     it('should require at least one column', () => {
@@ -123,7 +123,7 @@ describe('database schemas', () => {
         name: 'idx_test',
         columns: [],
       };
-      expect(() => DatabaseIndex.parse(index)).toThrow();
+      expect(() => DatabaseIndexSchema.parse(index)).toThrow();
     });
   });
 
@@ -137,7 +137,7 @@ describe('database schemas', () => {
         referencedColumns: ['id'],
         constraintName: 'fk_posts_user_id',
       };
-      expect(DatabaseRelation.parse(relation)).toEqual(relation);
+      expect(DatabaseRelationSchema.parse(relation)).toEqual(relation);
     });
 
     it('should validate hasMany relation', () => {
@@ -148,13 +148,13 @@ describe('database schemas', () => {
         referencedTable: 'users',
         referencedColumns: ['id'],
       };
-      expect(DatabaseRelation.parse(relation)).toMatchObject(relation);
+      expect(DatabaseRelationSchema.parse(relation)).toMatchObject(relation);
     });
 
     it('should require all relation fields', () => {
-      expect(() => DatabaseRelation.parse({})).toThrow();
+      expect(() => DatabaseRelationSchema.parse({})).toThrow();
       expect(() =>
-        DatabaseRelation.parse({
+        DatabaseRelationSchema.parse({
           type: 'belongsTo',
           table: 'posts',
         })
@@ -205,7 +205,7 @@ describe('database schemas', () => {
           },
         ],
       };
-      expect(DatabaseTable.parse(table)).toMatchObject(table);
+      expect(DatabaseTableSchema.parse(table)).toMatchObject(table);
     });
 
     it('should validate minimal table definition', () => {
@@ -218,7 +218,7 @@ describe('database schemas', () => {
           },
         ],
       };
-      const parsed = DatabaseTable.parse(table);
+      const parsed = DatabaseTableSchema.parse(table);
       expect(parsed.name).toBe('simple_table');
       expect(parsed.columns).toHaveLength(1);
       expect(parsed.indexes).toEqual([]); // default
@@ -226,10 +226,10 @@ describe('database schemas', () => {
     });
 
     it('should require name and at least one column', () => {
-      expect(() => DatabaseTable.parse({})).toThrow();
-      expect(() => DatabaseTable.parse({ name: 'test' })).toThrow();
+      expect(() => DatabaseTableSchema.parse({})).toThrow();
+      expect(() => DatabaseTableSchema.parse({ name: 'test' })).toThrow();
       expect(() =>
-        DatabaseTable.parse({ name: 'test', columns: [] })
+        DatabaseTableSchema.parse({ name: 'test', columns: [] })
       ).toThrow();
     });
   });
@@ -241,14 +241,14 @@ describe('database schemas', () => {
         comment: 'User accounts table',
         columnCount: 5,
       };
-      expect(TableReference.parse(ref)).toEqual(ref);
+      expect(TableReferenceSchema.parse(ref)).toEqual(ref);
     });
 
     it('should validate minimal table reference', () => {
       const ref = {
         name: 'posts',
       };
-      const parsed = TableReference.parse(ref);
+      const parsed = TableReferenceSchema.parse(ref);
       expect(parsed.name).toBe('posts');
       expect(parsed.comment).toBeNull(); // default
       expect(parsed.columnCount).toBeNull(); // default
@@ -264,14 +264,14 @@ describe('database schemas', () => {
         version: '1.0.0',
         description: 'Blog database schema',
       };
-      expect(SchemaMetadata.parse(metadata)).toEqual(metadata);
+      expect(SchemaMetadataSchema.parse(metadata)).toEqual(metadata);
     });
 
     it('should validate minimal schema metadata', () => {
       const metadata = {
         name: 'test_db',
       };
-      const parsed = SchemaMetadata.parse(metadata);
+      const parsed = SchemaMetadataSchema.parse(metadata);
       expect(parsed.name).toBe('test_db');
       expect(parsed.tableCount).toBeNull(); // default
       expect(parsed.generated).toBeNull(); // default
@@ -332,7 +332,7 @@ describe('database schemas', () => {
           { name: 'posts', columnCount: 2 },
         ],
       };
-      expect(DatabaseSchema.parse(schema)).toMatchObject(schema);
+      expect(DatabaseSchemaSchema.parse(schema)).toMatchObject(schema);
     });
 
     it('should validate minimal database schema', () => {
@@ -343,16 +343,16 @@ describe('database schemas', () => {
         tables: [],
         tableReferences: [],
       };
-      const parsed = DatabaseSchema.parse(schema);
+      const parsed = DatabaseSchemaSchema.parse(schema);
       expect(parsed.metadata.name).toBe('simple_schema');
       expect(parsed.tables).toEqual([]);
       expect(parsed.tableReferences).toEqual([]);
     });
 
     it('should require metadata, tables, and tableReferences', () => {
-      expect(() => DatabaseSchema.parse({})).toThrow();
+      expect(() => DatabaseSchemaSchema.parse({})).toThrow();
       expect(() =>
-        DatabaseSchema.parse({
+        DatabaseSchemaSchema.parse({
           metadata: { name: 'test' },
         })
       ).toThrow();

@@ -2,7 +2,7 @@ import { Result, ok, err } from 'neverthrow';
 import { promises as fs } from 'fs';
 import { join } from 'path';
 import { SchemaListResource } from '../schemas/database';
-import { parseTableReferences, parseSchemaOverview } from '../parsers/markdown-parser';
+import { parseTableReferences, parseSchemaOverview, parseSchemaWithFallback } from '../parsers/schema-adapter';
 import { safeExecuteAsync, fromPromise } from '../utils/result';
 
 /**
@@ -42,10 +42,10 @@ export const handleSchemaListResource = async (schemaDir: string): Promise<Resul
   const dirEntries = readDirResult.value;
   const schemas: Array<{ name: string; tableCount?: number; description?: string | null }> = [];
 
-  // Check for single schema setup (README.md in root)
-  const hasRootReadme = dirEntries.some(entry => entry.isFile() && entry.name === 'README.md');
+  // Check for single schema setup (README.md or schema.json in root)
+  const hasRootSchemaFile = dirEntries.some(entry => entry.isFile() && (entry.name === 'README.md' || entry.name === 'schema.json'));
 
-  if (hasRootReadme) {
+  if (hasRootSchemaFile) {
     const singleSchemaResult = await parseSingleSchemaInfo(schemaDir, 'default');
     if (singleSchemaResult.isOk()) {
       schemas.push(singleSchemaResult.value);
@@ -57,15 +57,21 @@ export const handleSchemaListResource = async (schemaDir: string): Promise<Resul
 
   for (const subdir of subdirectories) {
     const subdirPath = join(schemaDir, subdir.name);
-    const readmeResult = await safeExecuteAsync(
+    // Check for either README.md or schema.json files
+    const hasSchemaFileResult = await safeExecuteAsync(
       async () => {
-        await fs.access(join(subdirPath, 'README.md'));
-        return true;
+        try {
+          await fs.access(join(subdirPath, 'README.md'));
+          return true;
+        } catch {
+          await fs.access(join(subdirPath, 'schema.json'));
+          return true;
+        }
       },
-      'README.md not found in subdirectory'
+      'No schema file found in subdirectory'
     );
 
-    if (readmeResult.isOk()) {
+    if (hasSchemaFileResult.isOk()) {
       const schemaResult = await parseSingleSchemaInfo(subdirPath, subdir.name);
       if (schemaResult.isOk()) {
         schemas.push(schemaResult.value);
@@ -80,7 +86,7 @@ export const handleSchemaListResource = async (schemaDir: string): Promise<Resul
 };
 
 /**
- * Parses schema information from a single README.md file
+ * Parses schema information from a schema file (JSON or Markdown)
  *
  * @param schemaPath - Path to the schema directory
  * @param schemaName - Name of the schema
@@ -90,19 +96,8 @@ const parseSingleSchemaInfo = async (
   schemaPath: string,
   schemaName: string
 ): Promise<Result<{ name: string; tableCount?: number; description?: string | null }, Error>> => {
-  const readmeResult = await fromPromise(
-    fs.readFile(join(schemaPath, 'README.md'), 'utf8'),
-    'Failed to read README.md'
-  );
-
-  if (readmeResult.isErr()) {
-    return err(readmeResult.error);
-  }
-
-  const content = readmeResult.value;
-
-  // Try to parse as full schema overview first
-  const overviewResult = parseSchemaOverview(content);
+  // Try to parse as full schema overview first using the schema adapter
+  const overviewResult = parseSchemaOverview(schemaPath);
   if (overviewResult.isOk()) {
     const metadata = overviewResult.value;
     return ok({
@@ -113,7 +108,7 @@ const parseSingleSchemaInfo = async (
   }
 
   // Fallback: try to parse table references for table count
-  const tableRefsResult = parseTableReferences(content);
+  const tableRefsResult = parseTableReferences(schemaPath);
   if (tableRefsResult.isOk()) {
     const tableCount = tableRefsResult.value.length;
     return ok({
@@ -123,7 +118,18 @@ const parseSingleSchemaInfo = async (
     });
   }
 
-  // If parsing fails, still return basic schema info
+  // Final fallback: try parseSchemaWithFallback for comprehensive format detection
+  const schemaResult = parseSchemaWithFallback(schemaPath);
+  if (schemaResult.isOk()) {
+    const schema = schemaResult.value;
+    return ok({
+      name: schemaName,
+      tableCount: schema.tables?.length ?? 0,
+      description: schema.metadata?.description ?? (schemaName === 'default' ? 'Default schema' : null)
+    });
+  }
+
+  // If all parsing fails, still return basic schema info
   return ok({
     name: schemaName,
     tableCount: 0,

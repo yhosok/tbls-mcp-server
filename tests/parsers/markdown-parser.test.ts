@@ -10,7 +10,7 @@ import {
   parseRelationsSection,
   parseSchemaOverview,
 } from '../../src/parsers/markdown-parser';
-import { DatabaseTable, DatabaseSchema } from '../../src/schemas/database';
+import { DatabaseTableSchema, DatabaseSchemaSchema } from '../../src/schemas/database';
 
 describe('Tbls Markdown Parser', () => {
   let testDir: string;
@@ -355,7 +355,7 @@ User account information
         expect(table.relations).toHaveLength(2);
 
         // Validate schema compliance
-        const validation = DatabaseTable.safeParse(table);
+        const validation = DatabaseTableSchema.safeParse(table);
         expect(validation.success).toBe(true);
       }
     });
@@ -622,7 +622,7 @@ Product catalog information
         expect(usersRef?.columnCount).toBe(4);
 
         // Validate schema compliance
-        const validation = DatabaseSchema.safeParse(schema);
+        const validation = DatabaseSchemaSchema.safeParse(schema);
         expect(validation.success).toBe(true);
       }
     });

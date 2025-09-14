@@ -4,6 +4,28 @@ import { DatabaseConfig } from '../schemas/config';
 import { QueryResult } from '../schemas/database';
 import { safeExecuteAsync } from '../utils/result';
 
+// Types for SQLite callback results
+interface SQLiteVersionRow {
+  version: string;
+}
+
+interface SQLiteMasterRow {
+  name: string;
+  type: 'table' | 'view' | 'index';
+}
+
+interface SQLiteTableInfoRow {
+  cid: number;
+  name: string;
+  type: string;
+  notnull: number;
+  dflt_value: string | number | null;
+  pk: number;
+}
+
+type SQLiteRowValue = string | number | null;
+type SQLiteRow = Record<string, SQLiteRowValue>;
+
 /**
  * SQLite connection type
  */
@@ -96,7 +118,7 @@ export const executeSQLiteQuery = async (
     const timeout = timeoutMs ?? DEFAULT_TIMEOUT_MS;
 
     const queryPromise = new Promise<QueryResult>((resolve, reject) => {
-      const callback = (error: Error | null, rows: any[]) => {
+      const callback = (error: Error | null, rows: SQLiteRow[]): void => {
         if (error) {
           reject(new Error(`SQLite query execution failed: ${error.message}`));
           return;
@@ -192,14 +214,14 @@ export const getSQLiteInfo = async (
 ): Promise<Result<{ version: string; filename: string }, Error>> => {
   return safeExecuteAsync(async () => {
     const info = await new Promise<{ version: string; filename: string }>((resolve, reject) => {
-      connection.database.get('SELECT sqlite_version() as version', (error, row: any) => {
+      connection.database.get('SELECT sqlite_version() as version', (error: Error | null, row: SQLiteVersionRow) => {
         if (error) {
           reject(error);
           return;
         }
 
         // Get database filename from the connection
-        const filename = (connection.database as any).filename || ':memory:';
+        const filename = (connection.database as sqlite3.Database & { filename?: string }).filename || ':memory:';
 
         resolve({
           version: row.version,
@@ -232,7 +254,7 @@ export const isSQLiteConnectionAlive = async (
         });
       });
       return true;
-    } catch (error) {
+    } catch {
       return false;
     }
   }, 'Failed to check SQLite connection status');
@@ -250,7 +272,7 @@ export const getSQLiteSchemaInfo = async (
     const schema = await new Promise<{ tables: string[]; views: string[]; indexes: string[] }>((resolve, reject) => {
       connection.database.all(
         `SELECT name, type FROM sqlite_master WHERE type IN ('table', 'view', 'index') ORDER BY type, name`,
-        (error, rows: any[]) => {
+        (error: Error | null, rows: SQLiteMasterRow[]) => {
           if (error) {
             reject(error);
             return;
@@ -278,10 +300,10 @@ export const getSQLiteSchemaInfo = async (
 export const getSQLiteTableInfo = async (
   connection: SQLiteConnection,
   tableName: string
-): Promise<Result<Array<{ cid: number; name: string; type: string; notnull: number; dflt_value: any; pk: number }>, Error>> => {
+): Promise<Result<SQLiteTableInfoRow[], Error>> => {
   return safeExecuteAsync(async () => {
-    const tableInfo = await new Promise<any[]>((resolve, reject) => {
-      connection.database.all(`PRAGMA table_info(${tableName})`, (error, rows) => {
+    const tableInfo = await new Promise<SQLiteTableInfoRow[]>((resolve, reject) => {
+      connection.database.all(`PRAGMA table_info(${tableName})`, (error: Error | null, rows: SQLiteTableInfoRow[]) => {
         if (error) {
           reject(error);
         } else {
@@ -316,7 +338,7 @@ export const executeSQLiteTransaction = async (
           let completed = 0;
           let hasError = false;
 
-          const complete = (error?: Error) => {
+          const complete = (error?: Error): void => {
             if (hasError) return;
 
             if (error) {

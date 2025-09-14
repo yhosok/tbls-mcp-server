@@ -342,7 +342,7 @@ const main = async (): Promise<void> => {
     const server = createTblsMcpServer(config);
 
     // Handle graceful shutdown
-    const shutdown = async () => {
+    const shutdown = async (): Promise<void> => {
       console.error('Shutting down tbls-mcp-server...');
       try {
         await server.close();

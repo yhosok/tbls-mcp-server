@@ -3,7 +3,7 @@ import { promises as fs } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { handleSchemaListResource } from '../../src/resources/schema-resource';
-import { SchemaListResource } from '../../src/schemas/database';
+import type { SchemaListResource } from '../../src/schemas/database';
 
 describe('Schema Resource Handler', () => {
   let tempDir: string;

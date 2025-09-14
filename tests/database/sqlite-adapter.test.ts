@@ -4,7 +4,7 @@ import {
   closeSQLiteConnection,
   SQLiteConnection,
 } from '../../src/database/sqlite-adapter';
-import { DatabaseConfig } from '../../src/schemas/config';
+import type { DatabaseConfig } from '../../src/schemas/config';
 
 // Mock sqlite3
 const mockDatabase = {

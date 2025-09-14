@@ -4,8 +4,8 @@ import {
   sanitizeQuery,
   createSqlQueryTool,
 } from '../../src/tools/sql-query-tool';
-import { DatabaseConfig } from '../../src/schemas/config';
-import { QueryResult } from '../../src/schemas/database';
+import type { DatabaseConfig } from '../../src/schemas/config';
+import type { QueryResult } from '../../src/schemas/database';
 import { ok, err } from 'neverthrow';
 
 // Mock the database connection and adapters

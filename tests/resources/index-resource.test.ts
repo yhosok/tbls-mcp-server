@@ -3,7 +3,7 @@ import { promises as fs } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { handleTableIndexesResource } from '../../src/resources/index-resource';
-import { TableIndexesResource } from '../../src/schemas/database';
+import type { TableIndexesResource } from '../../src/schemas/database';
 
 describe('Index Resource Handler', () => {
   let tempDir: string;
@@ -205,7 +205,7 @@ Generated at: 2024-01-15T10:30:00Z by tbls
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
-        expect(result.error.message).toContain('Table file not found');
+        expect(result.error.message).toContain('No schema file found');
       }
     });
 
@@ -214,7 +214,7 @@ Generated at: 2024-01-15T10:30:00Z by tbls
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
-        expect(result.error.message).toContain('Table file not found');
+        expect(result.error.message).toContain('No schema file found');
       }
     });
 
@@ -326,7 +326,7 @@ Generated at: 2024-01-15T10:30:00Z by tbls
 
         expect(result.isErr()).toBe(true);
         if (result.isErr()) {
-          expect(result.error.message).toContain('Failed to read table file');
+          expect(result.error.message).toContain('Failed to parse table');
         }
       } finally {
         // Restore permissions for cleanup
