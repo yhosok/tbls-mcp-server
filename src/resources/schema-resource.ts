@@ -4,15 +4,34 @@ import { join } from 'path';
 import { SchemaListResource } from '../schemas/database';
 import { parseTableReferences, parseSchemaOverview, parseSchemaWithFallback } from '../parsers/schema-adapter';
 import { safeExecuteAsync, fromPromise } from '../utils/result';
+import { ResourceCache } from '../cache/resource-cache';
 
 /**
  * Handles the schema://list MCP resource
  * Returns a list of all available database schemas with metadata
  *
  * @param schemaDir - Directory containing tbls schema files
+ * @param cache - Optional cache instance for performance optimization
  * @returns Result containing schema list resource or error
  */
-export const handleSchemaListResource = async (schemaDir: string): Promise<Result<SchemaListResource, Error>> => {
+export const handleSchemaListResource = async (
+  schemaDir: string,
+  cache?: ResourceCache
+): Promise<Result<SchemaListResource, Error>> => {
+  // Try to get cached schema list first
+  if (cache) {
+    const cachedTableRefs = await cache.getTableReferences(schemaDir);
+    if (cachedTableRefs) {
+      // Build a simple schema list from cached table references
+      const schemas = [{
+        name: 'default',
+        tableCount: cachedTableRefs.length,
+        description: 'Default schema'
+      }];
+      return ok({ schemas });
+    }
+  }
+
   // Check if schema directory exists
   const dirExistsResult = await safeExecuteAsync(
     async () => {
@@ -46,7 +65,7 @@ export const handleSchemaListResource = async (schemaDir: string): Promise<Resul
   const hasRootSchemaFile = dirEntries.some(entry => entry.isFile() && (entry.name === 'README.md' || entry.name === 'schema.json'));
 
   if (hasRootSchemaFile) {
-    const singleSchemaResult = await parseSingleSchemaInfo(schemaDir, 'default');
+    const singleSchemaResult = await parseSingleSchemaInfo(schemaDir, 'default', cache);
     if (singleSchemaResult.isOk()) {
       schemas.push(singleSchemaResult.value);
     }
@@ -72,7 +91,7 @@ export const handleSchemaListResource = async (schemaDir: string): Promise<Resul
     );
 
     if (hasSchemaFileResult.isOk()) {
-      const schemaResult = await parseSingleSchemaInfo(subdirPath, subdir.name);
+      const schemaResult = await parseSingleSchemaInfo(subdirPath, subdir.name, cache);
       if (schemaResult.isOk()) {
         schemas.push(schemaResult.value);
       }
@@ -82,7 +101,21 @@ export const handleSchemaListResource = async (schemaDir: string): Promise<Resul
   // Sort schemas by name for consistent ordering
   schemas.sort((a, b) => a.name.localeCompare(b.name));
 
-  return ok({ schemas });
+  const result = { schemas };
+
+  // Cache the result if cache is available
+  if (cache && schemas.length > 0) {
+    // For single schema setups, cache the table references for faster subsequent calls
+    if (schemas.length === 1 && schemas[0].name === 'default') {
+      // Try to get table references for the default schema and cache them
+      const tableRefsResult = parseTableReferences(schemaDir);
+      if (tableRefsResult.isOk()) {
+        await cache.setTableReferences(schemaDir, tableRefsResult.value);
+      }
+    }
+  }
+
+  return ok(result);
 };
 
 /**
@@ -90,43 +123,90 @@ export const handleSchemaListResource = async (schemaDir: string): Promise<Resul
  *
  * @param schemaPath - Path to the schema directory
  * @param schemaName - Name of the schema
+ * @param cache - Optional cache instance for performance optimization
  * @returns Result containing schema info or error
  */
 const parseSingleSchemaInfo = async (
   schemaPath: string,
-  schemaName: string
+  schemaName: string,
+  cache?: ResourceCache
 ): Promise<Result<{ name: string; tableCount?: number; description?: string | null }, Error>> => {
+  // Try to get cached schema info first
+  if (cache) {
+    const cachedSchema = await cache.getSchema(schemaPath);
+    if (cachedSchema?.metadata) {
+      return ok({
+        name: schemaName,
+        tableCount: cachedSchema.metadata.tableCount ?? cachedSchema.tables?.length ?? 0,
+        description: cachedSchema.metadata.description
+      });
+    }
+  }
   // Try to parse as full schema overview first using the schema adapter
   const overviewResult = parseSchemaOverview(schemaPath);
   if (overviewResult.isOk()) {
     const metadata = overviewResult.value;
-    return ok({
+    const result = {
       name: schemaName, // Use provided name instead of parsed name for consistency
       tableCount: metadata.tableCount ?? undefined,
       description: metadata.description
-    });
+    };
+
+    // Cache the parsed metadata if cache is available
+    if (cache) {
+      const cacheSchema = {
+        metadata: {
+          name: metadata.name ?? schemaName,
+          tableCount: metadata.tableCount,
+          generated: metadata.generated ?? null,
+          version: metadata.version ?? null,
+          description: metadata.description,
+        },
+        tables: [],
+        tableReferences: [],
+        indexes: [],
+        relations: [],
+      };
+      await cache.setSchema(schemaPath, cacheSchema);
+    }
+
+    return ok(result);
   }
 
   // Fallback: try to parse table references for table count
   const tableRefsResult = parseTableReferences(schemaPath);
   if (tableRefsResult.isOk()) {
     const tableCount = tableRefsResult.value.length;
-    return ok({
+    const result = {
       name: schemaName,
       tableCount: tableCount > 0 ? tableCount : 0,
       description: schemaName === 'default' ? 'Default schema' : null
-    });
+    };
+
+    // Cache the table references if cache is available
+    if (cache) {
+      await cache.setTableReferences(schemaPath, tableRefsResult.value);
+    }
+
+    return ok(result);
   }
 
   // Final fallback: try parseSchemaWithFallback for comprehensive format detection
   const schemaResult = parseSchemaWithFallback(schemaPath);
   if (schemaResult.isOk()) {
     const schema = schemaResult.value;
-    return ok({
+    const result = {
       name: schemaName,
       tableCount: schema.tables?.length ?? 0,
       description: schema.metadata?.description ?? (schemaName === 'default' ? 'Default schema' : null)
-    });
+    };
+
+    // Cache the full schema if cache is available
+    if (cache) {
+      await cache.setSchema(schemaPath, schema);
+    }
+
+    return ok(result);
   }
 
   // If all parsing fails, still return basic schema info

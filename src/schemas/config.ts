@@ -57,12 +57,27 @@ export const DatabaseConfigSchema = z.union([MySQLConfig, SQLiteConfig]);
 export type DatabaseConfig = z.infer<typeof DatabaseConfigSchema>;
 
 /**
+ * Cache configuration schema
+ */
+export const CacheConfigSchema = z.object({
+  enabled: z.boolean().default(true),
+  maxItems: z.number().int().positive().default(1000),
+  ttlMs: z.number().int().positive().default(300000), // 5 minutes default
+}).default({
+  enabled: true,
+  maxItems: 1000,
+  ttlMs: 300000,
+});
+export type CacheConfig = z.infer<typeof CacheConfigSchema>;
+
+/**
  * Server configuration schema
  */
 export const ServerConfigSchema = z.object({
   schemaDir: z.string().min(1, 'Schema directory path cannot be empty'),
   logLevel: LogLevelSchema.default('info'),
   database: DatabaseConfigSchema.optional(),
+  cache: CacheConfigSchema.optional(),
 });
 export type ServerConfig = z.infer<typeof ServerConfigSchema>;
 
