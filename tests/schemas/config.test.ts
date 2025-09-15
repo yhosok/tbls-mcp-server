@@ -86,64 +86,74 @@ describe('config schemas', () => {
   });
 
   describe('ServerConfig', () => {
-    it('should validate complete server configuration', () => {
-      const config = {
-        schemaDir: '/path/to/schemas',
-        logLevel: 'info' as const,
-        database: {
-          type: 'mysql' as const,
-          connectionString: 'mysql://user:pass@localhost:3306/testdb',
-        },
-      };
-      expect(ServerConfigSchema.parse(config)).toEqual(config);
-    });
+    describe('schemaSource support', () => {
+      it('should validate complete server configuration with schemaSource', () => {
+        const config = {
+          schemaSource: '/path/to/schemas',
+          logLevel: 'info' as const,
+          database: {
+            type: 'mysql' as const,
+            connectionString: 'mysql://user:pass@localhost:3306/testdb',
+          },
+        };
+        expect(ServerConfigSchema.parse(config)).toEqual(config);
+      });
 
-    it('should validate minimal server configuration', () => {
-      const config = {
-        schemaDir: '/path/to/schemas',
-      };
-      const parsed = ServerConfigSchema.parse(config);
-      expect(parsed.schemaDir).toBe('/path/to/schemas');
-      expect(parsed.logLevel).toBe('info'); // default value
-    });
+      it('should accept schemaSource as file path', () => {
+        const config = {
+          schemaSource: '/path/to/schema.json',
+        };
+        const parsed = ServerConfigSchema.parse(config);
+        expect(parsed.schemaSource).toBe('/path/to/schema.json');
+      });
 
-    it('should set default log level to info', () => {
-      const config = {
-        schemaDir: '/path/to/schemas',
-      };
-      const parsed = ServerConfigSchema.parse(config);
-      expect(parsed.logLevel).toBe('info');
-    });
+      it('should accept schemaSource as directory path', () => {
+        const config = {
+          schemaSource: '/path/to/schemas/',
+        };
+        const parsed = ServerConfigSchema.parse(config);
+        expect(parsed.schemaSource).toBe('/path/to/schemas/');
+      });
 
-    it('should require schemaDir', () => {
-      const config = {};
-      expect(() => ServerConfigSchema.parse(config)).toThrow();
-    });
+      it('should require schemaSource to be non-empty', () => {
+        const config = {
+          schemaSource: '',
+        };
+        expect(() => ServerConfigSchema.parse(config)).toThrow();
+      });
 
-    it('should validate schemaDir as non-empty string', () => {
-      const config = {
-        schemaDir: '',
-      };
-      expect(() => ServerConfigSchema.parse(config)).toThrow();
+      it('should set default log level to info with schemaSource', () => {
+        const config = {
+          schemaSource: '/path/to/schemas',
+        };
+        const parsed = ServerConfigSchema.parse(config);
+        expect(parsed.logLevel).toBe('info');
+      });
+
+      it('should require schemaSource', () => {
+        const config = {};
+        expect(() => ServerConfigSchema.parse(config)).toThrow();
+      });
     });
   });
 
   describe('validateServerConfig', () => {
     it('should return success for valid configuration', () => {
       const config = {
-        schemaDir: '/path/to/schemas',
+        schemaSource: '/path/to/schemas',
         logLevel: 'debug' as const,
       };
       const result = validateServerConfig(config);
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
-        expect(result.value).toEqual(config);
+        expect(result.value.schemaSource).toBe('/path/to/schemas');
+        expect(result.value.logLevel).toBe('debug');
       }
     });
 
     it('should return error for invalid configuration', () => {
       const config = {
-        schemaDir: '',
+        schemaSource: '',
       };
       const result = validateServerConfig(config);
       expect(result.isErr()).toBe(true);

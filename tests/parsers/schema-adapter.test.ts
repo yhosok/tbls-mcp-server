@@ -55,43 +55,6 @@ const sampleJsonSchema = {
   relations: []
 };
 
-// Sample markdown schema for testing
-const sampleMarkdownSchema = `# Database Schema: test_database
-
-Test database for schema adapter
-
-Generated on: 2024-01-01T00:00:00Z
-Tables: 1
-
-## Tables
-
-| Name | Columns | Comment |
-|------|---------|---------|
-| users | 3 | User accounts table |
-
----
-
-# users
-
-User accounts table
-
-## Columns
-
-| Name | Type | Default | Nullable | Children | Parents | Comment |
-|------|------|---------|----------|----------|---------|---------|
-| id | int(11) |  | false |  |  | User ID |
-| username | varchar(50) |  | false |  |  | Username |
-| email | varchar(100) |  | false |  |  | Email address |
-
-## Indexes
-
-| Name | Definition | Comment |
-|------|------------|---------|
-| PRIMARY | PRIMARY KEY (id) |  |
-
-## Relations
-
-`;
 
 describe('Schema Adapter', () => {
   beforeAll(() => {
@@ -116,11 +79,8 @@ describe('Schema Adapter', () => {
     // Clean up any existing test files
     const files = [
       'test-schema.json',
-      'test-schema.md',
       'schema.json',
-      'README.md',
       'database.json',
-      'database.md',
       'invalid.txt'
     ];
 
@@ -139,11 +99,6 @@ describe('Schema Adapter', () => {
       expect(result._unsafeUnwrap()).toBeDefined();
     });
 
-    it('should create Markdown parser for .md files', () => {
-      const result = createSchemaParser('test.md');
-      expect(result.isOk()).toBe(true);
-      expect(result._unsafeUnwrap()).toBeDefined();
-    });
 
     it('should return error for unsupported file extensions', () => {
       const result = createSchemaParser('test.txt');
@@ -172,18 +127,6 @@ describe('Schema Adapter', () => {
       expect(schema.tables[0].name).toBe('users');
     });
 
-    it('should parse Markdown schema file', () => {
-      const mdPath = path.join(TEST_DIR, 'test-schema.md');
-      writeFileSync(mdPath, sampleMarkdownSchema);
-
-      const result = parseSchemaFile(mdPath);
-      expect(result.isOk()).toBe(true);
-
-      const schema = result._unsafeUnwrap();
-      expect(schema.metadata.name).toBe('test_database');
-      expect(schema.tables).toHaveLength(1);
-      expect(schema.tables[0].name).toBe('users');
-    });
 
     it('should return error for non-existent file', () => {
       const result = parseSchemaFile('/non/existent/file.json');
@@ -202,16 +145,6 @@ describe('Schema Adapter', () => {
       expect(schema.metadata.name).toBe('test_database');
     });
 
-    it('should auto-resolve README.md from directory', () => {
-      const mdPath = path.join(TEST_DIR, 'README.md');
-      writeFileSync(mdPath, sampleMarkdownSchema);
-
-      const result = parseSchemaFile(TEST_DIR);
-      expect(result.isOk()).toBe(true);
-
-      const schema = result._unsafeUnwrap();
-      expect(schema.metadata.name).toBe('test_database');
-    });
   });
 
   describe('parseSingleTableFile', () => {
@@ -226,41 +159,6 @@ describe('Schema Adapter', () => {
       expect(schema.tables).toHaveLength(1);
     });
 
-    it('should parse single table from Markdown file', () => {
-      // Single table markdown (without schema overview)
-      const singleTableMd = `# users
-
-User accounts table
-
-## Columns
-
-| Name | Type | Default | Nullable | Children | Parents | Comment |
-|------|------|---------|----------|----------|---------|---------|
-| id | int(11) |  | false |  |  | User ID |
-| username | varchar(50) |  | false |  |  | Username |
-| email | varchar(100) |  | false |  |  | Email address |
-
-## Indexes
-
-| Name | Definition | Comment |
-|------|------------|---------|
-| PRIMARY | PRIMARY KEY (id) |  |
-
-## Relations
-
-`;
-
-      const mdPath = path.join(TEST_DIR, 'users.md');
-      writeFileSync(mdPath, singleTableMd);
-
-      const result = parseSingleTableFile(mdPath);
-      expect(result.isOk()).toBe(true);
-
-      const schema = result._unsafeUnwrap();
-      expect(schema.tables).toHaveLength(1);
-      expect(schema.tables[0].name).toBe('users');
-      expect(schema.metadata.name).toBe('users');
-    });
   });
 
   describe('parseSchemaOverview', () => {
@@ -276,18 +174,6 @@ User accounts table
       expect(metadata.tableCount).toBe(1);
     });
 
-    it('should extract metadata from Markdown file', () => {
-      const mdPath = path.join(TEST_DIR, 'test-schema.md');
-      writeFileSync(mdPath, sampleMarkdownSchema);
-
-      const result = parseSchemaOverview(mdPath);
-      expect(result.isOk()).toBe(true);
-
-      const metadata = result._unsafeUnwrap();
-      expect(metadata.name).toBe('test_database');
-      expect(metadata.tableCount).toBe(1);
-      expect(metadata.generated).toBe('2024-01-01T00:00:00Z');
-    });
   });
 
   describe('parseTableReferences', () => {
@@ -303,19 +189,6 @@ User accounts table
       expect(references[0].name).toBe('users');
     });
 
-    it('should extract table references from Markdown file', () => {
-      const mdPath = path.join(TEST_DIR, 'test-schema.md');
-      writeFileSync(mdPath, sampleMarkdownSchema);
-
-      const result = parseTableReferences(mdPath);
-      expect(result.isOk()).toBe(true);
-
-      const references = result._unsafeUnwrap();
-      expect(references).toHaveLength(1);
-      expect(references[0].name).toBe('users');
-      expect(references[0].columnCount).toBe(3);
-      expect(references[0].comment).toBe('User accounts table');
-    });
   });
 
   describe('getSchemaParser', () => {
@@ -327,12 +200,13 @@ User accounts table
       expect(result.isOk()).toBe(true);
     });
 
-    it('should return parser for existing Markdown file', () => {
+    it('should reject Markdown files', () => {
       const mdPath = path.join(TEST_DIR, 'test.md');
       writeFileSync(mdPath, '# Test');
 
-      const result = getSchemaParser(mdPath);
-      expect(result.isOk()).toBe(true);
+      const result = createSchemaParser(mdPath);
+      expect(result.isErr()).toBe(true);
+      expect(result._unsafeUnwrapErr().message).toContain('Markdown files are no longer supported');
     });
   });
 
@@ -388,31 +262,24 @@ User accounts table
   });
 
   describe('parseSchemaWithFallback', () => {
-    it('should prefer JSON when preferJson is true', () => {
-      // Create both JSON and Markdown files
+    it('should parse JSON schema from directory', () => {
+      // Create JSON schema file
       const jsonPath = path.join(TEST_DIR, 'schema.json');
-      const mdPath = path.join(TEST_DIR, 'README.md');
-
       writeFileSync(jsonPath, JSON.stringify(sampleJsonSchema, null, 2));
-      writeFileSync(mdPath, sampleMarkdownSchema);
 
-      const result = parseSchemaWithFallback(TEST_DIR, true);
+      const result = parseSchemaWithFallback(TEST_DIR);
       expect(result.isOk()).toBe(true);
 
-      // Should have parsed from JSON (which has different structure than MD)
       const schema = result._unsafeUnwrap();
       expect(schema.metadata.name).toBe('test_database');
     });
 
-    it('should prefer Markdown when preferJson is false', () => {
-      // Create both JSON and Markdown files
-      const jsonPath = path.join(TEST_DIR, 'schema.json');
-      const mdPath = path.join(TEST_DIR, 'README.md');
-
+    it('should try different JSON candidate files', () => {
+      // Create database.json instead of schema.json
+      const jsonPath = path.join(TEST_DIR, 'database.json');
       writeFileSync(jsonPath, JSON.stringify(sampleJsonSchema, null, 2));
-      writeFileSync(mdPath, sampleMarkdownSchema);
 
-      const result = parseSchemaWithFallback(TEST_DIR, false);
+      const result = parseSchemaWithFallback(TEST_DIR);
       expect(result.isOk()).toBe(true);
 
       const schema = result._unsafeUnwrap();
@@ -422,7 +289,7 @@ User accounts table
     it('should return detailed error when no files found', () => {
       const result = parseSchemaWithFallback('/nonexistent/path');
       expect(result.isErr()).toBe(true);
-      expect(result._unsafeUnwrapErr().message).toContain('Failed to parse schema from any candidate file');
+      expect(result._unsafeUnwrapErr().message).toContain('Failed to parse JSON schema from any candidate file');
     });
 
     it('should try all candidates and report attempts', () => {
@@ -432,7 +299,7 @@ User accounts table
 
       const result = parseSchemaWithFallback(TEST_DIR);
       expect(result.isErr()).toBe(true);
-      expect(result._unsafeUnwrapErr().message).toContain('Failed to parse schema from any candidate file');
+      expect(result._unsafeUnwrapErr().message).toContain('Failed to parse JSON schema from any candidate file');
       expect(result._unsafeUnwrapErr().message).toContain('schema.json');
     });
   });

@@ -26,8 +26,8 @@ interface DiscoveryCache {
  * Registry configuration options
  */
 export interface LazyResourceRegistryOptions {
-  /** Base schema directory for resource discovery */
-  schemaDir: string;
+  /** Schema source path (file or directory) for resource discovery */
+  schemaSource: string;
   /** Optional resource cache for performance optimization */
   cache?: ResourceCache;
   /** TTL for discovery cache in milliseconds (default: 5 minutes) */
@@ -42,7 +42,7 @@ export interface LazyResourceRegistryOptions {
  * are listed or accessed.
  */
 export class LazyResourceRegistry {
-  private readonly schemaDir: string;
+  private readonly schemaSource: string;
   private readonly cache?: ResourceCache;
   private readonly discoveryTtl: number;
 
@@ -50,7 +50,7 @@ export class LazyResourceRegistry {
   private readonly discoveryCache = new Map<string, DiscoveryCache>();
 
   constructor(options: LazyResourceRegistryOptions) {
-    this.schemaDir = options.schemaDir;
+    this.schemaSource = options.schemaSource;
     this.cache = options.cache;
     this.discoveryTtl = options.discoveryTtl ?? 300000; // 5 minutes default
   }
@@ -156,7 +156,7 @@ export class LazyResourceRegistry {
     // For dynamic patterns, check if the resource actually exists
     try {
       const context: GenerationContext = {
-        schemaDir: this.schemaDir,
+        schemaSource: this.schemaSource,
         scope: match.params
       };
 
@@ -221,7 +221,7 @@ export class LazyResourceRegistry {
     }
 
     const context: GenerationContext = {
-      schemaDir: this.schemaDir
+      schemaSource: this.schemaSource
     };
 
     return ResourcePatterns.generateResources(pattern, context);

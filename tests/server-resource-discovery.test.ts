@@ -216,235 +216,483 @@ async function setupMultiSchemaTestData(schemaDir: string): Promise<void> {
   const publicSchemaDir = join(schemaDir, 'public');
   await fs.mkdir(publicSchemaDir);
 
-  const publicReadme = `# Public Schema
+  const publicSchema = {
+    name: 'public',
+    desc: 'Public schema with user and product management',
+    tables: [
+      {
+        name: 'users',
+        type: 'TABLE',
+        comment: 'User accounts',
+        columns: [
+          {
+            name: 'id',
+            type: 'bigint',
+            nullable: false,
+            default: null,
+            extra_def: 'auto_increment',
+            comment: 'Primary key'
+          },
+          {
+            name: 'email',
+            type: 'varchar(255)',
+            nullable: false,
+            default: null,
+            extra_def: '',
+            comment: 'User email'
+          },
+          {
+            name: 'name',
+            type: 'varchar(100)',
+            nullable: false,
+            default: null,
+            extra_def: '',
+            comment: 'User name'
+          },
+          {
+            name: 'created_at',
+            type: 'timestamp',
+            nullable: false,
+            default: 'CURRENT_TIMESTAMP',
+            extra_def: '',
+            comment: 'Creation time'
+          },
+          {
+            name: 'updated_at',
+            type: 'timestamp',
+            nullable: true,
+            default: 'CURRENT_TIMESTAMP',
+            extra_def: 'on update CURRENT_TIMESTAMP',
+            comment: 'Update time'
+          }
+        ],
+        indexes: [
+          {
+            name: 'PRIMARY',
+            def: 'PRIMARY KEY (id)',
+            table: 'users',
+            columns: ['id'],
+            comment: ''
+          },
+          {
+            name: 'users_email_unique',
+            def: 'UNIQUE (email)',
+            table: 'users',
+            columns: ['email'],
+            comment: ''
+          }
+        ]
+      },
+      {
+        name: 'products',
+        type: 'TABLE',
+        comment: 'Product catalog',
+        columns: [
+          {
+            name: 'id',
+            type: 'bigint',
+            nullable: false,
+            default: null,
+            extra_def: 'auto_increment',
+            comment: 'Primary key'
+          },
+          {
+            name: 'name',
+            type: 'varchar(200)',
+            nullable: false,
+            default: null,
+            extra_def: '',
+            comment: 'Product name'
+          },
+          {
+            name: 'price',
+            type: 'decimal(10,2)',
+            nullable: false,
+            default: null,
+            extra_def: '',
+            comment: 'Product price'
+          },
+          {
+            name: 'description',
+            type: 'text',
+            nullable: true,
+            default: null,
+            extra_def: '',
+            comment: 'Product description'
+          },
+          {
+            name: 'category_id',
+            type: 'bigint',
+            nullable: true,
+            default: null,
+            extra_def: '',
+            comment: 'Category reference'
+          },
+          {
+            name: 'created_at',
+            type: 'timestamp',
+            nullable: false,
+            default: 'CURRENT_TIMESTAMP',
+            extra_def: '',
+            comment: 'Creation time'
+          },
+          {
+            name: 'updated_at',
+            type: 'timestamp',
+            nullable: true,
+            default: 'CURRENT_TIMESTAMP',
+            extra_def: 'on update CURRENT_TIMESTAMP',
+            comment: 'Update time'
+          },
+          {
+            name: 'is_active',
+            type: 'boolean',
+            nullable: false,
+            default: 'true',
+            extra_def: '',
+            comment: 'Active status'
+          }
+        ],
+        indexes: [
+          {
+            name: 'PRIMARY',
+            def: 'PRIMARY KEY (id)',
+            table: 'products',
+            columns: ['id'],
+            comment: ''
+          },
+          {
+            name: 'products_name_idx',
+            def: 'INDEX (name)',
+            table: 'products',
+            columns: ['name'],
+            comment: ''
+          },
+          {
+            name: 'products_category_idx',
+            def: 'INDEX (category_id)',
+            table: 'products',
+            columns: ['category_id'],
+            comment: ''
+          }
+        ]
+      }
+    ]
+  };
 
-## Tables
-
-| Name | Columns | Comment |
-| ---- | ------- | ------- |
-| users | 5 | User accounts |
-| products | 8 | Product catalog |
-
-Generated at: 2024-01-15T10:30:00Z
-`;
-
-  await fs.writeFile(join(publicSchemaDir, 'README.md'), publicReadme);
-
-  // Create detailed table files for public schema
-  const usersTableContent = `# users
-
-User accounts table
-
-## Columns
-
-| Name | Type | Default | Nullable | Children | Parents | Comment |
-| ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | bigint |  | false |  |  | Primary key |
-| email | varchar(255) |  | false |  |  | User email |
-| name | varchar(100) |  | false |  |  | User name |
-| created_at | timestamp | CURRENT_TIMESTAMP | false |  |  | Creation time |
-| updated_at | timestamp | CURRENT_TIMESTAMP | true |  |  | Update time |
-
-## Indexes
-
-| Name | Definition | Comment |
-| ---- | ---------- | ------- |
-| PRIMARY | PRIMARY KEY (id) |  |
-| users_email_unique | UNIQUE (email) |  |
-
-Generated at: 2024-01-15T10:30:00Z
-`;
-
-  const productsTableContent = `# products
-
-Product catalog table
-
-## Columns
-
-| Name | Type | Default | Nullable | Children | Parents | Comment |
-| ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | bigint |  | false |  |  | Primary key |
-| name | varchar(200) |  | false |  |  | Product name |
-| price | decimal(10,2) |  | false |  |  | Product price |
-| description | text |  | true |  |  | Product description |
-| category_id | bigint |  | true |  |  | Category reference |
-| created_at | timestamp | CURRENT_TIMESTAMP | false |  |  | Creation time |
-| updated_at | timestamp | CURRENT_TIMESTAMP | true |  |  | Update time |
-| is_active | boolean | true | false |  |  | Active status |
-
-## Indexes
-
-| Name | Definition | Comment |
-| ---- | ---------- | ------- |
-| PRIMARY | PRIMARY KEY (id) |  |
-| products_name_idx | INDEX (name) |  |
-| products_category_idx | INDEX (category_id) |  |
-
-Generated at: 2024-01-15T10:30:00Z
-`;
-
-  await fs.writeFile(join(publicSchemaDir, 'users.md'), usersTableContent);
-  await fs.writeFile(join(publicSchemaDir, 'products.md'), productsTableContent);
+  await fs.writeFile(join(publicSchemaDir, 'schema.json'), JSON.stringify(publicSchema, null, 2));
 
   // Create analytics schema
   const analyticsSchemaDir = join(schemaDir, 'analytics');
   await fs.mkdir(analyticsSchemaDir);
 
-  const analyticsReadme = `# Analytics Schema
+  const analyticsSchema = {
+    name: 'analytics',
+    desc: 'Analytics schema with event tracking and sessions',
+    tables: [
+      {
+        name: 'events',
+        type: 'TABLE',
+        comment: 'User events tracking',
+        columns: [
+          {
+            name: 'id',
+            type: 'uuid',
+            nullable: false,
+            default: null,
+            extra_def: '',
+            comment: 'Event ID'
+          },
+          {
+            name: 'user_id',
+            type: 'bigint',
+            nullable: true,
+            default: null,
+            extra_def: '',
+            comment: 'User reference',
+            parent_relations: [
+              {
+                table: 'public.users',
+                columns: ['id']
+              }
+            ]
+          },
+          {
+            name: 'event_type',
+            type: 'varchar(50)',
+            nullable: false,
+            default: null,
+            extra_def: '',
+            comment: 'Event type'
+          },
+          {
+            name: 'event_data',
+            type: 'jsonb',
+            nullable: true,
+            default: null,
+            extra_def: '',
+            comment: 'Event payload'
+          },
+          {
+            name: 'timestamp',
+            type: 'timestamp',
+            nullable: false,
+            default: 'CURRENT_TIMESTAMP',
+            extra_def: '',
+            comment: 'Event timestamp'
+          },
+          {
+            name: 'session_id',
+            type: 'uuid',
+            nullable: true,
+            default: null,
+            extra_def: '',
+            comment: 'Session reference'
+          }
+        ],
+        indexes: [
+          {
+            name: 'events_pkey',
+            def: 'PRIMARY KEY (id)',
+            table: 'events',
+            columns: ['id'],
+            comment: ''
+          },
+          {
+            name: 'events_timestamp_idx',
+            def: 'INDEX (timestamp)',
+            table: 'events',
+            columns: ['timestamp'],
+            comment: ''
+          },
+          {
+            name: 'events_user_id_idx',
+            def: 'INDEX (user_id)',
+            table: 'events',
+            columns: ['user_id'],
+            comment: ''
+          }
+        ]
+      },
+      {
+        name: 'sessions',
+        type: 'TABLE',
+        comment: 'User sessions',
+        columns: [
+          {
+            name: 'id',
+            type: 'uuid',
+            nullable: false,
+            default: null,
+            extra_def: '',
+            comment: 'Session ID'
+          },
+          {
+            name: 'user_id',
+            type: 'bigint',
+            nullable: true,
+            default: null,
+            extra_def: '',
+            comment: 'User reference',
+            parent_relations: [
+              {
+                table: 'public.users',
+                columns: ['id']
+              }
+            ]
+          },
+          {
+            name: 'started_at',
+            type: 'timestamp',
+            nullable: false,
+            default: 'CURRENT_TIMESTAMP',
+            extra_def: '',
+            comment: 'Session start'
+          },
+          {
+            name: 'ended_at',
+            type: 'timestamp',
+            nullable: true,
+            default: null,
+            extra_def: '',
+            comment: 'Session end'
+          }
+        ],
+        indexes: [
+          {
+            name: 'sessions_pkey',
+            def: 'PRIMARY KEY (id)',
+            table: 'sessions',
+            columns: ['id'],
+            comment: ''
+          },
+          {
+            name: 'sessions_user_id_idx',
+            def: 'INDEX (user_id)',
+            table: 'sessions',
+            columns: ['user_id'],
+            comment: ''
+          }
+        ]
+      }
+    ]
+  };
 
-## Tables
-
-| Name | Columns | Comment |
-| ---- | ------- | ------- |
-| events | 6 | User events tracking |
-| sessions | 4 | User sessions |
-
-Generated at: 2024-01-15T10:30:00Z
-`;
-
-  await fs.writeFile(join(analyticsSchemaDir, 'README.md'), analyticsReadme);
-
-  // Create detailed table files for analytics schema
-  const eventsTableContent = `# events
-
-User events tracking table
-
-## Columns
-
-| Name | Type | Default | Nullable | Children | Parents | Comment |
-| ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | uuid |  | false |  |  | Event ID |
-| user_id | bigint |  | true |  | public.users.id | User reference |
-| event_type | varchar(50) |  | false |  |  | Event type |
-| event_data | jsonb |  | true |  |  | Event payload |
-| timestamp | timestamp | CURRENT_TIMESTAMP | false |  |  | Event timestamp |
-| session_id | uuid |  | true |  |  | Session reference |
-
-## Indexes
-
-| Name | Definition | Comment |
-| ---- | ---------- | ------- |
-| events_pkey | PRIMARY KEY (id) |  |
-| events_timestamp_idx | INDEX (timestamp) |  |
-| events_user_id_idx | INDEX (user_id) |  |
-
-Generated at: 2024-01-15T10:30:00Z
-`;
-
-  const sessionsTableContent = `# sessions
-
-User sessions table
-
-## Columns
-
-| Name | Type | Default | Nullable | Children | Parents | Comment |
-| ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | uuid |  | false |  |  | Session ID |
-| user_id | bigint |  | true |  | public.users.id | User reference |
-| started_at | timestamp | CURRENT_TIMESTAMP | false |  |  | Session start |
-| ended_at | timestamp |  | true |  |  | Session end |
-
-## Indexes
-
-| Name | Definition | Comment |
-| ---- | ---------- | ------- |
-| sessions_pkey | PRIMARY KEY (id) |  |
-| sessions_user_id_idx | INDEX (user_id) |  |
-
-Generated at: 2024-01-15T10:30:00Z
-`;
-
-  await fs.writeFile(join(analyticsSchemaDir, 'events.md'), eventsTableContent);
-  await fs.writeFile(join(analyticsSchemaDir, 'sessions.md'), sessionsTableContent);
+  await fs.writeFile(join(analyticsSchemaDir, 'schema.json'), JSON.stringify(analyticsSchema, null, 2));
 }
 
 /**
  * Set up single schema test data
  */
 async function setupSingleSchemaTestData(schemaDir: string): Promise<void> {
-  const readmeContent = `# Database Schema
+  const schema = {
+    name: 'default',
+    desc: 'Default database schema with blog functionality',
+    tables: [
+      {
+        name: 'users',
+        type: 'TABLE',
+        comment: 'User accounts',
+        columns: [
+          {
+            name: 'id',
+            type: 'int',
+            nullable: false,
+            default: null,
+            extra_def: 'auto_increment',
+            comment: ''
+          },
+          {
+            name: 'email',
+            type: 'varchar(255)',
+            nullable: false,
+            default: null,
+            extra_def: '',
+            comment: ''
+          },
+          {
+            name: 'name',
+            type: 'varchar(100)',
+            nullable: false,
+            default: null,
+            extra_def: '',
+            comment: ''
+          }
+        ],
+        indexes: [
+          {
+            name: 'PRIMARY',
+            def: 'PRIMARY KEY (id)',
+            table: 'users',
+            columns: ['id'],
+            comment: ''
+          }
+        ]
+      },
+      {
+        name: 'posts',
+        type: 'TABLE',
+        comment: 'Blog posts',
+        columns: [
+          {
+            name: 'id',
+            type: 'int',
+            nullable: false,
+            default: null,
+            extra_def: 'auto_increment',
+            comment: ''
+          },
+          {
+            name: 'user_id',
+            type: 'int',
+            nullable: false,
+            default: null,
+            extra_def: '',
+            comment: '',
+            parent_relations: [
+              {
+                table: 'users',
+                columns: ['id']
+              }
+            ]
+          },
+          {
+            name: 'title',
+            type: 'varchar(200)',
+            nullable: false,
+            default: null,
+            extra_def: '',
+            comment: ''
+          },
+          {
+            name: 'content',
+            type: 'text',
+            nullable: true,
+            default: null,
+            extra_def: '',
+            comment: ''
+          }
+        ],
+        indexes: [
+          {
+            name: 'PRIMARY',
+            def: 'PRIMARY KEY (id)',
+            table: 'posts',
+            columns: ['id'],
+            comment: ''
+          }
+        ]
+      },
+      {
+        name: 'comments',
+        type: 'TABLE',
+        comment: 'Post comments',
+        columns: [
+          {
+            name: 'id',
+            type: 'int',
+            nullable: false,
+            default: null,
+            extra_def: 'auto_increment',
+            comment: ''
+          },
+          {
+            name: 'post_id',
+            type: 'int',
+            nullable: false,
+            default: null,
+            extra_def: '',
+            comment: '',
+            parent_relations: [
+              {
+                table: 'posts',
+                columns: ['id']
+              }
+            ]
+          },
+          {
+            name: 'content',
+            type: 'text',
+            nullable: false,
+            default: null,
+            extra_def: '',
+            comment: ''
+          }
+        ],
+        indexes: [
+          {
+            name: 'PRIMARY',
+            def: 'PRIMARY KEY (id)',
+            table: 'comments',
+            columns: ['id'],
+            comment: ''
+          }
+        ]
+      }
+    ]
+  };
 
-## Tables
-
-| Name | Columns | Comment |
-| ---- | ------- | ------- |
-| users | 3 | User accounts |
-| posts | 4 | Blog posts |
-| comments | 3 | Post comments |
-
-Generated at: 2024-01-15T10:30:00Z
-`;
-
-  await fs.writeFile(join(schemaDir, 'README.md'), readmeContent);
-
-  // Create table detail files
-  const usersContent = `# users
-
-User accounts
-
-## Columns
-
-| Name | Type | Default | Nullable | Children | Parents | Comment |
-| ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | int |  | false |  |  |  |
-| email | varchar(255) |  | false |  |  |  |
-| name | varchar(100) |  | false |  |  |  |
-
-## Indexes
-
-| Name | Definition | Comment |
-| ---- | ---------- | ------- |
-| PRIMARY | PRIMARY KEY (id) |  |
-
-Generated at: 2024-01-15T10:30:00Z
-`;
-
-  const postsContent = `# posts
-
-Blog posts
-
-## Columns
-
-| Name | Type | Default | Nullable | Children | Parents | Comment |
-| ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | int |  | false |  |  |  |
-| user_id | int |  | false |  | users.id |  |
-| title | varchar(200) |  | false |  |  |  |
-| content | text |  | true |  |  |  |
-
-## Indexes
-
-| Name | Definition | Comment |
-| ---- | ---------- | ------- |
-| PRIMARY | PRIMARY KEY (id) |  |
-
-Generated at: 2024-01-15T10:30:00Z
-`;
-
-  const commentsContent = `# comments
-
-Post comments
-
-## Columns
-
-| Name | Type | Default | Nullable | Children | Parents | Comment |
-| ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | int |  | false |  |  |  |
-| post_id | int |  | false |  | posts.id |  |
-| content | text |  | false |  |  |  |
-
-## Indexes
-
-| Name | Definition | Comment |
-| ---- | ---------- | ------- |
-| PRIMARY | PRIMARY KEY (id) |  |
-
-Generated at: 2024-01-15T10:30:00Z
-`;
-
-  await fs.writeFile(join(schemaDir, 'users.md'), usersContent);
-  await fs.writeFile(join(schemaDir, 'posts.md'), postsContent);
-  await fs.writeFile(join(schemaDir, 'comments.md'), commentsContent);
+  await fs.writeFile(join(schemaDir, 'schema.json'), JSON.stringify(schema, null, 2));
 }
 
 /**
@@ -456,15 +704,18 @@ async function setupEmptySchemaTestData(schemaDir: string): Promise<void> {
   await fs.mkdir(emptySchema1Dir);
   await fs.mkdir(emptySchema2Dir);
 
-  const emptyReadme = `# Empty Schema
+  const emptySchema1 = {
+    name: 'empty1',
+    desc: 'Empty schema with no tables defined',
+    tables: []
+  };
 
-## Tables
+  const emptySchema2 = {
+    name: 'empty2',
+    desc: 'Empty schema with no tables defined',
+    tables: []
+  };
 
-(No tables defined)
-
-Generated at: 2024-01-15T10:30:00Z
-`;
-
-  await fs.writeFile(join(emptySchema1Dir, 'README.md'), emptyReadme);
-  await fs.writeFile(join(emptySchema2Dir, 'README.md'), emptyReadme);
+  await fs.writeFile(join(emptySchema1Dir, 'schema.json'), JSON.stringify(emptySchema1, null, 2));
+  await fs.writeFile(join(emptySchema2Dir, 'schema.json'), JSON.stringify(emptySchema2, null, 2));
 }

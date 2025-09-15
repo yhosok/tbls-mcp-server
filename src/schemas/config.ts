@@ -74,7 +74,7 @@ export type CacheConfig = z.infer<typeof CacheConfigSchema>;
  * Server configuration schema
  */
 export const ServerConfigSchema = z.object({
-  schemaDir: z.string().min(1, 'Schema directory path cannot be empty'),
+  schemaSource: z.string().min(1, 'Schema source path cannot be empty'),
   logLevel: LogLevelSchema.default('info'),
   database: DatabaseConfigSchema.optional(),
   cache: CacheConfigSchema.optional(),

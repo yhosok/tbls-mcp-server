@@ -72,9 +72,7 @@ export const parseJsonSchema = (schemaData: unknown): Result<DatabaseSchema, Err
     return createError('Schema must contain a tables array');
   }
 
-  if (schemaObj.tables.length === 0) {
-    return createError('Schema must have at least one table');
-  }
+  // Allow empty tables array for schemas with no tables
 
   // Parse metadata
   const metadata: SchemaMetadata = {

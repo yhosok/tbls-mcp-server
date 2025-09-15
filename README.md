@@ -4,12 +4,14 @@ A Model Context Protocol (MCP) server that provides access to database schema in
 
 ## Features
 
-- **Schema Information Access**: Expose tbls-generated markdown schema files as MCP resources
-- **Multiple Resource Types**: Access schemas, tables, and index information
-- **SQL Query Execution**: Execute SELECT queries on MySQL and SQLite databases with built-in security
+- **JSON Schema Support**: Primary support for tbls-generated JSON schema files with optimal performance
+- **JSON-Only Support**: Uses JSON schema format from tbls for optimal performance
+- **Multiple Resource Types**: Access schemas, tables, and index information through MCP resources
+- **SQL Query Execution**: Execute SELECT queries on MySQL and SQLite databases with comprehensive security
 - **Type Safety**: Full TypeScript implementation with zod validation
 - **Error Handling**: Robust error handling using neverthrow Result types
 - **MCP Compatible**: Works with Claude Desktop, Cline, and other MCP clients
+- **Flexible Configuration**: Support for both CLI arguments and configuration files
 
 ## MCP Server Configuration
 
@@ -26,7 +28,7 @@ Add to your Claude Desktop configuration file (`claude_desktop_config.json`):
       "command": "npx",
       "args": [
         "github:yhosok/tbls-mcp-server",
-        "--schema-dir", "/path/to/your/tbls/output",
+        "--schema-source", "/path/to/your/tbls/schema.json",
         "--database-url", "mysql://user:password@localhost:3306/database"
       ]
     }
@@ -44,7 +46,7 @@ Add to your Cline MCP settings:
     "command": "npx",
     "args": [
       "github:yhosok/tbls-mcp-server",
-      "--schema-dir", "/path/to/your/tbls/output"
+      "--schema-source", "/path/to/your/tbls/schema.json"
     ]
   }
 }
@@ -76,7 +78,7 @@ Alternatively, create a `.tbls-mcp-server.json` configuration file and use:
 ### Via npx (Recommended for MCP)
 
 ```bash
-npx github:yhosok/tbls-mcp-server --schema-dir /path/to/tbls/output
+npx github:yhosok/tbls-mcp-server --schema-source /path/to/tbls/schema.json
 ```
 
 ### Clone and Run Locally
@@ -86,7 +88,7 @@ git clone https://github.com/yhosok/tbls-mcp-server.git
 cd tbls-mcp-server
 npm install
 npm run build
-node dist/index.js --schema-dir /path/to/tbls/output
+node dist/index.js --schema-source /path/to/tbls/schema.json
 ```
 
 ### Local Development Installation
@@ -103,14 +105,14 @@ npm run build
 ### Basic Usage (Schema Information Only)
 
 ```bash
-npx github:yhosok/tbls-mcp-server --schema-dir /path/to/tbls/output
+npx github:yhosok/tbls-mcp-server --schema-source /path/to/tbls/schema.json
 ```
 
 ### With Database Connection (Full Features)
 
 ```bash
 npx github:yhosok/tbls-mcp-server \
-  --schema-dir /path/to/tbls/output \
+  --schema-source /path/to/tbls/schema.json \
   --database-url mysql://user:pass@localhost:3306/mydb
 ```
 
@@ -118,6 +120,53 @@ npx github:yhosok/tbls-mcp-server \
 
 ```bash
 npx github:yhosok/tbls-mcp-server --config .tbls-mcp-server.json
+```
+
+
+## JSON Schema Sample
+
+Example of a tbls-generated JSON schema file structure:
+
+```json
+{
+  "name": "myapp",
+  "type": "mysql",
+  "tables": [
+    {
+      "name": "users",
+      "type": "table",
+      "comment": "User accounts",
+      "columns": [
+        {
+          "name": "id",
+          "type": "int(11)",
+          "nullable": false,
+          "primary": true,
+          "comment": "Primary key"
+        },
+        {
+          "name": "email",
+          "type": "varchar(255)",
+          "nullable": false,
+          "unique": true,
+          "comment": "User email address"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "PRIMARY",
+          "columns": ["id"],
+          "unique": true
+        },
+        {
+          "name": "idx_email",
+          "columns": ["email"],
+          "unique": true
+        }
+      ]
+    }
+  ]
+}
 ```
 
 ## Examples
@@ -133,37 +182,27 @@ go install github.com/k1LoW/tbls@latest
 # Generate schema documentation (default output: ./dbdoc)
 tbls doc mysql://user:pass@localhost:3306/mydb
 
-# Or specify custom output directory
-tbls doc mysql://user:pass@localhost:3306/mydb ./custom/schema/path
+# Or generate JSON schema directly
+tbls doc --format=json mysql://user:pass@localhost:3306/mydb ./custom/schema/path
 
 # Start MCP server
-npx github:yhosok/tbls-mcp-server --schema-dir ./dbdoc/schema
+npx github:yhosok/tbls-mcp-server --schema-source ./dbdoc/schema.json
 ```
 
 ### Directory Structure
 
-Expected tbls output directory structure (based on default `dbdoc` path):
+Expected tbls output structure:
 
 ```
 ./dbdoc/
-└── schema/                     # Schema directory (default structure)
-    ├── README.md              # Main schema overview with table list
-    ├── users.md               # Individual table documentation
-    ├── users.svg              # Table relationship diagram (if generated)
-    ├── posts.md               # Individual table documentation
-    ├── posts.svg              # Table relationship diagram
-    ├── comments.md            # Individual table documentation
-    ├── comments.svg           # Table relationship diagram
-    ├── [table_name].md        # Each table gets its own markdown file
-    └── schema.json            # Machine-readable schema (if generated)
+├── schema.json              # Complete schema information (required)
+└── README.md               # Human-readable overview (optional)
 ```
 
 **Note**:
-- The default output directory is `dbdoc`, but can be customized using `--doc-path` in tbls or `docPath` in `.tbls.yml`
-- Each table gets its own `.md` file containing detailed column information
-- SVG relationship diagrams are generated for each table (optional)
-- The main `README.md` contains an overview and table of contents
-- There's typically only one schema directory (not multiple like `public/`, `backup/` etc.) unless your database has multiple schemas
+- Use `tbls doc --format=json` to generate the JSON schema file
+- The default output file is `schema.json` in the specified directory
+- The `--schema-source` option can point to either a JSON file or directory containing JSON files
 
 ### Using with Claude Desktop
 
@@ -175,7 +214,7 @@ Expected tbls output directory structure (based on default `dbdoc` path):
          "command": "npx",
          "args": [
            "github:yhosok/tbls-mcp-server",
-           "--schema-dir", "/Users/username/projects/myapp/dbdoc/schema",
+           "--schema-source", "/Users/username/projects/myapp/dbdoc/schema.json",
            "--database-url", "mysql://user:password@localhost:3306/myapp"
          ]
        }
@@ -386,7 +425,7 @@ The server provides SQL query execution capabilities when a database connection 
 
 ### Command Line Arguments
 
-- `--schema-dir <path>`: Directory containing tbls markdown files (required)
+- `--schema-source <path>`: Path to tbls JSON schema file or directory (required)
 - `--database-url <url>`: Database connection string (optional)
 - `--log-level <level>`: Set logging level (debug, info, warn, error, default: info)
 - `--config <path>`: Path to configuration file
@@ -395,7 +434,7 @@ The server provides SQL query execution capabilities when a database connection 
 
 ### Environment Variables
 
-- `TBLS_SCHEMA_DIR`: Directory containing tbls markdown files
+- `TBLS_SCHEMA_SOURCE`: Path to tbls JSON schema file or directory
 - `DATABASE_URL`: Database connection string (optional)
 - `LOG_LEVEL`: Logging level (debug, info, warn, error)
 
@@ -405,7 +444,7 @@ Create a `.tbls-mcp-server.json` file in your project root:
 
 ```json
 {
-  "schemaDir": "/path/to/tbls/output",
+  "schemaSource": "/path/to/tbls/schema.json",
   "logLevel": "info",
   "database": {
     "type": "mysql",
@@ -436,18 +475,47 @@ Create a `.tbls-mcp-server.json` file in your project root:
 }
 ```
 
+#### Complete Configuration Examples
+
+**Production Setup with JSON Schema:**
+```json
+{
+  "schemaSource": "/opt/app/schema/production.json",
+  "logLevel": "warn",
+  "database": {
+    "type": "mysql",
+    "connectionString": "mysql://readonly_user:password@db.company.com:3306/production_db"
+  }
+}
+```
+
+**Development Setup with Local Files:**
+```json
+{
+  "schemaSource": "./dbdoc/schema.json",
+  "logLevel": "debug",
+  "database": {
+    "type": "sqlite",
+    "connectionString": "sqlite:///./dev.db"
+  }
+}
+```
+
+
 ## Troubleshooting
 
 ### Common Issues
 
 **Server fails to start**:
 - Verify Node.js version (18+ required)
-- Check that the schema directory exists and contains tbls-generated files
+- Check that the schema source file exists or directory contains tbls-generated files
+- For JSON: Ensure the JSON file is valid and contains proper schema structure
+- For directories: Ensure the directory contains proper .json files
 - Ensure database connection string is valid (if using database features)
 
 **No resources available**:
-- Confirm tbls has generated markdown files in the specified directory
-- Check file permissions on the schema directory
+- Confirm tbls has generated JSON schema file in the specified location
+- Check file permissions on the schema file/directory
 - Enable debug logging: `--log-level debug`
 
 **Database connection issues**:
@@ -473,15 +541,15 @@ Create a `.tbls-mcp-server.json` file in your project root:
 Enable debug logging to troubleshoot issues:
 
 ```bash
-tbls-mcp-server --schema-dir /path/to/schema --log-level debug
+tbls-mcp-server --schema-source /path/to/schema.json --log-level debug
 ```
 
 This will output detailed information about:
-- Configuration loading
-- Resource discovery
+- Configuration loading and schema source resolution
+- Resource discovery (JSON file vs directory detection)
 - Database connections
 - SQL query execution
-- Error details
+- Error details and diagnostics
 
 ### Support
 

@@ -99,7 +99,7 @@ describe('Server Resource Registration Performance Analysis', () => {
     await fs.mkdir(schemaDir);
 
     mockConfig = {
-      schemaDir,
+      schemaSource: schemaDir,
       cache: {
         enabled: true,
         maxItems: 1000,

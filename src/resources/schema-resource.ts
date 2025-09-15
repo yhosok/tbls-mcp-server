@@ -1,8 +1,9 @@
 import { Result, ok, err } from 'neverthrow';
 import { promises as fs } from 'fs';
 import { join } from 'path';
+import * as path from 'path';
 import { SchemaListResource } from '../schemas/database';
-import { parseTableReferences, parseSchemaOverview, parseSchemaWithFallback } from '../parsers/schema-adapter';
+import { parseTableReferences, parseSchemaOverview, parseSchemaWithFallback, resolveSchemaSource } from '../parsers/schema-adapter';
 import { safeExecuteAsync, fromPromise } from '../utils/result';
 import { ResourceCache } from '../cache/resource-cache';
 
@@ -10,14 +11,27 @@ import { ResourceCache } from '../cache/resource-cache';
  * Handles the schema://list MCP resource
  * Returns a list of all available database schemas with metadata
  *
- * @param schemaDir - Directory containing tbls schema files
+ * @param schemaSource - Path to schema file or directory containing tbls schema files
  * @param cache - Optional cache instance for performance optimization
  * @returns Result containing schema list resource or error
  */
 export const handleSchemaListResource = async (
-  schemaDir: string,
+  schemaSource: string,
   cache?: ResourceCache
 ): Promise<Result<SchemaListResource, Error>> => {
+  // Resolve the schema source to determine if it's a file or directory
+  const resolveResult = resolveSchemaSource(schemaSource);
+  if (resolveResult.isErr()) {
+    // If it's a directory but no JSON files found, treat as empty directory
+    if (resolveResult.error.message.includes('No JSON schema file found in directory')) {
+      return ok({ schemas: [] });
+    }
+    return err(resolveResult.error);
+  }
+
+  const { type: sourceType, path: schemaPath } = resolveResult.value;
+  const schemaDir = sourceType === 'file' ? path.dirname(schemaPath) : schemaPath;
+
   // Try to get cached schema list first
   if (cache) {
     const cachedTableRefs = await cache.getTableReferences(schemaDir);
@@ -32,20 +46,21 @@ export const handleSchemaListResource = async (
     }
   }
 
-  // Check if schema directory exists
-  const dirExistsResult = await safeExecuteAsync(
-    async () => {
-      const stat = await fs.stat(schemaDir);
-      if (!stat.isDirectory()) {
-        throw new Error('Path is not a directory');
-      }
-      return true;
-    },
-    'Schema directory does not exist'
-  );
-
-  if (dirExistsResult.isErr()) {
-    return err(dirExistsResult.error);
+  // For single file sources, handle as default schema
+  if (sourceType === 'file') {
+    const singleSchemaResult = await parseSingleSchemaInfo(schemaDir, 'default', cache);
+    if (singleSchemaResult.isOk()) {
+      return ok({ schemas: [singleSchemaResult.value] });
+    } else {
+      // Fallback for single file
+      return ok({
+        schemas: [{
+          name: 'default',
+          tableCount: 0,
+          description: 'Default schema'
+        }]
+      });
+    }
   }
 
   // Read directory contents
@@ -61,8 +76,8 @@ export const handleSchemaListResource = async (
   const dirEntries = readDirResult.value;
   const schemas: Array<{ name: string; tableCount?: number; description?: string | null }> = [];
 
-  // Check for single schema setup (README.md or schema.json in root)
-  const hasRootSchemaFile = dirEntries.some(entry => entry.isFile() && (entry.name === 'README.md' || entry.name === 'schema.json'));
+  // Check for single schema setup (schema.json in root)
+  const hasRootSchemaFile = dirEntries.some(entry => entry.isFile() && entry.name === 'schema.json');
 
   if (hasRootSchemaFile) {
     const singleSchemaResult = await parseSingleSchemaInfo(schemaDir, 'default', cache);
@@ -71,21 +86,16 @@ export const handleSchemaListResource = async (
     }
   }
 
-  // Check for multi-schema setup (subdirectories with README.md files)
+  // Check for multi-schema setup (subdirectories with schema files)
   const subdirectories = dirEntries.filter(entry => entry.isDirectory());
 
   for (const subdir of subdirectories) {
     const subdirPath = join(schemaDir, subdir.name);
-    // Check for either README.md or schema.json files
+    // Check for schema.json file
     const hasSchemaFileResult = await safeExecuteAsync(
       async () => {
-        try {
-          await fs.access(join(subdirPath, 'README.md'));
-          return true;
-        } catch {
-          await fs.access(join(subdirPath, 'schema.json'));
-          return true;
-        }
+        await fs.access(join(subdirPath, 'schema.json'));
+        return true;
       },
       'No schema file found in subdirectory'
     );
@@ -119,7 +129,7 @@ export const handleSchemaListResource = async (
 };
 
 /**
- * Parses schema information from a schema file (JSON or Markdown)
+ * Parses schema information from a schema file (JSON format)
  *
  * @param schemaPath - Path to the schema directory
  * @param schemaName - Name of the schema

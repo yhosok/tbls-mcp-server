@@ -1,5 +1,5 @@
 {
-  "schemaDir": "/path/to/tbls/output",
+  "schemaSource": "/path/to/tbls/output",
   "logLevel": "info",
   "database": {
     "type": "mysql",

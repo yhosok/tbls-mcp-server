@@ -43,8 +43,8 @@ export interface ResourcePatternMatch {
  * Context for resource generation
  */
 export interface GenerationContext {
-  /** Base schema directory */
-  schemaDir: string;
+  /** Schema source path (file or directory) */
+  schemaSource: string;
   /** Optional parameters for scoped generation */
   scope?: Record<string, string>;
 }
@@ -113,7 +113,7 @@ export class ResourcePatterns {
           // Import here to avoid circular dependencies
           const { handleSchemaListResource } = await import('../resources/schema-resource');
 
-          const schemaListResult = await handleSchemaListResource(context.schemaDir);
+          const schemaListResult = await handleSchemaListResource(context.schemaSource);
           if (schemaListResult.isErr()) {
             return err(schemaListResult.error);
           }
@@ -159,7 +159,7 @@ export class ResourcePatterns {
           const { handleSchemaListResource } = await import('../resources/schema-resource');
           const { handleSchemaTablesResource } = await import('../resources/table-resource');
 
-          const schemaListResult = await handleSchemaListResource(context.schemaDir);
+          const schemaListResult = await handleSchemaListResource(context.schemaSource);
           if (schemaListResult.isErr()) {
             return err(schemaListResult.error);
           }
@@ -172,7 +172,7 @@ export class ResourcePatterns {
             : schemaListResult.value.schemas;
 
           for (const schema of targetSchemas) {
-            const tablesResult = await handleSchemaTablesResource(context.schemaDir, schema.name);
+            const tablesResult = await handleSchemaTablesResource(context.schemaSource, schema.name);
             if (tablesResult.isOk()) {
               for (const table of tablesResult.value.tables) {
                 resources.push({
@@ -216,7 +216,7 @@ export class ResourcePatterns {
           const { handleSchemaListResource } = await import('../resources/schema-resource');
           const { handleSchemaTablesResource } = await import('../resources/table-resource');
 
-          const schemaListResult = await handleSchemaListResource(context.schemaDir);
+          const schemaListResult = await handleSchemaListResource(context.schemaSource);
           if (schemaListResult.isErr()) {
             return err(schemaListResult.error);
           }
@@ -229,7 +229,7 @@ export class ResourcePatterns {
             : schemaListResult.value.schemas;
 
           for (const schema of targetSchemas) {
-            const tablesResult = await handleSchemaTablesResource(context.schemaDir, schema.name);
+            const tablesResult = await handleSchemaTablesResource(context.schemaSource, schema.name);
             if (tablesResult.isOk()) {
               for (const table of tablesResult.value.tables) {
                 resources.push({

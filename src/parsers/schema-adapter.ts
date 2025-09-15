@@ -7,18 +7,21 @@ import {
   TableReference,
   validateSchemaData,
 } from '../schemas/database';
-import { createError, safeExecute, safeExecuteAsync } from '../utils/result';
+import { createError, safeExecuteAsync } from '../utils/result';
 import { parseJsonFile } from './json-parser';
-import {
-  parseMarkdownFile,
-  parseSingleTableMarkdown,
-  parseSchemaOverview as parseMarkdownSchemaOverview,
-  parseTableReferences as parseMarkdownTableReferences,
-} from './markdown-parser';
 import { ResourceCache } from '../cache/resource-cache';
 
 /**
- * Schema parser interface that abstracts JSON and Markdown parsers
+ * Schema source resolution result
+ */
+export interface SchemaSourceResult {
+  type: 'file' | 'directory';
+  path: string;
+  resolvedPath?: string; // For directories, the actual JSON file path used
+}
+
+/**
+ * Schema parser interface for JSON schema parsing
  */
 export interface SchemaParser {
   parseSchemaFile(filePath: string): Result<DatabaseSchema, Error>;
@@ -49,52 +52,12 @@ class JsonSchemaParser implements SchemaParser {
   }
 }
 
-/**
- * Markdown parser implementation of SchemaParser interface
- */
-class MarkdownSchemaParser implements SchemaParser {
-  parseSchemaFile(filePath: string): Result<DatabaseSchema, Error> {
-    return parseMarkdownFile(filePath);
-  }
 
-  parseSingleTableFile(filePath: string, cache?: ResourceCache): Result<DatabaseSchema, Error> {
-    if (cache) {
-      // Use async cached reading - we need to make this async or wrap it
-      return createError('Async cache not supported in sync method - use async parsing functions');
-    }
-    return safeExecute(
-      () => require('fs').readFileSync(filePath, 'utf-8'),
-      'Failed to read markdown file'
-    ).andThen(content => parseSingleTableMarkdown(content));
-  }
-
-  parseSchemaOverview(filePath: string, cache?: ResourceCache): Result<SchemaMetadata, Error> {
-    if (cache) {
-      // Use async cached reading - we need to make this async or wrap it
-      return createError('Async cache not supported in sync method - use async parsing functions');
-    }
-    return safeExecute(
-      () => require('fs').readFileSync(filePath, 'utf-8'),
-      'Failed to read markdown file'
-    ).andThen(content => parseMarkdownSchemaOverview(content));
-  }
-
-  parseTableReferences(filePath: string, cache?: ResourceCache): Result<TableReference[], Error> {
-    if (cache) {
-      // Use async cached reading - we need to make this async or wrap it
-      return createError('Async cache not supported in sync method - use async parsing functions');
-    }
-    return safeExecute(
-      () => require('fs').readFileSync(filePath, 'utf-8'),
-      'Failed to read markdown file'
-    ).andThen(content => parseMarkdownTableReferences(content));
-  }
-}
 
 /**
- * Detects file type based on extension and returns appropriate parser
- * @param filePath - Path to the schema file
- * @returns Result containing the appropriate parser or error
+ * Creates a JSON schema parser for the given file path
+ * @param filePath - Path to the schema file (must be .json)
+ * @returns Result containing the JSON parser or error
  */
 export const createSchemaParser = (filePath: string): Result<SchemaParser, Error> => {
   if (!filePath || typeof filePath !== 'string') {
@@ -103,14 +66,15 @@ export const createSchemaParser = (filePath: string): Result<SchemaParser, Error
 
   const extension = path.extname(filePath).toLowerCase();
 
-  switch (extension) {
-    case '.json':
-      return ok(new JsonSchemaParser());
-    case '.md':
-      return ok(new MarkdownSchemaParser());
-    default:
-      return createError(`Unsupported file extension: ${extension}. Supported extensions are .json and .md`);
+  if (extension === '.json') {
+    return ok(new JsonSchemaParser());
   }
+
+  if (extension === '.md') {
+    return createError('Markdown files are no longer supported. Please use JSON schema files (.json)');
+  }
+
+  return createError(`Unsupported file extension: ${extension}. Only JSON files (.json) are supported`);
 };
 
 /**
@@ -175,7 +139,7 @@ const readFileWithCache = async (filePath: string, cache?: ResourceCache): Promi
 readFileWithCache;
 
 /**
- * Detects and resolves schema file path with fallback logic
+ * Detects and resolves JSON schema file path with fallback logic
  * @param basePath - Base path or directory to search in
  * @param cache - Optional cache instance for file resolution caching
  * @returns Result containing resolved file path or error
@@ -183,18 +147,19 @@ readFileWithCache;
 const resolveSchemaFile = (basePath: string, _cache?: ResourceCache): Result<string, Error> => {
   // If basePath already has an extension, use it directly
   const extension = path.extname(basePath).toLowerCase();
-  if (extension === '.json' || extension === '.md') {
+  if (extension === '.json') {
     return checkFileExists(basePath);
   }
 
-  // Try different file patterns based on configuration preference
+  if (extension === '.md') {
+    return createError('Markdown files are no longer supported. Please use JSON schema files (.json)');
+  }
+
+  // Try different JSON file patterns
   const candidates = [
     path.join(basePath, 'schema.json'),
-    path.join(basePath, 'README.md'),
     path.join(basePath, 'database.json'),
-    path.join(basePath, 'database.md'),
     basePath + '.json',
-    basePath + '.md',
   ];
 
   for (const candidate of candidates) {
@@ -207,14 +172,14 @@ const resolveSchemaFile = (basePath: string, _cache?: ResourceCache): Result<str
   }
 
   return createError(
-    `No schema file found. Tried: ${candidates.join(', ')}. ` +
-    'Please ensure a schema file exists with .json or .md extension.'
+    `No JSON schema file found. Tried: ${candidates.join(', ')}. ` +
+    'Please ensure a schema file exists with .json extension.'
   );
 };
 
 /**
- * Unified function to parse schema file with automatic format detection
- * @param filePath - Path to schema file or directory
+ * Unified function to parse JSON schema file with automatic file detection
+ * @param filePath - Path to JSON schema file or directory
  * @param cache - Optional cache instance for performance optimization
  * @returns Result containing parsed database schema or error
  */
@@ -226,8 +191,8 @@ export const parseSchemaFile = (filePath: string, cache?: ResourceCache): Result
 };
 
 /**
- * Unified function to parse single table file with automatic format detection
- * @param filePath - Path to table file or directory
+ * Unified function to parse single table from JSON schema file
+ * @param filePath - Path to JSON table file or directory
  * @param cache - Optional cache instance for performance optimization
  * @returns Result containing parsed database schema with single table or error
  */
@@ -239,8 +204,8 @@ export const parseSingleTableFile = (filePath: string, cache?: ResourceCache): R
 };
 
 /**
- * Unified function to parse schema overview with automatic format detection
- * @param filePath - Path to schema file or directory
+ * Unified function to parse schema overview from JSON schema file
+ * @param filePath - Path to JSON schema file or directory
  * @param cache - Optional cache instance for performance optimization
  * @returns Result containing schema metadata or error
  */
@@ -252,8 +217,8 @@ export const parseSchemaOverview = (filePath: string, cache?: ResourceCache): Re
 };
 
 /**
- * Unified function to parse table references with automatic format detection
- * @param filePath - Path to schema file or directory
+ * Unified function to parse table references from JSON schema file
+ * @param filePath - Path to JSON schema file or directory
  * @param cache - Optional cache instance for performance optimization
  * @returns Result containing table references or error
  */
@@ -265,10 +230,10 @@ export const parseTableReferences = (filePath: string, cache?: ResourceCache): R
 };
 
 /**
- * Factory function that returns a configured parser instance
- * @param filePath - Path to determine parser type
+ * Factory function that returns a configured JSON parser instance
+ * @param filePath - Path to JSON schema file
  * @param cache - Optional cache instance for performance optimization
- * @returns Result containing parser instance or error
+ * @returns Result containing JSON parser instance or error
  */
 export const getSchemaParser = (filePath: string, cache?: ResourceCache): Result<SchemaParser, Error> => {
   return resolveSchemaFile(filePath, cache)
@@ -276,7 +241,7 @@ export const getSchemaParser = (filePath: string, cache?: ResourceCache): Result
 };
 
 /**
- * Utility function to validate a parsed schema regardless of source format
+ * Utility function to validate a parsed JSON schema
  * @param schema - Schema object to validate
  * @returns Result containing validated schema or error
  */
@@ -286,33 +251,71 @@ export const validateParsedSchema = (schema: unknown): Result<DatabaseSchema, Er
 };
 
 /**
- * Advanced function that tries multiple file patterns and formats
+ * Resolves schema source path to determine type and actual file to use
+ * @param schemaSource - Schema source path (file or directory)
+ * @returns Result containing schema source resolution information
+ */
+export const resolveSchemaSource = (schemaSource: string): Result<SchemaSourceResult, Error> => {
+  if (!schemaSource || typeof schemaSource !== 'string') {
+    return createError('Schema source must be a non-empty string');
+  }
+
+  if (schemaSource.trim() === '') {
+    return createError('Schema source cannot be empty');
+  }
+
+  try {
+    if (!existsSync(schemaSource)) {
+      return createError(`Schema source does not exist: ${schemaSource}`);
+    }
+
+    const stats = statSync(schemaSource);
+
+    if (stats.isFile()) {
+      // Direct file path
+      const extension = path.extname(schemaSource).toLowerCase();
+      if (extension === '.md') {
+        return createError('Markdown files are no longer supported. Please use JSON schema files (.json)');
+      }
+      if (extension !== '.json') {
+        return createError(`Schema file must have .json extension, got: ${extension}`);
+      }
+
+      return ok({
+        type: 'file',
+        path: schemaSource,
+      });
+    } else if (stats.isDirectory()) {
+      // Directory - return directory type without resolving to specific file
+      // This allows the caller to determine the appropriate schema file
+      return ok({
+        type: 'directory',
+        path: schemaSource,
+      });
+    } else {
+      return createError(`Schema source is neither a file nor directory: ${schemaSource}`);
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return createError(`Error accessing schema source ${schemaSource}: ${message}`);
+  }
+};
+
+/**
+ * Advanced function that tries multiple JSON file patterns
  * @param basePath - Base directory or file path to search
- * @param preferJson - Whether to prefer JSON format over Markdown
  * @param cache - Optional cache instance for performance optimization
  * @returns Result containing parsed schema or error with details of what was tried
  */
 export const parseSchemaWithFallback = (
   basePath: string,
-  preferJson = true,
   _cache?: ResourceCache
 ): Result<DatabaseSchema, Error> => {
-  const jsonCandidates = [
+  const candidates = [
     path.join(basePath, 'schema.json'),
     path.join(basePath, 'database.json'),
     basePath + '.json',
   ];
-
-  const markdownCandidates = [
-    path.join(basePath, 'README.md'),
-    path.join(basePath, 'database.md'),
-    path.join(basePath, 'schema.md'),
-    basePath + '.md',
-  ];
-
-  const candidates = preferJson
-    ? [...jsonCandidates, ...markdownCandidates]
-    : [...markdownCandidates, ...jsonCandidates];
 
   const attempts: string[] = [];
   let lastError: Error | null = null;
@@ -334,8 +337,8 @@ export const parseSchemaWithFallback = (
   }
 
   const errorMessage = attempts.length > 0
-    ? `Failed to parse schema from any candidate file:\n${attempts.join('\n')}`
-    : `No schema files found in ${basePath}. Expected files: ${candidates.join(', ')}`;
+    ? `Failed to parse JSON schema from any candidate file:\n${attempts.join('\n')}`
+    : `No JSON schema files found in ${basePath}. Expected files: ${candidates.join(', ')}`;
 
   return createError(lastError ? `${errorMessage}\n\nLast error: ${lastError.message}` : errorMessage);
 };

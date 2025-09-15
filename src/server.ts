@@ -43,7 +43,7 @@ export class TblsMcpServer {
 
     // Initialize lazy resource registry
     this.lazyRegistry = new LazyResourceRegistry({
-      schemaDir: this.config.schemaDir,
+      schemaSource: this.config.schemaSource!,
       cache: this.cache,
       discoveryTtl: config.cache?.ttlMs ?? 300000
     });
@@ -262,7 +262,7 @@ export class TblsMcpServer {
    * Handle schema://list resource
    */
   private async handleSchemaListResource(): Promise<ReadResourceResult> {
-    const result = await handleSchemaListResource(this.config.schemaDir, this.cache);
+    const result = await handleSchemaListResource(this.config.schemaSource!, this.cache);
 
     if (result.isErr()) {
       throw new McpError(
@@ -296,7 +296,7 @@ export class TblsMcpServer {
     }
 
     const schemaName = match[1];
-    const result = await handleSchemaTablesResource(this.config.schemaDir, schemaName, this.cache);
+    const result = await handleSchemaTablesResource(this.config.schemaSource!, schemaName, this.cache);
 
     if (result.isErr()) {
       throw new McpError(
@@ -330,7 +330,7 @@ export class TblsMcpServer {
     }
 
     const [, schemaName, tableName] = match;
-    const result = await handleTableInfoResource(this.config.schemaDir, schemaName, tableName, this.cache);
+    const result = await handleTableInfoResource(this.config.schemaSource!, schemaName, tableName, this.cache);
 
     if (result.isErr()) {
       throw new McpError(
@@ -364,7 +364,7 @@ export class TblsMcpServer {
     }
 
     const [, schemaName, tableName] = match;
-    const result = await handleTableIndexesResource(this.config.schemaDir, schemaName, tableName, this.cache);
+    const result = await handleTableIndexesResource(this.config.schemaSource!, schemaName, tableName, this.cache);
 
     if (result.isErr()) {
       throw new McpError(

@@ -9,7 +9,7 @@ import { ServerConfig, LogLevel, validateServerConfig } from './schemas/config.j
  * CLI argument interface
  */
 interface CliArgs {
-  schemaDir?: string;
+  schemaSource?: string;
   databaseUrl?: string;
   databaseType?: 'mysql' | 'sqlite';
   databasePath?: string;
@@ -31,13 +31,13 @@ const parseCliArgs = (): CliArgs => {
     const nextArg = argv[i + 1];
 
     switch (arg) {
-      case '--schema-dir':
-      case '-s':
+      case '--schema-source':
+      case '--schema':
         if (!nextArg || nextArg.startsWith('-')) {
-          console.error('Error: --schema-dir requires a directory path');
+          console.error('Error: --schema-source requires a path');
           process.exit(1);
         }
-        args.schemaDir = nextArg;
+        args.schemaSource = nextArg;
         i++;
         break;
 
@@ -105,9 +105,9 @@ const parseCliArgs = (): CliArgs => {
           showUsage();
           process.exit(1);
         }
-        // Positional argument - treat as schema directory if not already set
-        if (!args.schemaDir) {
-          args.schemaDir = arg;
+        // Positional argument - treat as schema source if not already set
+        if (!args.schemaSource) {
+          args.schemaSource = arg;
         } else {
           console.error(`Error: Unexpected positional argument: ${arg}`);
           process.exit(1);
@@ -127,37 +127,44 @@ const showUsage = (): void => {
 tbls-mcp-server - MCP server for tbls database schema information
 
 USAGE:
-  tbls-mcp-server [OPTIONS] [SCHEMA_DIR]
+  tbls-mcp-server [OPTIONS] [SCHEMA_SOURCE]
 
 ARGUMENTS:
-  SCHEMA_DIR              Directory containing tbls schema files
+  SCHEMA_SOURCE           File or directory containing tbls schema information
 
 OPTIONS:
-  -s, --schema-dir DIR    Directory containing tbls schema files
-  -d, --database-url URL  Database connection URL (mysql://... or sqlite://...)
-      --database-type TYPE Database type: mysql or sqlite
-      --database-path PATH Path to SQLite database file (alternative to --database-url)
-  -l, --log-level LEVEL   Log level: debug, info, warn, error (default: info)
-  -c, --config FILE       Configuration file path (JSON format)
-  -h, --help              Show this help message
-  -v, --version           Show version information
+      --schema-source PATH    File or directory containing tbls schema
+      --schema PATH           Alias for --schema-source
+  -d, --database-url URL      Database connection URL (mysql://... or sqlite://...)
+      --database-type TYPE    Database type: mysql or sqlite
+      --database-path PATH    Path to SQLite database file (alternative to --database-url)
+  -l, --log-level LEVEL       Log level: debug, info, warn, error (default: info)
+  -c, --config FILE           Configuration file path (JSON format)
+  -h, --help                  Show this help message
+  -v, --version               Show version information
 
 EXAMPLES:
+  # Basic usage with schema file
+  tbls-mcp-server /path/to/schema.json
+
   # Basic usage with schema directory
   tbls-mcp-server /path/to/tbls/output
 
+  # With explicit schema source
+  tbls-mcp-server --schema-source /path/to/schema.json
+
   # With MySQL database connection
-  tbls-mcp-server --schema-dir /path/to/schema --database-url mysql://user:pass@localhost/db
+  tbls-mcp-server --schema-source /path/to/schema --database-url mysql://user:pass@localhost/db
 
   # With SQLite database
-  tbls-mcp-server --schema-dir /path/to/schema --database-path /path/to/db.sqlite
+  tbls-mcp-server --schema-source /path/to/schema --database-path /path/to/db.sqlite
 
   # With configuration file
   tbls-mcp-server --config /path/to/config.json
 
 CONFIGURATION FILE FORMAT:
   {
-    "schemaDir": "/path/to/tbls/output",
+    "schemaSource": "/path/to/schema.json",
     "logLevel": "info",
     "database": {
       "type": "mysql",
@@ -166,7 +173,7 @@ CONFIGURATION FILE FORMAT:
   }
 
 ENVIRONMENT VARIABLES:
-  TBLS_SCHEMA_DIR         Schema directory path
+  TBLS_SCHEMA_SOURCE      Schema source path (file or directory)
   TBLS_DATABASE_URL       Database connection URL
   TBLS_LOG_LEVEL          Log level
   TBLS_CONFIG_FILE        Configuration file path
@@ -211,8 +218,8 @@ const loadConfigFile = async (configPath: string): Promise<Partial<ServerConfig>
 const getEnvConfig = (): Partial<ServerConfig> => {
   const config: Partial<ServerConfig> = {};
 
-  if (process.env.TBLS_SCHEMA_DIR) {
-    config.schemaDir = process.env.TBLS_SCHEMA_DIR;
+  if (process.env.TBLS_SCHEMA_SOURCE) {
+    config.schemaSource = process.env.TBLS_SCHEMA_SOURCE;
   }
 
   if (process.env.TBLS_LOG_LEVEL) {
@@ -259,8 +266,8 @@ const buildServerConfig = async (cliArgs: CliArgs): Promise<ServerConfig> => {
   config = { ...config, ...envConfig };
 
   // Apply CLI arguments (highest priority)
-  if (cliArgs.schemaDir) {
-    config.schemaDir = cliArgs.schemaDir;
+  if (cliArgs.schemaSource) {
+    config.schemaSource = cliArgs.schemaSource;
   }
 
   if (cliArgs.logLevel) {

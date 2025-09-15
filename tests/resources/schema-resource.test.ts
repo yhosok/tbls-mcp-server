@@ -7,13 +7,13 @@ import type { SchemaListResource } from '../../src/schemas/database';
 
 describe('Schema Resource Handler', () => {
   let tempDir: string;
-  let schemaDir: string;
+  let schemaSource: string;
 
   beforeEach(async () => {
     // Create a temporary directory for tests
     tempDir = await fs.mkdtemp(join(tmpdir(), 'tbls-test-'));
-    schemaDir = join(tempDir, 'schemas');
-    await fs.mkdir(schemaDir);
+    schemaSource = join(tempDir, 'schemas');
+    await fs.mkdir(schemaSource);
   });
 
   afterEach(async () => {
@@ -22,24 +22,60 @@ describe('Schema Resource Handler', () => {
   });
 
   describe('handleSchemaListResource', () => {
-    it('should return schema list for single schema setup (README.md exists)', async () => {
-      // Create a single schema README.md file
-      const readmeContent = `# Database Schema
+    it('should return schema list for single schema setup (schema.json exists)', async () => {
+      // Create a single schema.json file
+      const schema = {
+        name: 'default',
+        desc: 'Default database schema',
+        tables: [
+          {
+            name: 'users',
+            type: 'TABLE',
+            comment: 'User accounts table',
+            columns: [
+              {
+                name: 'id',
+                type: 'int(11)',
+                nullable: false,
+                extra_def: 'auto_increment primary key',
+                comment: 'User ID'
+              }
+            ]
+          },
+          {
+            name: 'posts',
+            type: 'TABLE',
+            comment: 'Blog posts table',
+            columns: [
+              {
+                name: 'id',
+                type: 'int(11)',
+                nullable: false,
+                extra_def: 'auto_increment primary key',
+                comment: 'Post ID'
+              }
+            ]
+          },
+          {
+            name: 'comments',
+            type: 'TABLE',
+            comment: 'Post comments table',
+            columns: [
+              {
+                name: 'id',
+                type: 'int(11)',
+                nullable: false,
+                extra_def: 'auto_increment primary key',
+                comment: 'Comment ID'
+              }
+            ]
+          }
+        ]
+      };
 
-## Tables
+      await fs.writeFile(join(schemaSource, 'schema.json'), JSON.stringify(schema, null, 2));
 
-| Name | Columns | Comment |
-| ---- | ------- | ------- |
-| users | 5 | User accounts table |
-| posts | 8 | Blog posts table |
-| comments | 6 | Post comments table |
-
-Generated at: 2024-01-15T10:30:00Z
-`;
-
-      await fs.writeFile(join(schemaDir, 'README.md'), readmeContent);
-
-      const result = await handleSchemaListResource(schemaDir);
+      const result = await handleSchemaListResource(schemaSource);
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -48,63 +84,84 @@ Generated at: 2024-01-15T10:30:00Z
         expect(resource.schemas[0]).toEqual({
           name: 'default',
           tableCount: 3,
-          description: 'Default schema'
+          description: 'Default database schema'
         });
       }
     });
 
-    it('should return schema list for multi-schema setup (subdirectories with README.md)', async () => {
+    it('should return schema list for multi-schema setup (subdirectories with schema.json)', async () => {
       // Create multiple schema directories
-      const schema1Dir = join(schemaDir, 'public');
-      const schema2Dir = join(schemaDir, 'analytics');
-      const schema3Dir = join(schemaDir, 'auth');
+      const schema1Dir = join(schemaSource, 'public');
+      const schema2Dir = join(schemaSource, 'analytics');
+      const schema3Dir = join(schemaSource, 'auth');
 
       await fs.mkdir(schema1Dir);
       await fs.mkdir(schema2Dir);
       await fs.mkdir(schema3Dir);
 
-      // Create README.md files for each schema
-      const publicReadme = `# Public Schema
+      // Create schema.json files for each schema
+      const publicSchema = {
+        name: 'public',
+        desc: 'Public Schema',
+        tables: [
+          {
+            name: 'users',
+            type: 'TABLE',
+            comment: 'User accounts',
+            columns: [{ name: 'id', type: 'int(11)', nullable: false, comment: 'User ID' }]
+          },
+          {
+            name: 'products',
+            type: 'TABLE',
+            comment: 'Product catalog',
+            columns: [{ name: 'id', type: 'int(11)', nullable: false, comment: 'Product ID' }]
+          }
+        ]
+      };
 
-## Tables
+      const analyticsSchema = {
+        name: 'analytics',
+        desc: 'Analytics Schema',
+        tables: [
+          {
+            name: 'events',
+            type: 'TABLE',
+            comment: 'User events',
+            columns: [{ name: 'id', type: 'int(11)', nullable: false, comment: 'Event ID' }]
+          },
+          {
+            name: 'sessions',
+            type: 'TABLE',
+            comment: 'User sessions',
+            columns: [{ name: 'id', type: 'int(11)', nullable: false, comment: 'Session ID' }]
+          },
+          {
+            name: 'conversions',
+            type: 'TABLE',
+            comment: 'Conversion tracking',
+            columns: [{ name: 'id', type: 'int(11)', nullable: false, comment: 'Conversion ID' }]
+          }
+        ]
+      };
 
-| Name | Columns | Comment |
-| ---- | ------- | ------- |
-| users | 5 | User accounts |
-| products | 10 | Product catalog |
+      const authSchema = {
+        name: 'auth',
+        desc: 'Auth Schema',
+        tables: [
+          {
+            name: 'tokens',
+            type: 'TABLE',
+            comment: 'Authentication tokens',
+            columns: [{ name: 'id', type: 'int(11)', nullable: false, comment: 'Token ID' }]
+          }
+        ]
+      };
 
-Generated at: 2024-01-15T10:30:00Z
-`;
+      await fs.writeFile(join(schema1Dir, 'schema.json'), JSON.stringify(publicSchema, null, 2));
+      await fs.writeFile(join(schema2Dir, 'schema.json'), JSON.stringify(analyticsSchema, null, 2));
+      await fs.writeFile(join(schema3Dir, 'schema.json'), JSON.stringify(authSchema, null, 2));
 
-      const analyticsReadme = `# Analytics Schema
-
-## Tables
-
-| Name | Columns | Comment |
-| ---- | ------- | ------- |
-| events | 8 | User events |
-| sessions | 6 | User sessions |
-| conversions | 4 | Conversion tracking |
-
-Generated at: 2024-01-15T10:30:00Z
-`;
-
-      const authReadme = `# Auth Schema
-
-## Tables
-
-| Name | Columns | Comment |
-| ---- | ------- | ------- |
-| tokens | 7 | Authentication tokens |
-
-Generated at: 2024-01-15T10:30:00Z
-`;
-
-      await fs.writeFile(join(schema1Dir, 'README.md'), publicReadme);
-      await fs.writeFile(join(schema2Dir, 'README.md'), analyticsReadme);
-      await fs.writeFile(join(schema3Dir, 'README.md'), authReadme);
-
-      const result = await handleSchemaListResource(schemaDir);
+      const result = await handleSchemaListResource(schemaSource);
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -126,7 +183,7 @@ Generated at: 2024-01-15T10:30:00Z
 
     it('should return empty schema list when no schemas found', async () => {
       // Empty schema directory
-      const result = await handleSchemaListResource(schemaDir);
+      const result = await handleSchemaListResource(schemaSource);
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -142,7 +199,7 @@ Generated at: 2024-01-15T10:30:00Z
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
-        expect(result.error.message).toContain('Schema directory does not exist');
+        expect(result.error.message).toContain('Schema source does not exist');
       }
     });
 
@@ -166,17 +223,13 @@ Generated at: 2024-01-15T10:30:00Z
       }
     });
 
-    it('should handle malformed README.md files gracefully', async () => {
-      // Create a README.md with malformed content
-      const malformedContent = `# Invalid Schema
+    it('should handle malformed schema.json files gracefully', async () => {
+      // Create a schema.json with malformed content
+      const malformedContent = `{ "invalid": "json content"`;
 
-This is not a proper tbls markdown file.
-No tables section exists.
-`;
+      await fs.writeFile(join(schemaSource, 'schema.json'), malformedContent);
 
-      await fs.writeFile(join(schemaDir, 'README.md'), malformedContent);
-
-      const result = await handleSchemaListResource(schemaDir);
+      const result = await handleSchemaListResource(schemaSource);
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -190,33 +243,35 @@ No tables section exists.
       }
     });
 
-    it('should skip subdirectories without README.md files', async () => {
+    it('should skip subdirectories without schema.json files', async () => {
       // Create subdirectories with some having README.md and others not
-      const validSchemaDir = join(schemaDir, 'valid_schema');
-      const invalidSchemaDir = join(schemaDir, 'invalid_schema');
-      const emptyDir = join(schemaDir, 'empty_dir');
+      const validSchemaDir = join(schemaSource, 'valid_schema');
+      const invalidSchemaDir = join(schemaSource, 'invalid_schema');
+      const emptyDir = join(schemaSource, 'empty_dir');
 
       await fs.mkdir(validSchemaDir);
       await fs.mkdir(invalidSchemaDir);
       await fs.mkdir(emptyDir);
 
-      // Only create README.md for valid schema
-      const validReadme = `# Valid Schema
+      // Only create schema.json for valid schema
+      const validSchema = {
+        name: 'valid_schema',
+        desc: 'Valid Schema',
+        tables: [
+          {
+            name: 'test_table',
+            type: 'TABLE',
+            comment: 'Test table',
+            columns: [{ name: 'id', type: 'int(11)', nullable: false, comment: 'Test table ID' }]
+          }
+        ]
+      };
 
-## Tables
+      await fs.writeFile(join(validSchemaDir, 'schema.json'), JSON.stringify(validSchema, null, 2));
+      // Create a different file in invalid schema (not schema.json)
+      await fs.writeFile(join(invalidSchemaDir, 'other.json'), '{"not": "schema"}');
 
-| Name | Columns | Comment |
-| ---- | ------- | ------- |
-| test_table | 3 | Test table |
-
-Generated at: 2024-01-15T10:30:00Z
-`;
-
-      await fs.writeFile(join(validSchemaDir, 'README.md'), validReadme);
-      // Create a different file in invalid schema (not README.md)
-      await fs.writeFile(join(invalidSchemaDir, 'other.md'), 'Not a README');
-
-      const result = await handleSchemaListResource(schemaDir);
+      const result = await handleSchemaListResource(schemaSource);
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -227,36 +282,40 @@ Generated at: 2024-01-15T10:30:00Z
     });
 
     it('should handle mixed file and directory structure', async () => {
-      // Create both single schema README.md and subdirectories
-      const singleSchemaReadme = `# Main Schema
+      // Create both single schema.json and subdirectories
+      const singleSchema = {
+        name: 'default',
+        desc: 'Main Schema',
+        tables: [
+          {
+            name: 'main_table',
+            type: 'TABLE',
+            comment: 'Main table',
+            columns: [{ name: 'id', type: 'int(11)', nullable: false, comment: 'Main table ID' }]
+          }
+        ]
+      };
 
-## Tables
-
-| Name | Columns | Comment |
-| ---- | ------- | ------- |
-| main_table | 5 | Main table |
-
-Generated at: 2024-01-15T10:30:00Z
-`;
-
-      const subSchemaDir = join(schemaDir, 'sub_schema');
+      const subSchemaDir = join(schemaSource, 'sub_schema');
       await fs.mkdir(subSchemaDir);
 
-      const subSchemaReadme = `# Sub Schema
+      const subSchema = {
+        name: 'sub_schema',
+        desc: 'Sub Schema',
+        tables: [
+          {
+            name: 'sub_table',
+            type: 'TABLE',
+            comment: 'Sub table',
+            columns: [{ name: 'id', type: 'int(11)', nullable: false, comment: 'Sub table ID' }]
+          }
+        ]
+      };
 
-## Tables
+      await fs.writeFile(join(schemaSource, 'schema.json'), JSON.stringify(singleSchema, null, 2));
+      await fs.writeFile(join(subSchemaDir, 'schema.json'), JSON.stringify(subSchema, null, 2));
 
-| Name | Columns | Comment |
-| ---- | ------- | ------- |
-| sub_table | 3 | Sub table |
-
-Generated at: 2024-01-15T10:30:00Z
-`;
-
-      await fs.writeFile(join(schemaDir, 'README.md'), singleSchemaReadme);
-      await fs.writeFile(join(subSchemaDir, 'README.md'), subSchemaReadme);
-
-      const result = await handleSchemaListResource(schemaDir);
+      const result = await handleSchemaListResource(schemaSource);
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -268,20 +327,17 @@ Generated at: 2024-01-15T10:30:00Z
       }
     });
 
-    it('should handle README.md files with no table count information', async () => {
-      // Create README.md without proper table structure
-      const readmeWithoutTables = `# Schema Without Tables
+    it('should handle schema.json files with no tables', async () => {
+      // Create schema.json with empty tables array
+      const schemaWithoutTables = {
+        name: 'default',
+        desc: 'Schema without tables',
+        tables: []
+      };
 
-This schema documentation doesn't have a proper tables section.
+      await fs.writeFile(join(schemaSource, 'schema.json'), JSON.stringify(schemaWithoutTables, null, 2));
 
-## Some Other Section
-
-Content here.
-`;
-
-      await fs.writeFile(join(schemaDir, 'README.md'), readmeWithoutTables);
-
-      const result = await handleSchemaListResource(schemaDir);
+      const result = await handleSchemaListResource(schemaSource);
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -290,7 +346,7 @@ Content here.
         expect(resource.schemas[0]).toEqual({
           name: 'default',
           tableCount: 0,
-          description: 'Default schema'
+          description: 'Schema without tables'
         });
       }
     });
@@ -300,21 +356,28 @@ Content here.
       const schemaPromises = [];
 
       for (let i = 0; i < 50; i++) {
-        const schemaDirPath = join(schemaDir, `schema_${i}`);
+        const schemaSourcePath = join(schemaSource, `schema_${i}`);
         schemaPromises.push(
-          fs.mkdir(schemaDirPath).then(async () => {
-            const readmeContent = `# Schema ${i}
-
-## Tables
-
-| Name | Columns | Comment |
-| ---- | ------- | ------- |
-| table_${i}_1 | 5 | Table 1 for schema ${i} |
-| table_${i}_2 | 3 | Table 2 for schema ${i} |
-
-Generated at: 2024-01-15T10:30:00Z
-`;
-            await fs.writeFile(join(schemaDirPath, 'README.md'), readmeContent);
+          fs.mkdir(schemaSourcePath).then(async () => {
+            const schemaContent = {
+              name: `schema_${i}`,
+              desc: `Schema ${i}`,
+              tables: [
+                {
+                  name: `table_${i}_1`,
+                  type: 'TABLE',
+                  comment: `Table 1 for schema ${i}`,
+                  columns: [{ name: 'id', type: 'int(11)', nullable: false, comment: 'Table ID' }]
+                },
+                {
+                  name: `table_${i}_2`,
+                  type: 'TABLE',
+                  comment: `Table 2 for schema ${i}`,
+                  columns: [{ name: 'id', type: 'int(11)', nullable: false, comment: 'Table ID' }]
+                }
+              ]
+            };
+            await fs.writeFile(join(schemaSourcePath, 'schema.json'), JSON.stringify(schemaContent, null, 2));
           })
         );
       }
@@ -322,7 +385,7 @@ Generated at: 2024-01-15T10:30:00Z
       await Promise.all(schemaPromises);
 
       const startTime = Date.now();
-      const result = await handleSchemaListResource(schemaDir);
+      const result = await handleSchemaListResource(schemaSource);
       const endTime = Date.now();
 
       expect(result.isOk()).toBe(true);
