@@ -15,9 +15,15 @@ import {
   closeMySQLConnection,
 } from '../../src/database/mysql-adapter';
 
-const mockCreateMySQLConnection = createMySQLConnection as jest.MockedFunction<typeof createMySQLConnection>;
-const mockExecuteMySQLQuery = executeMySQLQuery as jest.MockedFunction<typeof executeMySQLQuery>;
-const mockCloseMySQLConnection = closeMySQLConnection as jest.MockedFunction<typeof closeMySQLConnection>;
+const mockCreateMySQLConnection = createMySQLConnection as jest.MockedFunction<
+  typeof createMySQLConnection
+>;
+const mockExecuteMySQLQuery = executeMySQLQuery as jest.MockedFunction<
+  typeof executeMySQLQuery
+>;
+const mockCloseMySQLConnection = closeMySQLConnection as jest.MockedFunction<
+  typeof closeMySQLConnection
+>;
 
 describe('mysql adapter (mocked)', () => {
   const mockConnection = {
@@ -30,11 +36,13 @@ describe('mysql adapter (mocked)', () => {
 
     // Set up default successful responses
     mockCreateMySQLConnection.mockResolvedValue(ok(mockConnection));
-    mockExecuteMySQLQuery.mockResolvedValue(ok({
-      rows: [],
-      rowCount: 0,
-      executionTime: 1,
-    }));
+    mockExecuteMySQLQuery.mockResolvedValue(
+      ok({
+        rows: [],
+        rowCount: 0,
+        executionTime: 1,
+      })
+    );
     mockCloseMySQLConnection.mockResolvedValue(ok(undefined));
   });
 
@@ -57,7 +65,9 @@ describe('mysql adapter (mocked)', () => {
         connectionString: 'invalid-connection-string',
       };
 
-      mockCreateMySQLConnection.mockResolvedValue(err(new Error('Connection failed')));
+      mockCreateMySQLConnection.mockResolvedValue(
+        err(new Error('Connection failed'))
+      );
 
       const result = await createMySQLConnection(config);
 
@@ -69,7 +79,11 @@ describe('mysql adapter (mocked)', () => {
     it('should execute queries successfully', async () => {
       const result = await executeMySQLQuery(mockConnection, 'SELECT 1', []);
 
-      expect(mockExecuteMySQLQuery).toHaveBeenCalledWith(mockConnection, 'SELECT 1', []);
+      expect(mockExecuteMySQLQuery).toHaveBeenCalledWith(
+        mockConnection,
+        'SELECT 1',
+        []
+      );
       expect(result.isOk()).toBe(true);
     });
   });

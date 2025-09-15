@@ -3,7 +3,11 @@
 import { promises as fs } from 'fs';
 import { join } from 'path';
 import { createTblsMcpServer } from './server.js';
-import { ServerConfig, LogLevel, validateServerConfig } from './schemas/config.js';
+import {
+  ServerConfig,
+  LogLevel,
+  validateServerConfig,
+} from './schemas/config.js';
 
 /**
  * CLI argument interface
@@ -53,7 +57,9 @@ const parseCliArgs = (): CliArgs => {
 
       case '--database-type':
         if (!nextArg || !['mysql', 'sqlite'].includes(nextArg)) {
-          console.error('Error: --database-type must be either mysql or sqlite');
+          console.error(
+            'Error: --database-type must be either mysql or sqlite'
+          );
           process.exit(1);
         }
         args.databaseType = nextArg as 'mysql' | 'sqlite';
@@ -198,7 +204,9 @@ const showVersion = async (): Promise<void> => {
 /**
  * Load configuration from file
  */
-const loadConfigFile = async (configPath: string): Promise<Partial<ServerConfig> | null> => {
+const loadConfigFile = async (
+  configPath: string
+): Promise<Partial<ServerConfig> | null> => {
   try {
     const configContent = await fs.readFile(configPath, 'utf-8');
     return JSON.parse(configContent);
@@ -206,7 +214,9 @@ const loadConfigFile = async (configPath: string): Promise<Partial<ServerConfig>
     if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
       console.warn(`Warning: Configuration file not found: ${configPath}`);
     } else {
-      console.error(`Error loading configuration file: ${error instanceof Error ? error.message : error}`);
+      console.error(
+        `Error loading configuration file: ${error instanceof Error ? error.message : error}`
+      );
     }
     return null;
   }
@@ -255,7 +265,10 @@ const buildServerConfig = async (cliArgs: CliArgs): Promise<ServerConfig> => {
   };
 
   // Load configuration file if specified
-  const configFilePath = cliArgs.configFile || process.env.TBLS_CONFIG_FILE || '.tbls-mcp-server.json';
+  const configFilePath =
+    cliArgs.configFile ||
+    process.env.TBLS_CONFIG_FILE ||
+    '.tbls-mcp-server.json';
   const fileConfig = await loadConfigFile(configFilePath);
   if (fileConfig) {
     config = { ...config, ...fileConfig };
@@ -288,7 +301,9 @@ const buildServerConfig = async (cliArgs: CliArgs): Promise<ServerConfig> => {
         path: url.replace('sqlite://', ''),
       };
     } else {
-      console.error('Error: Database URL must start with mysql:// or sqlite://');
+      console.error(
+        'Error: Database URL must start with mysql:// or sqlite://'
+      );
       process.exit(1);
     }
   } else if (cliArgs.databaseType && cliArgs.databasePath) {
@@ -298,11 +313,15 @@ const buildServerConfig = async (cliArgs: CliArgs): Promise<ServerConfig> => {
         path: cliArgs.databasePath,
       };
     } else {
-      console.error('Error: --database-path can only be used with --database-type sqlite');
+      console.error(
+        'Error: --database-path can only be used with --database-type sqlite'
+      );
       process.exit(1);
     }
   } else if (cliArgs.databaseType || cliArgs.databasePath) {
-    console.error('Error: --database-type and --database-path must be used together, or use --database-url');
+    console.error(
+      'Error: --database-type and --database-path must be used together, or use --database-url'
+    );
     process.exit(1);
   }
 
@@ -366,7 +385,10 @@ const main = async (): Promise<void> => {
     // Start the server
     await server.run();
   } catch (error) {
-    console.error('Failed to start tbls-mcp-server:', error instanceof Error ? error.message : error);
+    console.error(
+      'Failed to start tbls-mcp-server:',
+      error instanceof Error ? error.message : error
+    );
     process.exit(1);
   }
 };

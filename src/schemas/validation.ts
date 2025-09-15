@@ -18,12 +18,59 @@ export class ValidationError extends Error {
  * SQL keywords that should be rejected for table/column names
  */
 const SQL_KEYWORDS = new Set([
-  'select', 'from', 'where', 'insert', 'update', 'delete', 'drop', 'create',
-  'alter', 'truncate', 'grant', 'revoke', 'union', 'join', 'inner', 'outer',
-  'left', 'right', 'group', 'order', 'having', 'limit', 'offset', 'distinct',
-  'count', 'sum', 'avg', 'max', 'min', 'as', 'and', 'or', 'not', 'null',
-  'true', 'false', 'is', 'in', 'exists', 'between', 'like', 'case', 'when',
-  'then', 'else', 'end', 'if', 'else', 'elseif', 'while', 'for', 'do', 'begin'
+  'select',
+  'from',
+  'where',
+  'insert',
+  'update',
+  'delete',
+  'drop',
+  'create',
+  'alter',
+  'truncate',
+  'grant',
+  'revoke',
+  'union',
+  'join',
+  'inner',
+  'outer',
+  'left',
+  'right',
+  'group',
+  'order',
+  'having',
+  'limit',
+  'offset',
+  'distinct',
+  'count',
+  'sum',
+  'avg',
+  'max',
+  'min',
+  'as',
+  'and',
+  'or',
+  'not',
+  'null',
+  'true',
+  'false',
+  'is',
+  'in',
+  'exists',
+  'between',
+  'like',
+  'case',
+  'when',
+  'then',
+  'else',
+  'end',
+  'if',
+  'else',
+  'elseif',
+  'while',
+  'for',
+  'do',
+  'begin',
 ]);
 
 /**
@@ -84,7 +131,9 @@ export const validateSqlQuery = (query: string): Result<string, string> => {
  * @param tableName - Table name to validate
  * @returns Result containing sanitized table name or error message
  */
-export const sanitizeTableName = (tableName: string): Result<string, string> => {
+export const sanitizeTableName = (
+  tableName: string
+): Result<string, string> => {
   if (!tableName || typeof tableName !== 'string') {
     return err('Table name must be a non-empty string');
   }
@@ -98,7 +147,9 @@ export const sanitizeTableName = (tableName: string): Result<string, string> => 
   // Must start with letter or underscore
   const validIdentifierRegex = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
   if (!validIdentifierRegex.test(trimmedName)) {
-    return err('Invalid table name: must contain only letters, numbers, and underscores, and start with a letter or underscore');
+    return err(
+      'Invalid table name: must contain only letters, numbers, and underscores, and start with a letter or underscore'
+    );
   }
 
   // Check against SQL keywords
@@ -114,7 +165,9 @@ export const sanitizeTableName = (tableName: string): Result<string, string> => 
  * @param columnName - Column name to validate
  * @returns Result containing sanitized column name or error message
  */
-export const sanitizeColumnName = (columnName: string): Result<string, string> => {
+export const sanitizeColumnName = (
+  columnName: string
+): Result<string, string> => {
   if (!columnName || typeof columnName !== 'string') {
     return err('Column name must be a non-empty string');
   }
@@ -128,7 +181,9 @@ export const sanitizeColumnName = (columnName: string): Result<string, string> =
   // Must start with letter or underscore
   const validIdentifierRegex = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
   if (!validIdentifierRegex.test(trimmedName)) {
-    return err('Invalid column name: must contain only letters, numbers, and underscores, and start with a letter or underscore');
+    return err(
+      'Invalid column name: must contain only letters, numbers, and underscores, and start with a letter or underscore'
+    );
   }
 
   // Check against SQL keywords
@@ -142,13 +197,17 @@ export const sanitizeColumnName = (columnName: string): Result<string, string> =
 /**
  * Connection string validation schema
  */
-const MySQLConnectionStringSchema = z.string().regex(
-  /^mysql:\/\/[^@/]+@[^@/:]+(:\d+)?\/[^/]+$/,
-  'Invalid MySQL connection string format'
-);
+const MySQLConnectionStringSchema = z
+  .string()
+  .regex(
+    /^mysql:\/\/[^@/]+@[^@/:]+(:\d+)?\/[^/]+$/,
+    'Invalid MySQL connection string format'
+  );
 
-const SQLitePathSchema = z.string().min(1).refine(
-  (path) => {
+const SQLitePathSchema = z
+  .string()
+  .min(1)
+  .refine((path) => {
     // Reject URLs that look like MySQL but failed MySQL validation
     if (path.startsWith('mysql://')) return false;
     if (path.startsWith('invalid://')) return false;
@@ -165,16 +224,16 @@ const SQLitePathSchema = z.string().min(1).refine(
     // Basic path validation (no invalid characters)
     const invalidChars = /[<>|"*?]/;
     return !invalidChars.test(path);
-  },
-  'Invalid SQLite path format'
-);
+  }, 'Invalid SQLite path format');
 
 /**
  * Validates database connection strings
  * @param connectionString - Connection string to validate
  * @returns Result containing validated connection string or error message
  */
-export const validateConnectionString = (connectionString: string): Result<string, string> => {
+export const validateConnectionString = (
+  connectionString: string
+): Result<string, string> => {
   if (!connectionString || typeof connectionString !== 'string') {
     return err('Connection string must be a non-empty string');
   }
@@ -196,7 +255,9 @@ export const validateConnectionString = (connectionString: string): Result<strin
     return ok(trimmed);
   }
 
-  return err('Invalid connection string format. Must be a valid MySQL URL or SQLite path');
+  return err(
+    'Invalid connection string format. Must be a valid MySQL URL or SQLite path'
+  );
 };
 
 /**
@@ -221,7 +282,9 @@ export type ParsedConnectionInfo =
  * @param connectionString - Connection string to parse
  * @returns Result containing parsed connection info or error message
  */
-export const parseConnectionString = (connectionString: string): Result<ParsedConnectionInfo, string> => {
+export const parseConnectionString = (
+  connectionString: string
+): Result<ParsedConnectionInfo, string> => {
   const validationResult = validateConnectionString(connectionString);
   if (validationResult.isErr()) {
     return err(validationResult.error);
@@ -234,8 +297,15 @@ export const parseConnectionString = (connectionString: string): Result<ParsedCo
     try {
       const url = new URL(trimmed);
 
-      if (!url.hostname || !url.username || !url.pathname || url.pathname === '/') {
-        return err('Invalid MySQL connection string: missing required components');
+      if (
+        !url.hostname ||
+        !url.username ||
+        !url.pathname ||
+        url.pathname === '/'
+      ) {
+        return err(
+          'Invalid MySQL connection string: missing required components'
+        );
       }
 
       const database = url.pathname.slice(1); // Remove leading slash
@@ -295,7 +365,9 @@ export const validateFilePath = (filePath: string): Result<string, string> => {
  * @param value - String value to validate
  * @returns Result containing parsed integer or error message
  */
-export const validatePositiveInteger = (value: string): Result<number, string> => {
+export const validatePositiveInteger = (
+  value: string
+): Result<number, string> => {
   if (!value || typeof value !== 'string') {
     return err('Value must be a non-empty string');
   }

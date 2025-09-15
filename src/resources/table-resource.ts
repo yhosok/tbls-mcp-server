@@ -1,8 +1,13 @@
 import { Result, ok, err } from 'neverthrow';
 import { join } from 'path';
 import * as path from 'path';
+import { existsSync } from 'fs';
 import { SchemaTablesResource, TableInfoResource } from '../schemas/database';
-import { parseTableReferences, parseSingleTableFile, resolveSchemaSource } from '../parsers/schema-adapter';
+import {
+  parseTableReferences,
+  parseSingleTableFile,
+  resolveSchemaSource,
+} from '../parsers/schema-adapter';
 import { ResourceCache } from '../cache/resource-cache';
 
 /**
@@ -47,7 +52,7 @@ export const handleSchemaTablesResource = async (
     if (cachedTableRefs) {
       return ok({
         schemaName,
-        tables: cachedTableRefs
+        tables: cachedTableRefs,
       });
     }
   }
@@ -67,7 +72,7 @@ export const handleSchemaTablesResource = async (
 
   return ok({
     schemaName,
-    tables
+    tables,
   });
 };
 
@@ -95,36 +100,48 @@ export const handleTableInfoResource = async (
 
   const { type: sourceType, path: schemaPath } = resolveResult.value;
 
-  // Determine the path to the table file (JSON format)
-  let tableBasePath: string;
+  // Determine the path to the schema.json file
+  let schemaJsonPath: string;
+
   if (sourceType === 'file') {
-    // Single file - use the directory containing the file
-    const schemaDir = path.dirname(schemaPath);
-    tableBasePath = join(schemaDir, tableName);
+    // Single schema.json file - use directly
+    schemaJsonPath = schemaPath;
   } else {
-    // Directory - determine subdirectory for multi-schema setup
+    // Directory - look for schema.json in appropriate subdirectory
     if (schemaName === 'default') {
-      tableBasePath = join(schemaPath, tableName);
+      schemaJsonPath = join(schemaPath, 'schema.json');
     } else {
-      tableBasePath = join(schemaPath, schemaName, tableName);
+      schemaJsonPath = join(schemaPath, schemaName, 'schema.json');
+    }
+
+    // Verify schema.json exists in directory
+    if (!existsSync(schemaJsonPath)) {
+      return err(
+        new Error(
+          `Schema file not found: ${schemaJsonPath}. Only JSON schema files are supported.`
+        )
+      );
     }
   }
 
   // Try to get cached table first
   if (cache) {
-    const cachedTable = await cache.getTable(tableBasePath);
+    const cachedTable = await cache.getTable(schemaJsonPath);
     if (cachedTable) {
       return ok({
         schemaName,
-        table: cachedTable
+        table: cachedTable,
       });
     }
   }
 
-  // Parse the table file using schema adapter (JSON format)
-  const parseResult = parseSingleTableFile(tableBasePath);
+  // Parse the table from the schema.json file
+  const parseResult = parseSingleTableFile(schemaJsonPath, tableName, cache);
+
   if (parseResult.isErr()) {
-    return err(new Error(`Failed to parse table: ${parseResult.error.message}`));
+    return err(
+      new Error(`Failed to parse table: ${parseResult.error.message}`)
+    );
   }
 
   const schema = parseResult.value;
@@ -136,11 +153,11 @@ export const handleTableInfoResource = async (
 
   // Cache the individual table if cache is available
   if (cache) {
-    await cache.setTable(tableBasePath, table);
+    await cache.setTable(schemaJsonPath, table);
   }
 
   return ok({
     schemaName,
-    table
+    table,
   });
 };

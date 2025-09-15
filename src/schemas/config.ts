@@ -10,37 +10,43 @@ export type LogLevel = z.infer<typeof LogLevelSchema>;
 /**
  * MySQL database configuration schema
  */
-const MySQLConfig = z.object({
-  type: z.literal('mysql'),
-  // Either connection string or individual connection parameters
-  connectionString: z.string().url().optional(),
-  host: z.string().min(1).optional(),
-  port: z.number().int().positive().max(65535).optional(),
-  user: z.string().min(1).optional(),
-  password: z.string().optional(),
-  database: z.string().min(1).optional(),
-}).refine(
-  (data) => {
-    // Must have either connectionString or individual connection params
-    const hasConnectionString = Boolean(data.connectionString);
-    const hasIndividualParams = Boolean(data.host && data.user && data.database);
-    return hasConnectionString || hasIndividualParams;
-  },
-  {
-    message: 'Must provide either connectionString or host, user, and database',
-  }
-).refine(
-  (data) => {
-    // If connectionString is provided, it must be a valid MySQL URL
-    if (data.connectionString) {
-      return data.connectionString.startsWith('mysql://');
+const MySQLConfig = z
+  .object({
+    type: z.literal('mysql'),
+    // Either connection string or individual connection parameters
+    connectionString: z.string().url().optional(),
+    host: z.string().min(1).optional(),
+    port: z.number().int().positive().max(65535).optional(),
+    user: z.string().min(1).optional(),
+    password: z.string().optional(),
+    database: z.string().min(1).optional(),
+  })
+  .refine(
+    (data) => {
+      // Must have either connectionString or individual connection params
+      const hasConnectionString = Boolean(data.connectionString);
+      const hasIndividualParams = Boolean(
+        data.host && data.user && data.database
+      );
+      return hasConnectionString || hasIndividualParams;
+    },
+    {
+      message:
+        'Must provide either connectionString or host, user, and database',
     }
-    return true;
-  },
-  {
-    message: 'MySQL connection string must start with mysql://',
-  }
-);
+  )
+  .refine(
+    (data) => {
+      // If connectionString is provided, it must be a valid MySQL URL
+      if (data.connectionString) {
+        return data.connectionString.startsWith('mysql://');
+      }
+      return true;
+    },
+    {
+      message: 'MySQL connection string must start with mysql://',
+    }
+  );
 
 /**
  * SQLite database configuration schema
@@ -59,15 +65,17 @@ export type DatabaseConfig = z.infer<typeof DatabaseConfigSchema>;
 /**
  * Cache configuration schema
  */
-export const CacheConfigSchema = z.object({
-  enabled: z.boolean().default(true),
-  maxItems: z.number().int().positive().default(1000),
-  ttlMs: z.number().int().positive().default(300000), // 5 minutes default
-}).default({
-  enabled: true,
-  maxItems: 1000,
-  ttlMs: 300000,
-});
+export const CacheConfigSchema = z
+  .object({
+    enabled: z.boolean().default(true),
+    maxItems: z.number().int().positive().default(1000),
+    ttlMs: z.number().int().positive().default(300000), // 5 minutes default
+  })
+  .default({
+    enabled: true,
+    maxItems: 1000,
+    ttlMs: 300000,
+  });
 export type CacheConfig = z.infer<typeof CacheConfigSchema>;
 
 /**
@@ -95,7 +103,7 @@ export const validateServerConfig = (
   } catch (error) {
     if (error instanceof z.ZodError) {
       const errorMessage = `Server configuration validation failed: ${error.errors
-        .map(e => `${e.path.join('.')}: ${e.message}`)
+        .map((e) => `${e.path.join('.')}: ${e.message}`)
         .join(', ')}`;
       return err(errorMessage);
     }
@@ -117,7 +125,7 @@ export const validateDatabaseConfig = (
   } catch (error) {
     if (error instanceof z.ZodError) {
       const errorMessage = `Database configuration validation failed: ${error.errors
-        .map(e => `${e.path.join('.')}: ${e.message}`)
+        .map((e) => `${e.path.join('.')}: ${e.message}`)
         .join(', ')}`;
       return err(errorMessage);
     }

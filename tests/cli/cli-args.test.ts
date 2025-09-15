@@ -36,7 +36,6 @@ describe('CLI Argument Parsing', () => {
     });
   });
 
-
   describe('environment variables', () => {
     it('should support TBLS_SCHEMA_SOURCE environment variable', () => {
       // This test will pass once we implement the new env var
@@ -45,6 +44,5 @@ describe('CLI Argument Parsing', () => {
         expect(result.schemaSource).toBe('/path/from/env');
       }).not.toThrow();
     });
-
   });
 });

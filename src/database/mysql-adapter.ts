@@ -54,7 +54,8 @@ export const createMySQLConnection = async (
       poolOptions = {
         uri: config.connectionString,
         waitForConnections: true,
-        connectionLimit: poolConfig.connectionLimit ?? DEFAULT_POOL_CONFIG.connectionLimit,
+        connectionLimit:
+          poolConfig.connectionLimit ?? DEFAULT_POOL_CONFIG.connectionLimit,
         queueLimit: poolConfig.queueLimit ?? DEFAULT_POOL_CONFIG.queueLimit,
         // acquireTimeout: poolConfig.acquireTimeout ?? DEFAULT_POOL_CONFIG.acquireTimeout, // Not supported in all versions
         // timeout: poolConfig.timeout ?? DEFAULT_POOL_CONFIG.timeout, // Not supported in all versions
@@ -64,7 +65,9 @@ export const createMySQLConnection = async (
     } else {
       // Use individual connection parameters
       if (!config.host || !config.user || !config.database) {
-        throw new Error('MySQL configuration must include host, user, and database');
+        throw new Error(
+          'MySQL configuration must include host, user, and database'
+        );
       }
 
       poolOptions = {
@@ -74,7 +77,8 @@ export const createMySQLConnection = async (
         password: config.password ?? '',
         database: config.database,
         waitForConnections: true,
-        connectionLimit: poolConfig.connectionLimit ?? DEFAULT_POOL_CONFIG.connectionLimit,
+        connectionLimit:
+          poolConfig.connectionLimit ?? DEFAULT_POOL_CONFIG.connectionLimit,
         queueLimit: poolConfig.queueLimit ?? DEFAULT_POOL_CONFIG.queueLimit,
         // acquireTimeout: poolConfig.acquireTimeout ?? DEFAULT_POOL_CONFIG.acquireTimeout, // Not supported in all versions
         // timeout: poolConfig.timeout ?? DEFAULT_POOL_CONFIG.timeout, // Not supported in all versions
@@ -91,7 +95,9 @@ export const createMySQLConnection = async (
       await promisePool.execute('SELECT 1');
     } catch (error) {
       pool.end();
-      throw new Error(`MySQL connection validation failed: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(
+        `MySQL connection validation failed: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
 
     return {
@@ -120,31 +126,39 @@ export const executeMySQLQuery = async (
   return safeExecuteAsync(async () => {
     const promisePool = connection.pool.promise();
 
-    let queryPromise = promisePool.execute(query, params) as Promise<[mysql.RowDataPacket[], mysql.FieldPacket[]]>;
+    let queryPromise = promisePool.execute(query, params) as Promise<
+      [mysql.RowDataPacket[], mysql.FieldPacket[]]
+    >;
 
     // Apply timeout if specified
     if (timeoutMs && timeoutMs > 0) {
       let timeoutId: NodeJS.Timeout;
       const timeoutPromise = new Promise<never>((_, reject) => {
-        timeoutId = setTimeout(() => reject(new Error(`Query execution timeout after ${timeoutMs}ms`)), timeoutMs);
+        timeoutId = setTimeout(
+          () =>
+            reject(new Error(`Query execution timeout after ${timeoutMs}ms`)),
+          timeoutMs
+        );
       });
 
-      queryPromise = Promise.race([queryPromise, timeoutPromise]).finally(() => {
-        if (timeoutId) {
-          clearTimeout(timeoutId);
+      queryPromise = Promise.race([queryPromise, timeoutPromise]).finally(
+        () => {
+          if (timeoutId) {
+            clearTimeout(timeoutId);
+          }
         }
-      }) as typeof queryPromise;
+      ) as typeof queryPromise;
     }
 
     const [rows, fields] = await queryPromise;
     const executionTimeMs = Date.now() - startTime;
 
     // Extract column names from fields
-    const columns = fields.map(field => field.name);
+    const columns = fields.map((field) => field.name);
 
     // Convert rows to array format
-    const resultRows = rows.map(row => {
-      return columns.map(column => row[column]);
+    const resultRows = rows.map((row) => {
+      return columns.map((column) => row[column]);
     });
 
     const result: QueryResult = {
@@ -178,7 +192,7 @@ export const closeMySQLConnection = async (
         });
       }),
       'Failed to close MySQL pool'
-    ).then(result => {
+    ).then((result) => {
       if (result.isErr()) {
         throw result.error;
       }
@@ -196,7 +210,9 @@ export const getMySQLConnectionInfo = async (
 ): Promise<Result<{ serverVersion: string; connectionId: number }, Error>> => {
   return safeExecuteAsync(async () => {
     const promisePool = connection.pool.promise();
-    const [rows] = await promisePool.execute('SELECT VERSION() as version, CONNECTION_ID() as connection_id') as [mysql.RowDataPacket[], mysql.FieldPacket[]];
+    const [rows] = (await promisePool.execute(
+      'SELECT VERSION() as version, CONNECTION_ID() as connection_id'
+    )) as [mysql.RowDataPacket[], mysql.FieldPacket[]];
 
     if (rows.length === 0) {
       throw new Error('No connection info returned');
@@ -243,25 +259,31 @@ export const getMySQLSchemaInfo = async (
   return safeExecuteAsync(async () => {
     const promisePool = connection.pool.promise();
 
-    const [tableRows] = await promisePool.execute(`
+    const [tableRows] = (await promisePool.execute(
+      `
       SELECT table_name
       FROM information_schema.tables
       WHERE table_schema = ?
         AND table_type = 'BASE TABLE'
       ORDER BY table_name
-    `, [databaseName]) as [mysql.RowDataPacket[], mysql.FieldPacket[]];
+    `,
+      [databaseName]
+    )) as [mysql.RowDataPacket[], mysql.FieldPacket[]];
 
-    const [viewRows] = await promisePool.execute(`
+    const [viewRows] = (await promisePool.execute(
+      `
       SELECT table_name
       FROM information_schema.tables
       WHERE table_schema = ?
         AND table_type = 'VIEW'
       ORDER BY table_name
-    `, [databaseName]) as [mysql.RowDataPacket[], mysql.FieldPacket[]];
+    `,
+      [databaseName]
+    )) as [mysql.RowDataPacket[], mysql.FieldPacket[]];
 
     return {
-      tables: tableRows.map(row => row.table_name as string),
-      views: viewRows.map(row => row.table_name as string),
+      tables: tableRows.map((row) => row.table_name as string),
+      views: viewRows.map((row) => row.table_name as string),
     };
   }, 'Failed to get MySQL schema info');
 };
@@ -295,18 +317,24 @@ export const executeMySQLQueryWithRetry = async (
 
     // Don't retry on certain types of errors
     const errorMessage = lastError.message.toLowerCase();
-    if (errorMessage.includes('syntax') ||
-        errorMessage.includes('unknown column') ||
-        errorMessage.includes('unknown table')) {
+    if (
+      errorMessage.includes('syntax') ||
+      errorMessage.includes('unknown column') ||
+      errorMessage.includes('unknown table')
+    ) {
       break;
     }
 
     if (attempt < maxRetries) {
-      await new Promise(resolve => setTimeout(resolve, retryDelay));
+      await new Promise((resolve) => setTimeout(resolve, retryDelay));
     }
   }
 
-  return err(new Error(`Query failed after ${maxRetries + 1} attempts: ${lastError?.message || 'Unknown error'}`));
+  return err(
+    new Error(
+      `Query failed after ${maxRetries + 1} attempts: ${lastError?.message || 'Unknown error'}`
+    )
+  );
 };
 
 /**
@@ -327,11 +355,14 @@ export const executeMySQLPreparedStatement = async (
     const promisePool = connection.pool.promise();
 
     // Use the execute method which automatically prepares the statement
-    const [rows, fields] = await promisePool.execute(query, params) as [mysql.RowDataPacket[], mysql.FieldPacket[]];
+    const [rows, fields] = (await promisePool.execute(query, params)) as [
+      mysql.RowDataPacket[],
+      mysql.FieldPacket[],
+    ];
     const executionTimeMs = Date.now() - startTime;
 
-    const columns = fields.map(field => field.name);
-    const resultRows = rows.map(row => columns.map(column => row[column]));
+    const columns = fields.map((field) => field.name);
+    const resultRows = rows.map((row) => columns.map((column) => row[column]));
 
     return {
       columns,

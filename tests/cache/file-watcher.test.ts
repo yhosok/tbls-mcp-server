@@ -68,11 +68,15 @@ describe('FileWatcher', () => {
       mockWatcher.emit('change', 'change', 'schema.json');
 
       // Wait for async operations (debounce delay + extra time)
-      await new Promise(resolve => setTimeout(resolve, 150));
+      await new Promise((resolve) => setTimeout(resolve, 150));
 
       // Assert
       expect(mockFsWatch).toHaveBeenCalledWith(filePath);
-      expect(changeCallback).toHaveBeenCalledWith(filePath, updatedMtime, initialMtime);
+      expect(changeCallback).toHaveBeenCalledWith(
+        filePath,
+        updatedMtime,
+        initialMtime
+      );
     });
 
     it('should not trigger callback if mtime has not changed', async () => {
@@ -93,7 +97,7 @@ describe('FileWatcher', () => {
       mockWatcher.emit('change', 'change', 'schema.json');
 
       // Wait for async operations (debounce delay + extra time)
-      await new Promise(resolve => setTimeout(resolve, 150));
+      await new Promise((resolve) => setTimeout(resolve, 150));
 
       // Assert
       expect(changeCallback).not.toHaveBeenCalled();
@@ -114,7 +118,7 @@ describe('FileWatcher', () => {
       mockWatcher.emit('change', 'change', 'nonexistent.json');
 
       // Wait for async operations (debounce delay + extra time)
-      await new Promise(resolve => setTimeout(resolve, 150));
+      await new Promise((resolve) => setTimeout(resolve, 150));
 
       // Assert
       expect(errorCallback).toHaveBeenCalledWith(
@@ -153,14 +157,15 @@ describe('FileWatcher', () => {
       mockWatcher.emit('change', 'change', null); // filename can be null on some platforms
 
       // Wait for async operations (debounce delay + extra time)
-      await new Promise(resolve => setTimeout(resolve, 150));
+      await new Promise((resolve) => setTimeout(resolve, 150));
 
       // Assert
-      expect(mockFsWatch).toHaveBeenCalledWith(
+      expect(mockFsWatch).toHaveBeenCalledWith(dirPath, { recursive: true });
+      expect(changeCallback).toHaveBeenCalledWith(
         dirPath,
-        { recursive: true }
+        updatedMtime,
+        initialMtime
       );
-      expect(changeCallback).toHaveBeenCalledWith(dirPath, updatedMtime, initialMtime);
     });
 
     it('should watch directory with specific file filter', async () => {
@@ -182,7 +187,8 @@ describe('FileWatcher', () => {
           isDirectory: (): boolean => true,
         } as MockStats);
 
-      const fileFilter = (filename: string): boolean => filename.endsWith('.json');
+      const fileFilter = (filename: string): boolean =>
+        filename.endsWith('.json');
 
       // Act
       await fileWatcher.watchDirectory(dirPath, changeCallback, undefined, {
@@ -195,7 +201,7 @@ describe('FileWatcher', () => {
       mockWatcher.emit('change', 'change', 'readme.md'); // should not trigger
 
       // Wait for async operations (debounce delay + extra time)
-      await new Promise(resolve => setTimeout(resolve, 150));
+      await new Promise((resolve) => setTimeout(resolve, 150));
 
       // Assert
       expect(changeCallback).toHaveBeenCalledTimes(1);
@@ -213,13 +219,26 @@ describe('FileWatcher', () => {
       const newMtime = new Date('2024-01-01T11:00:00Z');
 
       // Create separate mock watchers for each file
-      const mockWatcher1 = Object.assign(new EventEmitter(), { close: jest.fn() }) as MockFSWatcher;
-      const mockWatcher2 = Object.assign(new EventEmitter(), { close: jest.fn() }) as MockFSWatcher;
+      const mockWatcher1 = Object.assign(new EventEmitter(), {
+        close: jest.fn(),
+      }) as MockFSWatcher;
+      const mockWatcher2 = Object.assign(new EventEmitter(), {
+        close: jest.fn(),
+      }) as MockFSWatcher;
 
       mockFs.stat
-        .mockResolvedValueOnce({ mtime, isFile: (): boolean => true } as MockStats)
-        .mockResolvedValueOnce({ mtime, isFile: (): boolean => true } as MockStats)
-        .mockResolvedValueOnce({ mtime: newMtime, isFile: (): boolean => true } as MockStats);
+        .mockResolvedValueOnce({
+          mtime,
+          isFile: (): boolean => true,
+        } as MockStats)
+        .mockResolvedValueOnce({
+          mtime,
+          isFile: (): boolean => true,
+        } as MockStats)
+        .mockResolvedValueOnce({
+          mtime: newMtime,
+          isFile: (): boolean => true,
+        } as MockStats);
 
       mockFsWatch
         .mockReturnValueOnce(mockWatcher1 as FSWatcher)
@@ -233,7 +252,7 @@ describe('FileWatcher', () => {
       mockWatcher1.emit('change', 'change', 'schema1.json');
 
       // Wait for async operations (debounce delay + extra time)
-      await new Promise(resolve => setTimeout(resolve, 150));
+      await new Promise((resolve) => setTimeout(resolve, 150));
 
       // Assert
       expect(mockFsWatch).toHaveBeenCalledTimes(2);
@@ -262,7 +281,7 @@ describe('FileWatcher', () => {
       mockWatcher.emit('change', 'change', 'schema.json');
 
       // Wait for async operations (debounce delay + extra time)
-      await new Promise(resolve => setTimeout(resolve, 150));
+      await new Promise((resolve) => setTimeout(resolve, 150));
 
       // Assert
       expect(mockWatcher.close).toHaveBeenCalled();
@@ -319,8 +338,12 @@ describe('FileWatcher', () => {
         isFile: (): boolean => true,
       } as MockStats);
 
-      const mockWatcher1 = Object.assign(new EventEmitter(), { close: jest.fn() }) as MockFSWatcher;
-      const mockWatcher2 = Object.assign(new EventEmitter(), { close: jest.fn() }) as MockFSWatcher;
+      const mockWatcher1 = Object.assign(new EventEmitter(), {
+        close: jest.fn(),
+      }) as MockFSWatcher;
+      const mockWatcher2 = Object.assign(new EventEmitter(), {
+        close: jest.fn(),
+      }) as MockFSWatcher;
 
       mockFsWatch
         .mockReturnValueOnce(mockWatcher1 as FSWatcher)
@@ -347,9 +370,18 @@ describe('FileWatcher', () => {
       const newMtime2 = new Date('2024-01-01T10:00:02Z');
 
       mockFs.stat
-        .mockResolvedValueOnce({ mtime, isFile: (): boolean => true } as MockStats)
-        .mockResolvedValueOnce({ mtime: newMtime1, isFile: (): boolean => true } as MockStats)
-        .mockResolvedValueOnce({ mtime: newMtime2, isFile: (): boolean => true } as MockStats);
+        .mockResolvedValueOnce({
+          mtime,
+          isFile: (): boolean => true,
+        } as MockStats)
+        .mockResolvedValueOnce({
+          mtime: newMtime1,
+          isFile: (): boolean => true,
+        } as MockStats)
+        .mockResolvedValueOnce({
+          mtime: newMtime2,
+          isFile: (): boolean => true,
+        } as MockStats);
 
       // Act
       await fileWatcher.watchFile(filePath, changeCallback);
@@ -359,7 +391,7 @@ describe('FileWatcher', () => {
       mockWatcher.emit('change', 'change', 'schema.json');
 
       // Wait for debounce period
-      await new Promise(resolve => setTimeout(resolve, 150));
+      await new Promise((resolve) => setTimeout(resolve, 150));
 
       // Assert - should only trigger once due to throttling
       expect(changeCallback).toHaveBeenCalledTimes(1);

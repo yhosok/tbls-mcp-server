@@ -2,7 +2,10 @@ import { Result, ok, err } from 'neverthrow';
 import { join } from 'path';
 import * as path from 'path';
 import { TableIndexesResource } from '../schemas/database';
-import { parseSingleTableFile, resolveSchemaSource } from '../parsers/schema-adapter';
+import {
+  parseSingleTableFile,
+  resolveSchemaSource,
+} from '../parsers/schema-adapter';
 import { ResourceCache } from '../cache/resource-cache';
 
 /**
@@ -51,7 +54,7 @@ export const handleTableIndexesResource = async (
       return ok({
         schemaName,
         tableName,
-        indexes: cachedTable.indexes
+        indexes: cachedTable.indexes,
       });
     }
   }
@@ -59,7 +62,9 @@ export const handleTableIndexesResource = async (
   // Parse the table file using schema adapter (JSON format)
   const parseResult = parseSingleTableFile(tableBasePath);
   if (parseResult.isErr()) {
-    return err(new Error(`Failed to parse table: ${parseResult.error.message}`));
+    return err(
+      new Error(`Failed to parse table: ${parseResult.error.message}`)
+    );
   }
 
   const schema = parseResult.value;
@@ -77,6 +82,6 @@ export const handleTableIndexesResource = async (
   return ok({
     schemaName,
     tableName,
-    indexes: table.indexes
+    indexes: table.indexes,
   });
 };

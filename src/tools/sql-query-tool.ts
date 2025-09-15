@@ -1,6 +1,12 @@
 import { Result, ok, err } from 'neverthrow';
 import { DatabaseConfig } from '../schemas/config';
-import { QueryResult, SqlQueryRequest, validateSqlQuery, sanitizeQuery, validateSqlQueryRequest } from '../schemas/database';
+import {
+  QueryResult,
+  SqlQueryRequest,
+  validateSqlQuery,
+  sanitizeQuery,
+  validateSqlQueryRequest,
+} from '../schemas/database';
 import { getPooledConnection, executeQuery } from '../database/connection';
 import { safeExecuteAsync } from '../utils/result';
 
@@ -62,7 +68,9 @@ export const handleSqlQuery = async (
   // Validate and sanitize the input request
   const validationResult = validateSqlQueryRequest(request);
   if (validationResult.isErr()) {
-    return err(new Error(`Request validation failed: ${validationResult.error}`));
+    return err(
+      new Error(`Request validation failed: ${validationResult.error}`)
+    );
   }
 
   const { query, parameters = [] } = validationResult.value;
@@ -82,19 +90,29 @@ export const handleSqlQuery = async (
   }
 
   // Validate timeout
-  const actualTimeout = Math.min(Math.max(timeoutMs, 1000), MAX_QUERY_TIMEOUT_MS);
+  const actualTimeout = Math.min(
+    Math.max(timeoutMs, 1000),
+    MAX_QUERY_TIMEOUT_MS
+  );
 
   return safeExecuteAsync(async () => {
     // Get database connection from pool
     const connectionResult = await getPooledConnection(config);
     if (connectionResult.isErr()) {
-      throw new Error(`Database connection failed: ${connectionResult.error.message}`);
+      throw new Error(
+        `Database connection failed: ${connectionResult.error.message}`
+      );
     }
 
     const connection = connectionResult.value;
 
     // Execute the query
-    const queryResult = await executeQuery(connection, sanitizedQuery, parameters, actualTimeout);
+    const queryResult = await executeQuery(
+      connection,
+      sanitizedQuery,
+      parameters,
+      actualTimeout
+    );
     if (queryResult.isErr()) {
       throw queryResult.error;
     }
@@ -193,13 +211,15 @@ export const createSqlQueryTool = (config: DatabaseConfig): SqlQueryTool => {
         },
         parameters: {
           type: 'array',
-          description: 'Query parameters for prepared statements (use ? placeholders in query)',
+          description:
+            'Query parameters for prepared statements (use ? placeholders in query)',
           items: {},
           default: [],
         },
         timeout: {
           type: 'number',
-          description: 'Query timeout in milliseconds (1000-300000, default 30000)',
+          description:
+            'Query timeout in milliseconds (1000-300000, default 30000)',
           minimum: 1000,
           maximum: MAX_QUERY_TIMEOUT_MS,
           default: DEFAULT_QUERY_TIMEOUT_MS,
@@ -207,7 +227,9 @@ export const createSqlQueryTool = (config: DatabaseConfig): SqlQueryTool => {
       },
       required: ['query'],
     },
-    handler: async (input: SqlQueryToolInput): Promise<Result<QueryResult, Error>> => {
+    handler: async (
+      input: SqlQueryToolInput
+    ): Promise<Result<QueryResult, Error>> => {
       try {
         const request: SqlQueryRequest = {
           query: input.query,
@@ -218,7 +240,11 @@ export const createSqlQueryTool = (config: DatabaseConfig): SqlQueryTool => {
 
         return await handleSqlQuery(request, config, timeout);
       } catch (error) {
-        return err(new Error(`Tool handler error: ${error instanceof Error ? error.message : String(error)}`));
+        return err(
+          new Error(
+            `Tool handler error: ${error instanceof Error ? error.message : String(error)}`
+          )
+        );
       }
     },
   };
@@ -251,20 +277,24 @@ export const handleSqlQueryWithRetry = async (
 
     // Don't retry on certain types of errors
     const errorMessage = lastError.message.toLowerCase();
-    if (errorMessage.includes('validation failed') ||
-        errorMessage.includes('only select queries') ||
-        errorMessage.includes('syntax') ||
-        errorMessage.includes('unknown column') ||
-        errorMessage.includes('no such table')) {
+    if (
+      errorMessage.includes('validation failed') ||
+      errorMessage.includes('only select queries') ||
+      errorMessage.includes('syntax') ||
+      errorMessage.includes('unknown column') ||
+      errorMessage.includes('no such table')
+    ) {
       break;
     }
 
     // Retry on connection and timeout errors
     if (attempt < maxRetries) {
-      if (errorMessage.includes('connection') ||
-          errorMessage.includes('timeout') ||
-          errorMessage.includes('busy')) {
-        await new Promise(resolve => setTimeout(resolve, retryDelay));
+      if (
+        errorMessage.includes('connection') ||
+        errorMessage.includes('timeout') ||
+        errorMessage.includes('busy')
+      ) {
+        await new Promise((resolve) => setTimeout(resolve, retryDelay));
         continue;
       }
     }
@@ -272,7 +302,11 @@ export const handleSqlQueryWithRetry = async (
     break;
   }
 
-  return err(new Error(`Query failed after ${maxRetries + 1} attempts: ${lastError?.message || 'Unknown error'}`));
+  return err(
+    new Error(
+      `Query failed after ${maxRetries + 1} attempts: ${lastError?.message || 'Unknown error'}`
+    )
+  );
 };
 
 /**
@@ -290,7 +324,9 @@ export const handleMultipleSqlQueries = async (
   for (const request of requests) {
     const result = await handleSqlQuery(request, config);
     if (result.isErr()) {
-      return err(new Error(`Query ${results.length + 1} failed: ${result.error.message}`));
+      return err(
+        new Error(`Query ${results.length + 1} failed: ${result.error.message}`)
+      );
     }
     results.push(result.value);
   }
@@ -305,7 +341,9 @@ export const handleMultipleSqlQueries = async (
  */
 export const getDatabaseSchemaInfo = async (
   config: DatabaseConfig
-): Promise<Result<{ tables: string[]; columns: Record<string, string[]> }, Error>> => {
+): Promise<
+  Result<{ tables: string[]; columns: Record<string, string[]> }, Error>
+> => {
   return safeExecuteAsync(async () => {
     let tablesQuery: string;
     let columnsQuery: string;
@@ -343,21 +381,27 @@ export const getDatabaseSchemaInfo = async (
     }
 
     // Get tables
-    const tablesResult = await handleSqlQuery({ query: tablesQuery, parameters: [] }, config);
+    const tablesResult = await handleSqlQuery(
+      { query: tablesQuery, parameters: [] },
+      config
+    );
     if (tablesResult.isErr()) {
       throw tablesResult.error;
     }
 
-    const tables = tablesResult.value.rows.map(row => row[0] as string);
+    const tables = tablesResult.value.rows.map((row) => row[0] as string);
 
     // Get columns
-    const columnsResult = await handleSqlQuery({ query: columnsQuery, parameters: [] }, config);
+    const columnsResult = await handleSqlQuery(
+      { query: columnsQuery, parameters: [] },
+      config
+    );
     if (columnsResult.isErr()) {
       throw columnsResult.error;
     }
 
     const columns: Record<string, string[]> = {};
-    columnsResult.value.rows.forEach(row => {
+    columnsResult.value.rows.forEach((row) => {
       const tableName = row[0] as string;
       const columnName = row[1] as string;
 
@@ -380,11 +424,15 @@ export const validateDatabaseConnection = async (
   config: DatabaseConfig
 ): Promise<Result<DatabaseConnectionInfo, Error>> => {
   return safeExecuteAsync(async () => {
-    const versionQuery = config.type === 'mysql'
-      ? 'SELECT VERSION() as version, CONNECTION_ID() as connection_id'
-      : 'SELECT sqlite_version() as version';
+    const versionQuery =
+      config.type === 'mysql'
+        ? 'SELECT VERSION() as version, CONNECTION_ID() as connection_id'
+        : 'SELECT sqlite_version() as version';
 
-    const result = await handleSqlQuery({ query: versionQuery, parameters: [] }, config);
+    const result = await handleSqlQuery(
+      { query: versionQuery, parameters: [] },
+      config
+    );
     if (result.isErr()) {
       throw result.error;
     }
@@ -393,7 +441,10 @@ export const validateDatabaseConnection = async (
     return {
       connected: true,
       version: row[0] as string,
-      serverInfo: config.type === 'mysql' ? { connectionId: row[1] as number } : undefined,
+      serverInfo:
+        config.type === 'mysql'
+          ? { connectionId: row[1] as number }
+          : undefined,
     };
   }, 'Database connection validation failed');
 };
@@ -459,6 +510,10 @@ export const executeSafeQuery = async (
   } catch (error) {
     metadata.endTime = Date.now();
     metadata.totalTimeMs = metadata.endTime - startTime;
-    return err(new Error(`Safe query execution failed: ${error instanceof Error ? error.message : String(error)}`));
+    return err(
+      new Error(
+        `Safe query execution failed: ${error instanceof Error ? error.message : String(error)}`
+      )
+    );
   }
 };

@@ -7,7 +7,9 @@ jest.mock('fs', () => ({
   statSync: jest.fn(),
 }));
 
-const mockExistsSync = fs.existsSync as jest.MockedFunction<typeof fs.existsSync>;
+const mockExistsSync = fs.existsSync as jest.MockedFunction<
+  typeof fs.existsSync
+>;
 const mockStatSync = fs.statSync as jest.MockedFunction<typeof fs.statSync>;
 
 describe('resolveSchemaSource', () => {
@@ -40,7 +42,9 @@ describe('resolveSchemaSource', () => {
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
-        expect(result.error.message).toBe('Schema source does not exist: /path/to/nonexistent.json');
+        expect(result.error.message).toBe(
+          'Schema source does not exist: /path/to/nonexistent.json'
+        );
       }
     });
 
@@ -53,7 +57,9 @@ describe('resolveSchemaSource', () => {
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
-        expect(result.error.message).toBe('Schema file must have .json extension, got: .txt');
+        expect(result.error.message).toBe(
+          'Schema file must have .json extension, got: .txt'
+        );
       }
     });
 
@@ -66,7 +72,9 @@ describe('resolveSchemaSource', () => {
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
-        expect(result.error.message).toContain('Markdown files are no longer supported');
+        expect(result.error.message).toContain(
+          'Markdown files are no longer supported'
+        );
       }
     });
   });
@@ -75,7 +83,10 @@ describe('resolveSchemaSource', () => {
     it('should resolve directory without file resolution', () => {
       const dirPath = '/path/to/schemas';
       mockExistsSync.mockReturnValue(true);
-      mockStatSync.mockReturnValue({ isFile: () => false, isDirectory: () => true } as fs.Stats);
+      mockStatSync.mockReturnValue({
+        isFile: () => false,
+        isDirectory: () => true,
+      } as fs.Stats);
 
       const result = resolveSchemaSource(dirPath);
 
@@ -96,20 +107,27 @@ describe('resolveSchemaSource', () => {
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
-        expect(result.error.message).toBe('Schema source does not exist: /path/to/nonexistent');
+        expect(result.error.message).toBe(
+          'Schema source does not exist: /path/to/nonexistent'
+        );
       }
     });
 
     it('should fail when path is neither file nor directory', () => {
       const sourcePath = '/dev/null';
       mockExistsSync.mockReturnValue(true);
-      mockStatSync.mockReturnValue({ isFile: () => false, isDirectory: () => false } as fs.Stats);
+      mockStatSync.mockReturnValue({
+        isFile: () => false,
+        isDirectory: () => false,
+      } as fs.Stats);
 
       const result = resolveSchemaSource(sourcePath);
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
-        expect(result.error.message).toBe('Schema source is neither a file nor directory: /dev/null');
+        expect(result.error.message).toBe(
+          'Schema source is neither a file nor directory: /dev/null'
+        );
       }
     });
   });
@@ -120,7 +138,9 @@ describe('resolveSchemaSource', () => {
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
-        expect(result.error.message).toBe('Schema source must be a non-empty string');
+        expect(result.error.message).toBe(
+          'Schema source must be a non-empty string'
+        );
       }
     });
 
@@ -129,7 +149,9 @@ describe('resolveSchemaSource', () => {
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
-        expect(result.error.message).toBe('Schema source must be a non-empty string');
+        expect(result.error.message).toBe(
+          'Schema source must be a non-empty string'
+        );
       }
     });
 
@@ -138,7 +160,9 @@ describe('resolveSchemaSource', () => {
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
-        expect(result.error.message).toBe('Schema source must be a non-empty string');
+        expect(result.error.message).toBe(
+          'Schema source must be a non-empty string'
+        );
       }
     });
 
@@ -161,7 +185,9 @@ describe('resolveSchemaSource', () => {
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
-        expect(result.error.message).toBe('Error accessing schema source /path/to/schema.json: Permission denied');
+        expect(result.error.message).toBe(
+          'Error accessing schema source /path/to/schema.json: Permission denied'
+        );
       }
     });
   });

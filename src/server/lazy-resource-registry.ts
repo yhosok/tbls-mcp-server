@@ -7,7 +7,13 @@
  */
 
 import { Result, ok, err } from 'neverthrow';
-import { ResourcePatterns, ResourcePattern, ResourceMetadata, GenerationContext, ResourcePatternMatch } from './resource-patterns';
+import {
+  ResourcePatterns,
+  ResourcePattern,
+  ResourceMetadata,
+  GenerationContext,
+  ResourcePatternMatch,
+} from './resource-patterns';
 import { ResourceCache } from '../cache/resource-cache';
 
 /**
@@ -72,7 +78,7 @@ export class LazyResourceRegistry {
           uri: pattern.uriPattern,
           mimeType: pattern.mimeType,
           name: pattern.namePattern,
-          description: pattern.descriptionPattern
+          description: pattern.descriptionPattern,
         });
       }
 
@@ -93,7 +99,11 @@ export class LazyResourceRegistry {
 
       return ok(resources);
     } catch (error) {
-      return err(new Error(`Failed to list resources: ${error instanceof Error ? error.message : 'Unknown error'}`));
+      return err(
+        new Error(
+          `Failed to list resources: ${error instanceof Error ? error.message : 'Unknown error'}`
+        )
+      );
     }
   }
 
@@ -108,10 +118,16 @@ export class LazyResourceRegistry {
    * Perform on-demand discovery for a specific pattern
    * This is used to populate the cache when a pattern's resources are needed
    */
-  async discoverResourcesOnDemand(patternId: string): Promise<Result<ResourceMetadata[], Error>> {
-    const pattern = ResourcePatterns.getAllPatterns().find(p => p.id === patternId);
+  async discoverResourcesOnDemand(
+    patternId: string
+  ): Promise<Result<ResourceMetadata[], Error>> {
+    const pattern = ResourcePatterns.getAllPatterns().find(
+      (p) => p.id === patternId
+    );
     if (!pattern || !pattern.generator) {
-      return err(new Error(`Pattern ${patternId} not found or has no generator`));
+      return err(
+        new Error(`Pattern ${patternId} not found or has no generator`)
+      );
     }
 
     // Check if we already have cached resources
@@ -137,7 +153,9 @@ export class LazyResourceRegistry {
    * This method is used when a client requests a resource that wasn't returned
    * by listResources but might still be valid (e.g., a specific table resource).
    */
-  async discoverResource(uri: string): Promise<Result<ResourceMetadata | null, Error>> {
+  async discoverResource(
+    uri: string
+  ): Promise<Result<ResourceMetadata | null, Error>> {
     const match = this.matchUri(uri);
     if (!match) {
       return ok(null);
@@ -148,8 +166,14 @@ export class LazyResourceRegistry {
       return ok({
         uri: match.pattern.uriPattern,
         mimeType: match.pattern.mimeType,
-        name: ResourcePatterns.interpolate(match.pattern.namePattern, match.params),
-        description: ResourcePatterns.interpolate(match.pattern.descriptionPattern, match.params)
+        name: ResourcePatterns.interpolate(
+          match.pattern.namePattern,
+          match.params
+        ),
+        description: ResourcePatterns.interpolate(
+          match.pattern.descriptionPattern,
+          match.params
+        ),
       });
     }
 
@@ -157,19 +181,26 @@ export class LazyResourceRegistry {
     try {
       const context: GenerationContext = {
         schemaSource: this.schemaSource,
-        scope: match.params
+        scope: match.params,
       };
 
-      const generatedResult = await ResourcePatterns.generateResources(match.pattern, context);
+      const generatedResult = await ResourcePatterns.generateResources(
+        match.pattern,
+        context
+      );
       if (generatedResult.isErr()) {
         return err(generatedResult.error);
       }
 
       // Find the specific resource in the generated list
-      const resource = generatedResult.value.find(r => r.uri === uri);
+      const resource = generatedResult.value.find((r) => r.uri === uri);
       return ok(resource || null);
     } catch (error) {
-      return err(new Error(`Failed to discover resource ${uri}: ${error instanceof Error ? error.message : 'Unknown error'}`));
+      return err(
+        new Error(
+          `Failed to discover resource ${uri}: ${error instanceof Error ? error.message : 'Unknown error'}`
+        )
+      );
     }
   }
 
@@ -189,18 +220,20 @@ export class LazyResourceRegistry {
     };
   } {
     const now = Date.now();
-    const discoveryEntries = Array.from(this.discoveryCache.entries()).map(([patternId, cache]) => ({
-      patternId,
-      age: now - cache.timestamp,
-      resourceCount: cache.resources.length
-    }));
+    const discoveryEntries = Array.from(this.discoveryCache.entries()).map(
+      ([patternId, cache]) => ({
+        patternId,
+        age: now - cache.timestamp,
+        resourceCount: cache.resources.length,
+      })
+    );
 
     return {
       discoveryCache: {
         size: this.discoveryCache.size,
-        entries: discoveryEntries
+        entries: discoveryEntries,
       },
-      resourceCache: this.cache?.getStats() || undefined
+      resourceCache: this.cache?.getStats() || undefined,
     };
   }
 
@@ -215,13 +248,15 @@ export class LazyResourceRegistry {
   /**
    * Discover resources for a specific pattern
    */
-  private async discoverResourcesForPattern(pattern: ResourcePattern): Promise<Result<ResourceMetadata[], Error>> {
+  private async discoverResourcesForPattern(
+    pattern: ResourcePattern
+  ): Promise<Result<ResourceMetadata[], Error>> {
     if (!pattern.generator) {
       return err(new Error(`Pattern ${pattern.id} does not have a generator`));
     }
 
     const context: GenerationContext = {
-      schemaSource: this.schemaSource
+      schemaSource: this.schemaSource,
     };
 
     return ResourcePatterns.generateResources(pattern, context);
@@ -249,11 +284,14 @@ export class LazyResourceRegistry {
   /**
    * Cache discovery results
    */
-  private setCachedDiscovery(patternId: string, resources: ResourceMetadata[]): void {
+  private setCachedDiscovery(
+    patternId: string,
+    resources: ResourceMetadata[]
+  ): void {
     this.discoveryCache.set(patternId, {
       timestamp: Date.now(),
       resources,
-      ttl: this.discoveryTtl
+      ttl: this.discoveryTtl,
     });
   }
 }

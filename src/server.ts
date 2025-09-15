@@ -12,7 +12,10 @@ import {
 
 import { ServerConfig } from './schemas/config.js';
 import { handleSchemaListResource } from './resources/schema-resource.js';
-import { handleSchemaTablesResource, handleTableInfoResource } from './resources/table-resource.js';
+import {
+  handleSchemaTablesResource,
+  handleTableInfoResource,
+} from './resources/table-resource.js';
 import { handleTableIndexesResource } from './resources/index-resource.js';
 import { createSqlQueryTool, handleSqlQuery } from './tools/sql-query-tool.js';
 import { validateSqlQueryRequest } from './schemas/database.js';
@@ -45,7 +48,7 @@ export class TblsMcpServer {
     this.lazyRegistry = new LazyResourceRegistry({
       schemaSource: this.config.schemaSource!,
       cache: this.cache,
-      discoveryTtl: config.cache?.ttlMs ?? 300000
+      discoveryTtl: config.cache?.ttlMs ?? 300000,
     });
 
     this.server = new Server(
@@ -83,7 +86,10 @@ export class TblsMcpServer {
       try {
         const resourcesResult = await this.lazyRegistry.listResources();
         if (resourcesResult.isErr()) {
-          console.warn('Warning: Failed to list resources via lazy loading:', resourcesResult.error.message);
+          console.warn(
+            'Warning: Failed to list resources via lazy loading:',
+            resourcesResult.error.message
+          );
           // Fallback to basic static resources
           return {
             resources: [
@@ -91,9 +97,10 @@ export class TblsMcpServer {
                 uri: 'schema://list',
                 mimeType: 'application/json',
                 name: 'Database Schemas',
-                description: 'List of all available database schemas with metadata',
-              }
-            ]
+                description:
+                  'List of all available database schemas with metadata',
+              },
+            ],
           };
         }
 
@@ -107,77 +114,82 @@ export class TblsMcpServer {
               uri: 'schema://list',
               mimeType: 'application/json',
               name: 'Database Schemas',
-              description: 'List of all available database schemas with metadata',
-            }
-          ]
+              description:
+                'List of all available database schemas with metadata',
+            },
+          ],
         };
       }
     });
 
     // Handle resource reading with lazy discovery
-    this.server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
-      const { uri } = request.params;
+    this.server.setRequestHandler(
+      ReadResourceRequestSchema,
+      async (request) => {
+        const { uri } = request.params;
 
-      try {
-        // First, check if the URI matches any known pattern
-        const match = this.lazyRegistry.matchUri(uri);
-        if (!match) {
+        try {
+          // First, check if the URI matches any known pattern
+          const match = this.lazyRegistry.matchUri(uri);
+          if (!match) {
+            throw new McpError(
+              ErrorCode.InvalidRequest,
+              `Unknown resource URI: ${uri}`
+            );
+          }
+
+          // For resources that aren't in the initial list, discover them on-demand
+          const discoveredResource =
+            await this.lazyRegistry.discoverResource(uri);
+          if (discoveredResource.isErr()) {
+            throw new McpError(
+              ErrorCode.InternalError,
+              `Failed to discover resource: ${discoveredResource.error.message}`
+            );
+          }
+
+          // If resource doesn't exist, return appropriate error
+          if (!discoveredResource.value) {
+            throw new McpError(
+              ErrorCode.InvalidRequest,
+              `Resource not found: ${uri}`
+            );
+          }
+
+          // Now handle the actual resource content retrieval
+          if (uri === 'schema://list') {
+            return await this.handleSchemaListResource();
+          }
+
+          if (uri.startsWith('schema://') && uri.endsWith('/tables')) {
+            return await this.handleSchemaTablesResource(uri);
+          }
+
+          if (uri.startsWith('table://') && !uri.endsWith('/indexes')) {
+            return await this.handleTableInfoResource(uri);
+          }
+
+          if (uri.startsWith('table://') && uri.endsWith('/indexes')) {
+            return await this.handleTableIndexesResource(uri);
+          }
+
           throw new McpError(
             ErrorCode.InvalidRequest,
             `Unknown resource URI: ${uri}`
           );
-        }
+        } catch (error) {
+          if (error instanceof McpError) {
+            throw error;
+          }
 
-        // For resources that aren't in the initial list, discover them on-demand
-        const discoveredResource = await this.lazyRegistry.discoverResource(uri);
-        if (discoveredResource.isErr()) {
+          console.error('Error handling resource request:', error);
           throw new McpError(
             ErrorCode.InternalError,
-            `Failed to discover resource: ${discoveredResource.error.message}`
+            `Failed to handle resource: ${error instanceof Error ? error.message : 'Unknown error'}`
           );
         }
-
-        // If resource doesn't exist, return appropriate error
-        if (!discoveredResource.value) {
-          throw new McpError(
-            ErrorCode.InvalidRequest,
-            `Resource not found: ${uri}`
-          );
-        }
-
-        // Now handle the actual resource content retrieval
-        if (uri === 'schema://list') {
-          return await this.handleSchemaListResource();
-        }
-
-        if (uri.startsWith('schema://') && uri.endsWith('/tables')) {
-          return await this.handleSchemaTablesResource(uri);
-        }
-
-        if (uri.startsWith('table://') && !uri.endsWith('/indexes')) {
-          return await this.handleTableInfoResource(uri);
-        }
-
-        if (uri.startsWith('table://') && uri.endsWith('/indexes')) {
-          return await this.handleTableIndexesResource(uri);
-        }
-
-        throw new McpError(
-          ErrorCode.InvalidRequest,
-          `Unknown resource URI: ${uri}`
-        );
-      } catch (error) {
-        if (error instanceof McpError) {
-          throw error;
-        }
-
-        console.error('Error handling resource request:', error);
-        throw new McpError(
-          ErrorCode.InternalError,
-          `Failed to handle resource: ${error instanceof Error ? error.message : 'Unknown error'}`
-        );
       }
-    });
+    );
   }
 
   /**
@@ -201,10 +213,7 @@ export class TblsMcpServer {
       const { name, arguments: args } = request.params;
 
       if (name !== 'execute-sql') {
-        throw new McpError(
-          ErrorCode.MethodNotFound,
-          `Unknown tool: ${name}`
-        );
+        throw new McpError(ErrorCode.MethodNotFound, `Unknown tool: ${name}`);
       }
 
       if (!this.config.database) {
@@ -262,7 +271,10 @@ export class TblsMcpServer {
    * Handle schema://list resource
    */
   private async handleSchemaListResource(): Promise<ReadResourceResult> {
-    const result = await handleSchemaListResource(this.config.schemaSource!, this.cache);
+    const result = await handleSchemaListResource(
+      this.config.schemaSource!,
+      this.cache
+    );
 
     if (result.isErr()) {
       throw new McpError(
@@ -285,7 +297,9 @@ export class TblsMcpServer {
   /**
    * Handle schema://{schema_name}/tables resource
    */
-  private async handleSchemaTablesResource(uri: string): Promise<ReadResourceResult> {
+  private async handleSchemaTablesResource(
+    uri: string
+  ): Promise<ReadResourceResult> {
     // Parse schema name from URI: schema://schema_name/tables
     const match = uri.match(/^schema:\/\/([^/]+)\/tables$/);
     if (!match) {
@@ -296,7 +310,11 @@ export class TblsMcpServer {
     }
 
     const schemaName = match[1];
-    const result = await handleSchemaTablesResource(this.config.schemaSource!, schemaName, this.cache);
+    const result = await handleSchemaTablesResource(
+      this.config.schemaSource!,
+      schemaName,
+      this.cache
+    );
 
     if (result.isErr()) {
       throw new McpError(
@@ -319,7 +337,9 @@ export class TblsMcpServer {
   /**
    * Handle table://{schema}/{table} resource
    */
-  private async handleTableInfoResource(uri: string): Promise<ReadResourceResult> {
+  private async handleTableInfoResource(
+    uri: string
+  ): Promise<ReadResourceResult> {
     // Parse schema and table name from URI: table://schema_name/table_name
     const match = uri.match(/^table:\/\/([^/]+)\/([^/]+)$/);
     if (!match) {
@@ -330,7 +350,12 @@ export class TblsMcpServer {
     }
 
     const [, schemaName, tableName] = match;
-    const result = await handleTableInfoResource(this.config.schemaSource!, schemaName, tableName, this.cache);
+    const result = await handleTableInfoResource(
+      this.config.schemaSource!,
+      schemaName,
+      tableName,
+      this.cache
+    );
 
     if (result.isErr()) {
       throw new McpError(
@@ -353,7 +378,9 @@ export class TblsMcpServer {
   /**
    * Handle table://{schema}/{table}/indexes resource
    */
-  private async handleTableIndexesResource(uri: string): Promise<ReadResourceResult> {
+  private async handleTableIndexesResource(
+    uri: string
+  ): Promise<ReadResourceResult> {
     // Parse schema and table name from URI: table://schema_name/table_name/indexes
     const match = uri.match(/^table:\/\/([^/]+)\/([^/]+)\/indexes$/);
     if (!match) {
@@ -364,7 +391,12 @@ export class TblsMcpServer {
     }
 
     const [, schemaName, tableName] = match;
-    const result = await handleTableIndexesResource(this.config.schemaSource!, schemaName, tableName, this.cache);
+    const result = await handleTableIndexesResource(
+      this.config.schemaSource!,
+      schemaName,
+      tableName,
+      this.cache
+    );
 
     if (result.isErr()) {
       throw new McpError(
@@ -404,12 +436,21 @@ export class TblsMcpServer {
    * Get cache statistics for monitoring
    * @returns Cache statistics object or null if cache is disabled
    */
-  public getCacheStats(): { 
-    resourceCache: { hits: number; misses: number; hitRate: number; size: number } | null;
+  public getCacheStats(): {
+    resourceCache: {
+      hits: number;
+      misses: number;
+      hitRate: number;
+      size: number;
+    } | null;
     lazyRegistry: {
       discoveryCache: {
         size: number;
-        entries: Array<{ patternId: string; age: number; resourceCount: number }>;
+        entries: Array<{
+          patternId: string;
+          age: number;
+          resourceCount: number;
+        }>;
       };
       resourceCache?: {
         hits: number;
@@ -421,7 +462,7 @@ export class TblsMcpServer {
   } {
     return {
       resourceCache: this.cache?.getStats() ?? null,
-      lazyRegistry: this.lazyRegistry.getCacheStats()
+      lazyRegistry: this.lazyRegistry.getCacheStats(),
     };
   }
 

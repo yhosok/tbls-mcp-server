@@ -3,7 +3,12 @@ import { promises as fs } from 'fs';
 import { join } from 'path';
 import * as path from 'path';
 import { SchemaListResource } from '../schemas/database';
-import { parseTableReferences, parseSchemaOverview, parseSchemaWithFallback, resolveSchemaSource } from '../parsers/schema-adapter';
+import {
+  parseTableReferences,
+  parseSchemaOverview,
+  parseSchemaWithFallback,
+  resolveSchemaSource,
+} from '../parsers/schema-adapter';
 import { safeExecuteAsync, fromPromise } from '../utils/result';
 import { ResourceCache } from '../cache/resource-cache';
 
@@ -23,42 +28,55 @@ export const handleSchemaListResource = async (
   const resolveResult = resolveSchemaSource(schemaSource);
   if (resolveResult.isErr()) {
     // If it's a directory but no JSON files found, treat as empty directory
-    if (resolveResult.error.message.includes('No JSON schema file found in directory')) {
+    if (
+      resolveResult.error.message.includes(
+        'No JSON schema file found in directory'
+      )
+    ) {
       return ok({ schemas: [] });
     }
     return err(resolveResult.error);
   }
 
   const { type: sourceType, path: schemaPath } = resolveResult.value;
-  const schemaDir = sourceType === 'file' ? path.dirname(schemaPath) : schemaPath;
+  const schemaDir =
+    sourceType === 'file' ? path.dirname(schemaPath) : schemaPath;
 
   // Try to get cached schema list first
   if (cache) {
     const cachedTableRefs = await cache.getTableReferences(schemaDir);
     if (cachedTableRefs) {
       // Build a simple schema list from cached table references
-      const schemas = [{
-        name: 'default',
-        tableCount: cachedTableRefs.length,
-        description: 'Default schema'
-      }];
+      const schemas = [
+        {
+          name: 'default',
+          tableCount: cachedTableRefs.length,
+          description: 'Default schema',
+        },
+      ];
       return ok({ schemas });
     }
   }
 
   // For single file sources, handle as default schema
   if (sourceType === 'file') {
-    const singleSchemaResult = await parseSingleSchemaInfo(schemaDir, 'default', cache);
+    const singleSchemaResult = await parseSingleSchemaInfo(
+      schemaDir,
+      'default',
+      cache
+    );
     if (singleSchemaResult.isOk()) {
       return ok({ schemas: [singleSchemaResult.value] });
     } else {
       // Fallback for single file
       return ok({
-        schemas: [{
-          name: 'default',
-          tableCount: 0,
-          description: 'Default schema'
-        }]
+        schemas: [
+          {
+            name: 'default',
+            tableCount: 0,
+            description: 'Default schema',
+          },
+        ],
       });
     }
   }
@@ -74,34 +92,45 @@ export const handleSchemaListResource = async (
   }
 
   const dirEntries = readDirResult.value;
-  const schemas: Array<{ name: string; tableCount?: number; description?: string | null }> = [];
+  const schemas: Array<{
+    name: string;
+    tableCount?: number;
+    description?: string | null;
+  }> = [];
 
   // Check for single schema setup (schema.json in root)
-  const hasRootSchemaFile = dirEntries.some(entry => entry.isFile() && entry.name === 'schema.json');
+  const hasRootSchemaFile = dirEntries.some(
+    (entry) => entry.isFile() && entry.name === 'schema.json'
+  );
 
   if (hasRootSchemaFile) {
-    const singleSchemaResult = await parseSingleSchemaInfo(schemaDir, 'default', cache);
+    const singleSchemaResult = await parseSingleSchemaInfo(
+      schemaDir,
+      'default',
+      cache
+    );
     if (singleSchemaResult.isOk()) {
       schemas.push(singleSchemaResult.value);
     }
   }
 
   // Check for multi-schema setup (subdirectories with schema files)
-  const subdirectories = dirEntries.filter(entry => entry.isDirectory());
+  const subdirectories = dirEntries.filter((entry) => entry.isDirectory());
 
   for (const subdir of subdirectories) {
     const subdirPath = join(schemaDir, subdir.name);
     // Check for schema.json file
-    const hasSchemaFileResult = await safeExecuteAsync(
-      async () => {
-        await fs.access(join(subdirPath, 'schema.json'));
-        return true;
-      },
-      'No schema file found in subdirectory'
-    );
+    const hasSchemaFileResult = await safeExecuteAsync(async () => {
+      await fs.access(join(subdirPath, 'schema.json'));
+      return true;
+    }, 'No schema file found in subdirectory');
 
     if (hasSchemaFileResult.isOk()) {
-      const schemaResult = await parseSingleSchemaInfo(subdirPath, subdir.name, cache);
+      const schemaResult = await parseSingleSchemaInfo(
+        subdirPath,
+        subdir.name,
+        cache
+      );
       if (schemaResult.isOk()) {
         schemas.push(schemaResult.value);
       }
@@ -140,15 +169,21 @@ const parseSingleSchemaInfo = async (
   schemaPath: string,
   schemaName: string,
   cache?: ResourceCache
-): Promise<Result<{ name: string; tableCount?: number; description?: string | null }, Error>> => {
+): Promise<
+  Result<
+    { name: string; tableCount?: number; description?: string | null },
+    Error
+  >
+> => {
   // Try to get cached schema info first
   if (cache) {
     const cachedSchema = await cache.getSchema(schemaPath);
     if (cachedSchema?.metadata) {
       return ok({
         name: schemaName,
-        tableCount: cachedSchema.metadata.tableCount ?? cachedSchema.tables?.length ?? 0,
-        description: cachedSchema.metadata.description
+        tableCount:
+          cachedSchema.metadata.tableCount ?? cachedSchema.tables?.length ?? 0,
+        description: cachedSchema.metadata.description,
       });
     }
   }
@@ -159,7 +194,7 @@ const parseSingleSchemaInfo = async (
     const result = {
       name: schemaName, // Use provided name instead of parsed name for consistency
       tableCount: metadata.tableCount ?? undefined,
-      description: metadata.description
+      description: metadata.description,
     };
 
     // Cache the parsed metadata if cache is available
@@ -190,7 +225,7 @@ const parseSingleSchemaInfo = async (
     const result = {
       name: schemaName,
       tableCount: tableCount > 0 ? tableCount : 0,
-      description: schemaName === 'default' ? 'Default schema' : null
+      description: schemaName === 'default' ? 'Default schema' : null,
     };
 
     // Cache the table references if cache is available
@@ -208,7 +243,9 @@ const parseSingleSchemaInfo = async (
     const result = {
       name: schemaName,
       tableCount: schema.tables?.length ?? 0,
-      description: schema.metadata?.description ?? (schemaName === 'default' ? 'Default schema' : null)
+      description:
+        schema.metadata?.description ??
+        (schemaName === 'default' ? 'Default schema' : null),
     };
 
     // Cache the full schema if cache is available
@@ -223,6 +260,6 @@ const parseSingleSchemaInfo = async (
   return ok({
     name: schemaName,
     tableCount: 0,
-    description: schemaName === 'default' ? 'Default schema' : null
+    description: schemaName === 'default' ? 'Default schema' : null,
   });
 };

@@ -19,11 +19,22 @@ import {
   closeAllPooledConnections,
 } from '../../src/database/connection';
 
-const mockCreateConnection = createConnection as jest.MockedFunction<typeof createConnection>;
-const mockExecuteQuery = executeQuery as jest.MockedFunction<typeof executeQuery>;
-const mockCloseConnection = closeConnection as jest.MockedFunction<typeof closeConnection>;
-const mockGetPooledConnection = getPooledConnection as jest.MockedFunction<typeof getPooledConnection>;
-const mockCloseAllPooledConnections = closeAllPooledConnections as jest.MockedFunction<typeof closeAllPooledConnections>;
+const mockCreateConnection = createConnection as jest.MockedFunction<
+  typeof createConnection
+>;
+const mockExecuteQuery = executeQuery as jest.MockedFunction<
+  typeof executeQuery
+>;
+const mockCloseConnection = closeConnection as jest.MockedFunction<
+  typeof closeConnection
+>;
+const mockGetPooledConnection = getPooledConnection as jest.MockedFunction<
+  typeof getPooledConnection
+>;
+const mockCloseAllPooledConnections =
+  closeAllPooledConnections as jest.MockedFunction<
+    typeof closeAllPooledConnections
+  >;
 
 describe('database connection (mocked)', () => {
   const mockMySQLConnection = {
@@ -41,11 +52,13 @@ describe('database connection (mocked)', () => {
 
     // Set up default successful responses
     mockCreateConnection.mockResolvedValue(ok(mockMySQLConnection));
-    mockExecuteQuery.mockResolvedValue(ok({
-      rows: [],
-      rowCount: 0,
-      executionTime: 1,
-    }));
+    mockExecuteQuery.mockResolvedValue(
+      ok({
+        rows: [],
+        rowCount: 0,
+        executionTime: 1,
+      })
+    );
     mockCloseConnection.mockResolvedValue(ok(undefined));
     mockGetPooledConnection.mockResolvedValue(ok(mockMySQLConnection));
     mockCloseAllPooledConnections.mockResolvedValue(ok(undefined));
@@ -84,7 +97,9 @@ describe('database connection (mocked)', () => {
         connectionString: 'invalid-connection-string',
       };
 
-      mockCreateConnection.mockResolvedValue(err(new Error('Connection failed')));
+      mockCreateConnection.mockResolvedValue(
+        err(new Error('Connection failed'))
+      );
 
       const result = await createConnection(config);
 
@@ -96,7 +111,11 @@ describe('database connection (mocked)', () => {
     it('should execute queries successfully', async () => {
       const result = await executeQuery(mockMySQLConnection, 'SELECT 1', []);
 
-      expect(mockExecuteQuery).toHaveBeenCalledWith(mockMySQLConnection, 'SELECT 1', []);
+      expect(mockExecuteQuery).toHaveBeenCalledWith(
+        mockMySQLConnection,
+        'SELECT 1',
+        []
+      );
       expect(result.isOk()).toBe(true);
     });
 

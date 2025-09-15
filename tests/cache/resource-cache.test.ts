@@ -1,7 +1,11 @@
 import { jest } from '@jest/globals';
 import { promises as fs } from 'fs';
 import { ResourceCache } from '../../src/cache/resource-cache';
-import { DatabaseSchema, TableReference, DatabaseTable } from '../../src/schemas/database';
+import {
+  DatabaseSchema,
+  TableReference,
+  DatabaseTable,
+} from '../../src/schemas/database';
 
 // Mock fs module
 jest.mock('fs', () => ({

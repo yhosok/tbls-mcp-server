@@ -28,9 +28,13 @@ type UnknownJsonObject = Record<string, unknown>;
  * @param filePath - Path to the JSON file
  * @returns Result containing parsed database schema or error
  */
-export const parseJsonFile = (filePath: string): Result<DatabaseSchema, Error> => {
-  return safeExecute(() => readFileSync(filePath, 'utf-8'), 'Failed to read file')
-    .andThen(content => parseJsonContent(content));
+export const parseJsonFile = (
+  filePath: string
+): Result<DatabaseSchema, Error> => {
+  return safeExecute(
+    () => readFileSync(filePath, 'utf-8'),
+    'Failed to read file'
+  ).andThen((content) => parseJsonContent(content));
 };
 
 /**
@@ -38,7 +42,9 @@ export const parseJsonFile = (filePath: string): Result<DatabaseSchema, Error> =
  * @param content - JSON content string
  * @returns Result containing parsed database schema or error
  */
-export const parseJsonContent = (content: string): Result<DatabaseSchema, Error> => {
+export const parseJsonContent = (
+  content: string
+): Result<DatabaseSchema, Error> => {
   // Validate content is not empty
   const trimmedContent = content.trim();
   if (trimmedContent.length === 0) {
@@ -46,13 +52,15 @@ export const parseJsonContent = (content: string): Result<DatabaseSchema, Error>
   }
 
   // Parse JSON safely
-  return safeExecute(() => JSON.parse(trimmedContent), 'Failed to parse JSON')
-    .andThen(data => {
-      if (data === null) {
-        return createError('Parsed JSON is null');
-      }
-      return parseJsonSchema(data);
-    });
+  return safeExecute(
+    () => JSON.parse(trimmedContent),
+    'Failed to parse JSON'
+  ).andThen((data) => {
+    if (data === null) {
+      return createError('Parsed JSON is null');
+    }
+    return parseJsonSchema(data);
+  });
 };
 
 /**
@@ -60,7 +68,9 @@ export const parseJsonContent = (content: string): Result<DatabaseSchema, Error>
  * @param schemaData - Parsed JSON schema data
  * @returns Result containing parsed database schema or error
  */
-export const parseJsonSchema = (schemaData: unknown): Result<DatabaseSchema, Error> => {
+export const parseJsonSchema = (
+  schemaData: unknown
+): Result<DatabaseSchema, Error> => {
   if (!schemaData || typeof schemaData !== 'object') {
     return createError('Schema data must be an object');
   }
@@ -76,14 +86,19 @@ export const parseJsonSchema = (schemaData: unknown): Result<DatabaseSchema, Err
 
   // Parse metadata
   const metadata: SchemaMetadata = {
-    name: (typeof schemaObj.name === 'string' ? schemaObj.name : null) || 'database_schema',
-    description: (typeof schemaObj.desc === 'string' ? schemaObj.desc : null) || null,
+    name:
+      (typeof schemaObj.name === 'string' ? schemaObj.name : null) ||
+      'database_schema',
+    description:
+      (typeof schemaObj.desc === 'string' ? schemaObj.desc : null) || null,
     tableCount: schemaObj.tables.length,
     generated: null,
   };
 
   // Parse all tables
-  const tableResults = schemaObj.tables.map((tableData: unknown) => parseTableFromJson(tableData));
+  const tableResults = schemaObj.tables.map((tableData: unknown) =>
+    parseTableFromJson(tableData)
+  );
 
   // Combine table results
   const tablesResult = combineTableResults(tableResults);
@@ -102,7 +117,7 @@ export const parseJsonSchema = (schemaData: unknown): Result<DatabaseSchema, Err
   }
 
   // Create table references
-  const tableReferences: TableReference[] = tables.map(table => ({
+  const tableReferences: TableReference[] = tables.map((table) => ({
     name: table.name,
     comment: table.comment || null,
     columnCount: table.columns.length,
@@ -116,7 +131,7 @@ export const parseJsonSchema = (schemaData: unknown): Result<DatabaseSchema, Err
 
   // Validate final schema
   const validationResult = validateSchemaData(schema);
-  return validationResult.mapErr(error => new Error(error));
+  return validationResult.mapErr((error) => new Error(error));
 };
 
 /**
@@ -124,7 +139,9 @@ export const parseJsonSchema = (schemaData: unknown): Result<DatabaseSchema, Err
  * @param tableData - Table data from tbls JSON
  * @returns Result containing parsed database table or error
  */
-const parseTableFromJson = (tableData: unknown): Result<DatabaseTable, Error> => {
+const parseTableFromJson = (
+  tableData: unknown
+): Result<DatabaseTable, Error> => {
   if (!tableData || typeof tableData !== 'object') {
     return createError('Table data must be an object');
   }
@@ -132,7 +149,10 @@ const parseTableFromJson = (tableData: unknown): Result<DatabaseTable, Error> =>
   const table = tableData as UnknownJsonObject;
 
   // Validate required fields
-  const nameResult = validateNotEmpty(table.name as string, 'Table name is required');
+  const nameResult = validateNotEmpty(
+    table.name as string,
+    'Table name is required'
+  );
   if (nameResult.isErr()) {
     return err(nameResult.error);
   }
@@ -147,7 +167,9 @@ const parseTableFromJson = (tableData: unknown): Result<DatabaseTable, Error> =>
   }
 
   // Parse columns
-  const columnResults = table.columns.map((columnData: unknown) => parseColumnFromJson(columnData));
+  const columnResults = table.columns.map((columnData: unknown) =>
+    parseColumnFromJson(columnData)
+  );
   const columnsResult = combineColumnResults(columnResults);
   if (columnsResult.isErr()) {
     return err(columnsResult.error);
@@ -157,7 +179,9 @@ const parseTableFromJson = (tableData: unknown): Result<DatabaseTable, Error> =>
   // Parse indexes (optional)
   let indexes: DatabaseIndex[] = [];
   if (Array.isArray(table.indexes)) {
-    const indexResults = table.indexes.map((indexData: unknown) => parseIndexFromJson(indexData));
+    const indexResults = table.indexes.map((indexData: unknown) =>
+      parseIndexFromJson(indexData)
+    );
     const indexesResult = combineIndexResults(indexResults);
     if (indexesResult.isErr()) {
       return err(indexesResult.error);
@@ -165,12 +189,25 @@ const parseTableFromJson = (tableData: unknown): Result<DatabaseTable, Error> =>
     indexes = indexesResult.value;
   }
 
+  // Parse relations (optional)
+  let relations: DatabaseRelation[] = [];
+  if (Array.isArray(table.relations)) {
+    const relationResults = table.relations.map((relationData: unknown) =>
+      parseTableRelationFromJson(relationData)
+    );
+    const relationsResult = combineRelationResults(relationResults);
+    if (relationsResult.isErr()) {
+      return err(relationsResult.error);
+    }
+    relations = relationsResult.value;
+  }
+
   const databaseTable: DatabaseTable = {
     name,
     comment: (typeof table.comment === 'string' ? table.comment : null) || null,
     columns,
     indexes,
-    relations: [], // Will be populated when processing relations
+    relations,
   };
 
   return ok(databaseTable);
@@ -181,7 +218,9 @@ const parseTableFromJson = (tableData: unknown): Result<DatabaseTable, Error> =>
  * @param columnData - Column data from tbls JSON
  * @returns Result containing parsed database column or error
  */
-const parseColumnFromJson = (columnData: unknown): Result<DatabaseColumn, Error> => {
+const parseColumnFromJson = (
+  columnData: unknown
+): Result<DatabaseColumn, Error> => {
   if (!columnData || typeof columnData !== 'object') {
     return createError('Column data must be an object');
   }
@@ -189,13 +228,19 @@ const parseColumnFromJson = (columnData: unknown): Result<DatabaseColumn, Error>
   const column = columnData as UnknownJsonObject;
 
   // Validate required fields
-  const nameResult = validateNotEmpty(column.name as string, 'Column name is required');
+  const nameResult = validateNotEmpty(
+    column.name as string,
+    'Column name is required'
+  );
   if (nameResult.isErr()) {
     return err(nameResult.error);
   }
   const name = nameResult.value;
 
-  const typeResult = validateNotEmpty(column.type as string, 'Column type is required');
+  const typeResult = validateNotEmpty(
+    column.type as string,
+    'Column type is required'
+  );
   if (typeResult.isErr()) {
     return err(typeResult.error);
   }
@@ -211,12 +256,15 @@ const parseColumnFromJson = (columnData: unknown): Result<DatabaseColumn, Error>
   }
 
   // Parse auto increment
-  const isAutoIncrement = typeof column.extra_def === 'string' &&
+  const isAutoIncrement =
+    typeof column.extra_def === 'string' &&
     column.extra_def.toLowerCase().includes('auto_increment');
 
   // Parse primary key from indexes or extra_def
-  const isPrimaryKey = isAutoIncrement ||
-    (typeof column.extra_def === 'string' && column.extra_def.toLowerCase().includes('primary key'));
+  const isPrimaryKey =
+    isAutoIncrement ||
+    (typeof column.extra_def === 'string' &&
+      column.extra_def.toLowerCase().includes('primary key'));
 
   // Extract length/precision information from type
   let maxLength: number | null = null;
@@ -229,7 +277,10 @@ const parseColumnFromJson = (columnData: unknown): Result<DatabaseColumn, Error>
   if (precisionMatch) {
     precision = parseInt(precisionMatch[1], 10);
     scale = parseInt(precisionMatch[2], 10);
-  } else if (lengthMatch && (type.includes('varchar') || type.includes('char'))) {
+  } else if (
+    lengthMatch &&
+    (type.includes('varchar') || type.includes('char'))
+  ) {
     maxLength = parseInt(lengthMatch[1], 10);
   }
 
@@ -238,7 +289,8 @@ const parseColumnFromJson = (columnData: unknown): Result<DatabaseColumn, Error>
     type,
     nullable,
     defaultValue,
-    comment: (typeof column.comment === 'string' ? column.comment : null) || null,
+    comment:
+      (typeof column.comment === 'string' ? column.comment : null) || null,
     isPrimaryKey,
     isAutoIncrement,
     maxLength,
@@ -254,7 +306,9 @@ const parseColumnFromJson = (columnData: unknown): Result<DatabaseColumn, Error>
  * @param indexData - Index data from tbls JSON
  * @returns Result containing parsed database index or error
  */
-const parseIndexFromJson = (indexData: unknown): Result<DatabaseIndex, Error> => {
+const parseIndexFromJson = (
+  indexData: unknown
+): Result<DatabaseIndex, Error> => {
   if (!indexData || typeof indexData !== 'object') {
     return createError('Index data must be an object');
   }
@@ -262,7 +316,10 @@ const parseIndexFromJson = (indexData: unknown): Result<DatabaseIndex, Error> =>
   const index = indexData as UnknownJsonObject;
 
   // Validate required fields
-  const nameResult = validateNotEmpty(index.name as string, 'Index name is required');
+  const nameResult = validateNotEmpty(
+    index.name as string,
+    'Index name is required'
+  );
   if (nameResult.isErr()) {
     return err(nameResult.error);
   }
@@ -272,7 +329,10 @@ const parseIndexFromJson = (indexData: unknown): Result<DatabaseIndex, Error> =>
     return createError('Index must have a columns array');
   }
 
-  const columnsResult = validateNotEmptyArray(index.columns, 'Index must have at least one column');
+  const columnsResult = validateNotEmptyArray(
+    index.columns,
+    'Index must have at least one column'
+  );
   if (columnsResult.isErr()) {
     return err(columnsResult.error);
   }
@@ -289,6 +349,8 @@ const parseIndexFromJson = (indexData: unknown): Result<DatabaseIndex, Error> =>
     type = 'PRIMARY KEY';
   } else if (definition.toLowerCase().includes('unique')) {
     type = 'UNIQUE';
+  } else if (definition.toLowerCase().includes('key ')) {
+    type = 'KEY';
   } else {
     type = definition || 'INDEX';
   }
@@ -306,12 +368,70 @@ const parseIndexFromJson = (indexData: unknown): Result<DatabaseIndex, Error> =>
 };
 
 /**
+ * Parses a table-level relation from tbls JSON format (different structure than schema-level relations)
+ * @param relationData - Relation data from table in tbls JSON
+ * @returns Result containing parsed database relation or error
+ */
+const parseTableRelationFromJson = (
+  relationData: unknown
+): Result<DatabaseRelation, Error> => {
+  if (!relationData || typeof relationData !== 'object') {
+    return createError('Table relation data must be an object');
+  }
+
+  const relation = relationData as UnknownJsonObject;
+
+  // Support both parentTable and parent_table formats
+  const parentTable = (relation.parentTable || relation.parent_table) as string;
+  const parentColumns = (relation.parentColumns ||
+    relation.parent_columns) as string[];
+  const columns = relation.columns as string[];
+  const table = relation.table as string;
+
+  if (!parentTable || !table) {
+    return createError(
+      'Table relation must have table and parentTable/parent_table'
+    );
+  }
+
+  if (!Array.isArray(columns) || !Array.isArray(parentColumns)) {
+    return createError(
+      'Table relation must have columns and parentColumns/parent_columns arrays'
+    );
+  }
+
+  if (columns.length !== parentColumns.length) {
+    return createError(
+      'Table relation columns count mismatch between child and parent columns'
+    );
+  }
+
+  if (columns.length === 0) {
+    return createError('Table relation must have at least one column');
+  }
+
+  // Create belongsTo relation for the table
+  const databaseRelation: DatabaseRelation = {
+    type: 'belongsTo',
+    table: table,
+    columns: columns,
+    referencedTable: parentTable,
+    referencedColumns: parentColumns,
+  };
+
+  return ok(databaseRelation);
+};
+
+/**
  * Parses relations from tbls JSON format and maps them to tables
  * @param relationsData - Relations array from tbls JSON
  * @param tables - Array of parsed tables to update with relations
  * @returns Result indicating success or error
  */
-const parseRelationsFromJson = (relationsData: unknown[], tables: DatabaseTable[]): Result<void, Error> => {
+const parseRelationsFromJson = (
+  relationsData: unknown[],
+  tables: DatabaseTable[]
+): Result<void, Error> => {
   if (!Array.isArray(relationsData)) {
     return createError('Relations must be an array');
   }
@@ -332,7 +452,10 @@ const parseRelationsFromJson = (relationsData: unknown[], tables: DatabaseTable[
  * @param tables - Array of tables to update with relation
  * @returns Result indicating success or error
  */
-const parseRelationFromJson = (relationData: unknown, tables: DatabaseTable[]): Result<void, Error> => {
+const parseRelationFromJson = (
+  relationData: unknown,
+  tables: DatabaseTable[]
+): Result<void, Error> => {
   if (!relationData || typeof relationData !== 'object') {
     return createError('Relation data must be an object');
   }
@@ -347,12 +470,17 @@ const parseRelationFromJson = (relationData: unknown, tables: DatabaseTable[]): 
     return createError('Relation must have table and parent_table');
   }
 
-  if (!Array.isArray(relation.columns) || !Array.isArray(relation.parent_columns)) {
+  if (
+    !Array.isArray(relation.columns) ||
+    !Array.isArray(relation.parent_columns)
+  ) {
     return createError('Relation must have columns and parent_columns arrays');
   }
 
   if (relation.columns.length !== relation.parent_columns.length) {
-    return createError('Relation columns count mismatch between child and parent columns');
+    return createError(
+      'Relation columns count mismatch between child and parent columns'
+    );
   }
 
   if (relation.columns.length === 0) {
@@ -360,8 +488,8 @@ const parseRelationFromJson = (relationData: unknown, tables: DatabaseTable[]): 
   }
 
   // Find the child and parent tables
-  const childTable = tables.find(t => t.name === table);
-  const parentTableRef = tables.find(t => t.name === parentTable);
+  const childTable = tables.find((t) => t.name === table);
+  const parentTableRef = tables.find((t) => t.name === parentTable);
 
   if (!childTable) {
     return createError(`Child table '${table}' not found in schema`);
@@ -401,7 +529,9 @@ const parseRelationFromJson = (relationData: unknown, tables: DatabaseTable[]): 
  * @param tableResults - Array of table parse results
  * @returns Result containing array of tables or first error
  */
-const combineTableResults = (tableResults: Result<DatabaseTable, Error>[]): Result<DatabaseTable[], Error> => {
+const combineTableResults = (
+  tableResults: Result<DatabaseTable, Error>[]
+): Result<DatabaseTable[], Error> => {
   const tables: DatabaseTable[] = [];
 
   for (const result of tableResults) {
@@ -419,7 +549,9 @@ const combineTableResults = (tableResults: Result<DatabaseTable, Error>[]): Resu
  * @param columnResults - Array of column parse results
  * @returns Result containing array of columns or first error
  */
-const combineColumnResults = (columnResults: Result<DatabaseColumn, Error>[]): Result<DatabaseColumn[], Error> => {
+const combineColumnResults = (
+  columnResults: Result<DatabaseColumn, Error>[]
+): Result<DatabaseColumn[], Error> => {
   const columns: DatabaseColumn[] = [];
 
   for (const result of columnResults) {
@@ -437,7 +569,9 @@ const combineColumnResults = (columnResults: Result<DatabaseColumn, Error>[]): R
  * @param indexResults - Array of index parse results
  * @returns Result containing array of indexes or first error
  */
-const combineIndexResults = (indexResults: Result<DatabaseIndex, Error>[]): Result<DatabaseIndex[], Error> => {
+const combineIndexResults = (
+  indexResults: Result<DatabaseIndex, Error>[]
+): Result<DatabaseIndex[], Error> => {
   const indexes: DatabaseIndex[] = [];
 
   for (const result of indexResults) {
@@ -448,4 +582,24 @@ const combineIndexResults = (indexResults: Result<DatabaseIndex, Error>[]): Resu
   }
 
   return ok(indexes);
+};
+
+/**
+ * Combines multiple relation parse results into a single result
+ * @param relationResults - Array of relation parse results
+ * @returns Result containing array of relations or first error
+ */
+const combineRelationResults = (
+  relationResults: Result<DatabaseRelation, Error>[]
+): Result<DatabaseRelation[], Error> => {
+  const relations: DatabaseRelation[] = [];
+
+  for (const result of relationResults) {
+    if (result.isErr()) {
+      return err(result.error);
+    }
+    relations.push(result.value);
+  }
+
+  return ok(relations);
 };

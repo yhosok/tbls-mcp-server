@@ -2,8 +2,18 @@ import { Result, ok, err } from 'neverthrow';
 import { DatabaseConfig } from '../schemas/config';
 import { QueryResult, validateSqlQuery } from '../schemas/database';
 import { safeExecuteAsync, validateNotEmpty } from '../utils/result';
-import { createMySQLConnection, executeMySQLQuery, closeMySQLConnection, MySQLConnection } from './mysql-adapter';
-import { createSQLiteConnection, executeSQLiteQuery, closeSQLiteConnection, SQLiteConnection } from './sqlite-adapter';
+import {
+  createMySQLConnection,
+  executeMySQLQuery,
+  closeMySQLConnection,
+  MySQLConnection,
+} from './mysql-adapter';
+import {
+  createSQLiteConnection,
+  executeSQLiteQuery,
+  closeSQLiteConnection,
+  SQLiteConnection,
+} from './sqlite-adapter';
 
 /**
  * Union type for all database connection types
@@ -26,7 +36,9 @@ export class ConnectionPool {
    * @param config - Database configuration
    * @returns Result containing database connection
    */
-  async getConnection(config: DatabaseConfig): Promise<Result<DatabaseConnection, Error>> {
+  async getConnection(
+    config: DatabaseConfig
+  ): Promise<Result<DatabaseConnection, Error>> {
     const configKey = this.getConfigKey(config);
 
     const existingConnection = this.connections.get(configKey);
@@ -48,19 +60,24 @@ export class ConnectionPool {
    * @returns Result indicating success or failure
    */
   async closeAll(): Promise<Result<void, Error>> {
-    const closePromises = Array.from(this.connections.values()).map(connection =>
-      closeConnection(connection)
+    const closePromises = Array.from(this.connections.values()).map(
+      (connection) => closeConnection(connection)
     );
 
     const results = await Promise.allSettled(closePromises);
     this.connections.clear();
 
     const errors = results
-      .filter((result): result is PromiseRejectedResult => result.status === 'rejected')
-      .map(result => result.reason);
+      .filter(
+        (result): result is PromiseRejectedResult =>
+          result.status === 'rejected'
+      )
+      .map((result) => result.reason);
 
     if (errors.length > 0) {
-      return err(new Error(`Failed to close some connections: ${errors.join(', ')}`));
+      return err(
+        new Error(`Failed to close some connections: ${errors.join(', ')}`)
+      );
     }
 
     return ok(undefined);
@@ -115,7 +132,9 @@ export const createConnection = async (
       }
 
       default:
-        throw new Error(`Unsupported database type: ${(config as Record<string, unknown>).type}`);
+        throw new Error(
+          `Unsupported database type: ${(config as Record<string, unknown>).type}`
+        );
     }
   }, 'Failed to create database connection');
 };
@@ -142,13 +161,16 @@ export const executeQuery = async (
 
   // Validate query is not empty
   const trimmedQuery = query.trim();
-  const nonEmptyResult = validateNotEmpty(trimmedQuery, 'Query cannot be empty');
+  const nonEmptyResult = validateNotEmpty(
+    trimmedQuery,
+    'Query cannot be empty'
+  );
   if (nonEmptyResult.isErr()) {
     return err(nonEmptyResult.error);
   }
 
   // Check for multiple statements (basic SQL injection prevention)
-  const statements = trimmedQuery.split(';').filter(s => s.trim().length > 0);
+  const statements = trimmedQuery.split(';').filter((s) => s.trim().length > 0);
   if (statements.length > 1) {
     return err(new Error('Multiple statements are not allowed'));
   }
@@ -156,7 +178,12 @@ export const executeQuery = async (
   return safeExecuteAsync(async () => {
     switch (connection.type) {
       case 'mysql': {
-        const mysqlResult = await executeMySQLQuery(connection, trimmedQuery, params, timeoutMs);
+        const mysqlResult = await executeMySQLQuery(
+          connection,
+          trimmedQuery,
+          params,
+          timeoutMs
+        );
         if (mysqlResult.isErr()) {
           throw mysqlResult.error;
         }
@@ -164,7 +191,12 @@ export const executeQuery = async (
       }
 
       case 'sqlite': {
-        const sqliteResult = await executeSQLiteQuery(connection, trimmedQuery, params, timeoutMs);
+        const sqliteResult = await executeSQLiteQuery(
+          connection,
+          trimmedQuery,
+          params,
+          timeoutMs
+        );
         if (sqliteResult.isErr()) {
           throw sqliteResult.error;
         }
@@ -172,7 +204,9 @@ export const executeQuery = async (
       }
 
       default:
-        throw new Error(`Unsupported connection type: ${(connection as Record<string, unknown>).type}`);
+        throw new Error(
+          `Unsupported connection type: ${(connection as Record<string, unknown>).type}`
+        );
     }
   }, 'Query execution failed');
 };
@@ -204,7 +238,9 @@ export const closeConnection = async (
       }
 
       default:
-        throw new Error(`Unsupported connection type: ${(connection as Record<string, unknown>).type}`);
+        throw new Error(
+          `Unsupported connection type: ${(connection as Record<string, unknown>).type}`
+        );
     }
   }, 'Failed to close database connection');
 };
@@ -224,7 +260,9 @@ export const getPooledConnection = async (
  * Close all pooled connections
  * @returns Result indicating success or failure
  */
-export const closeAllPooledConnections = async (): Promise<Result<void, Error>> => {
+export const closeAllPooledConnections = async (): Promise<
+  Result<void, Error>
+> => {
   return globalConnectionPool.closeAll();
 };
 
@@ -245,9 +283,8 @@ export const testConnection = async (
 
   try {
     // Execute a simple test query
-    const testQuery = connection.type === 'mysql'
-      ? 'SELECT 1 as test'
-      : 'SELECT 1 as test';
+    const testQuery =
+      connection.type === 'mysql' ? 'SELECT 1 as test' : 'SELECT 1 as test';
 
     const queryResult = await executeQuery(connection, testQuery, [], 5000);
 
@@ -278,9 +315,10 @@ export const getDatabaseVersion = async (
   const connection = connectionResult.value;
 
   try {
-    const versionQuery = connection.type === 'mysql'
-      ? 'SELECT VERSION() as version'
-      : 'SELECT sqlite_version() as version';
+    const versionQuery =
+      connection.type === 'mysql'
+        ? 'SELECT VERSION() as version'
+        : 'SELECT sqlite_version() as version';
 
     const queryResult = await executeQuery(connection, versionQuery, [], 5000);
 

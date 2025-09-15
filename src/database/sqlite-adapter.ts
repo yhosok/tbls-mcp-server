@@ -84,7 +84,9 @@ export const createSQLiteConnection = async (
       database.get('SELECT sqlite_version() as version', (error, _row) => {
         if (error) {
           database.close();
-          reject(new Error(`SQLite connection validation failed: ${error.message}`));
+          reject(
+            new Error(`SQLite connection validation failed: ${error.message}`)
+          );
         } else {
           resolve();
         }
@@ -141,8 +143,8 @@ export const executeSQLiteQuery = async (
         const columns = Object.keys(rows[0]);
 
         // Convert rows to array format
-        const resultRows = rows.map(row => {
-          return columns.map(column => row[column]);
+        const resultRows = rows.map((row) => {
+          return columns.map((column) => row[column]);
         });
 
         resolve({
@@ -165,7 +167,10 @@ export const executeSQLiteQuery = async (
     if (timeout > 0) {
       let timeoutId: NodeJS.Timeout;
       const timeoutPromise = new Promise<never>((_, reject) => {
-        timeoutId = setTimeout(() => reject(new Error(`Query execution timeout after ${timeout}ms`)), timeout);
+        timeoutId = setTimeout(
+          () => reject(new Error(`Query execution timeout after ${timeout}ms`)),
+          timeout
+        );
       });
 
       return Promise.race([queryPromise, timeoutPromise]).finally(() => {
@@ -193,7 +198,9 @@ export const closeSQLiteConnection = async (
     const closePromise = new Promise<void>((resolve, reject) => {
       connection.database.close((error) => {
         if (error) {
-          reject(new Error(`Failed to close SQLite connection: ${error.message}`));
+          reject(
+            new Error(`Failed to close SQLite connection: ${error.message}`)
+          );
         } else {
           resolve();
         }
@@ -203,7 +210,11 @@ export const closeSQLiteConnection = async (
     // Apply timeout to close operation
     let timeoutId: NodeJS.Timeout;
     const timeoutPromise = new Promise<never>((_, reject) => {
-      timeoutId = setTimeout(() => reject(new Error(`Connection close timeout after ${timeoutMs}ms`)), timeoutMs);
+      timeoutId = setTimeout(
+        () =>
+          reject(new Error(`Connection close timeout after ${timeoutMs}ms`)),
+        timeoutMs
+      );
     });
 
     await Promise.race([closePromise, timeoutPromise]).finally(() => {
@@ -223,22 +234,29 @@ export const getSQLiteInfo = async (
   connection: SQLiteConnection
 ): Promise<Result<{ version: string; filename: string }, Error>> => {
   return safeExecuteAsync(async () => {
-    const info = await new Promise<{ version: string; filename: string }>((resolve, reject) => {
-      connection.database.get('SELECT sqlite_version() as version', (error: Error | null, row: SQLiteVersionRow) => {
-        if (error) {
-          reject(error);
-          return;
-        }
+    const info = await new Promise<{ version: string; filename: string }>(
+      (resolve, reject) => {
+        connection.database.get(
+          'SELECT sqlite_version() as version',
+          (error: Error | null, row: SQLiteVersionRow) => {
+            if (error) {
+              reject(error);
+              return;
+            }
 
-        // Get database filename from the connection
-        const filename = (connection.database as sqlite3.Database & { filename?: string }).filename || ':memory:';
+            // Get database filename from the connection
+            const filename =
+              (connection.database as sqlite3.Database & { filename?: string })
+                .filename || ':memory:';
 
-        resolve({
-          version: row.version,
-          filename,
-        });
-      });
-    });
+            resolve({
+              version: row.version,
+              filename,
+            });
+          }
+        );
+      }
+    );
 
     return info;
   }, 'Failed to get SQLite info');
@@ -277,9 +295,15 @@ export const isSQLiteConnectionAlive = async (
  */
 export const getSQLiteSchemaInfo = async (
   connection: SQLiteConnection
-): Promise<Result<{ tables: string[]; views: string[]; indexes: string[] }, Error>> => {
+): Promise<
+  Result<{ tables: string[]; views: string[]; indexes: string[] }, Error>
+> => {
   return safeExecuteAsync(async () => {
-    const schema = await new Promise<{ tables: string[]; views: string[]; indexes: string[] }>((resolve, reject) => {
+    const schema = await new Promise<{
+      tables: string[];
+      views: string[];
+      indexes: string[];
+    }>((resolve, reject) => {
       connection.database.all(
         `SELECT name, type FROM sqlite_master WHERE type IN ('table', 'view', 'index') ORDER BY type, name`,
         (error: Error | null, rows: SQLiteMasterRow[]) => {
@@ -288,9 +312,17 @@ export const getSQLiteSchemaInfo = async (
             return;
           }
 
-          const tables = rows.filter(row => row.type === 'table' && !row.name.startsWith('sqlite_')).map(row => row.name);
-          const views = rows.filter(row => row.type === 'view').map(row => row.name);
-          const indexes = rows.filter(row => row.type === 'index').map(row => row.name);
+          const tables = rows
+            .filter(
+              (row) => row.type === 'table' && !row.name.startsWith('sqlite_')
+            )
+            .map((row) => row.name);
+          const views = rows
+            .filter((row) => row.type === 'view')
+            .map((row) => row.name);
+          const indexes = rows
+            .filter((row) => row.type === 'index')
+            .map((row) => row.name);
 
           resolve({ tables, views, indexes });
         }
@@ -312,15 +344,20 @@ export const getSQLiteTableInfo = async (
   tableName: string
 ): Promise<Result<SQLiteTableInfoRow[], Error>> => {
   return safeExecuteAsync(async () => {
-    const tableInfo = await new Promise<SQLiteTableInfoRow[]>((resolve, reject) => {
-      connection.database.all(`PRAGMA table_info(${tableName})`, (error: Error | null, rows: SQLiteTableInfoRow[]) => {
-        if (error) {
-          reject(error);
-        } else {
-          resolve(rows);
-        }
-      });
-    });
+    const tableInfo = await new Promise<SQLiteTableInfoRow[]>(
+      (resolve, reject) => {
+        connection.database.all(
+          `PRAGMA table_info(${tableName})`,
+          (error: Error | null, rows: SQLiteTableInfoRow[]) => {
+            if (error) {
+              reject(error);
+            } else {
+              resolve(rows);
+            }
+          }
+        );
+      }
+    );
 
     return tableInfo;
   }, `Failed to get table info for ${tableName}`);
@@ -420,16 +457,21 @@ export const executeSQLiteQueryWithRetry = async (
 
     // Don't retry on certain types of errors
     const errorMessage = lastError.message.toLowerCase();
-    if (errorMessage.includes('syntax') ||
-        errorMessage.includes('no such column') ||
-        errorMessage.includes('no such table')) {
+    if (
+      errorMessage.includes('syntax') ||
+      errorMessage.includes('no such column') ||
+      errorMessage.includes('no such table')
+    ) {
       break;
     }
 
     // Retry on database busy errors
-    if (errorMessage.includes('database is locked') || errorMessage.includes('busy')) {
+    if (
+      errorMessage.includes('database is locked') ||
+      errorMessage.includes('busy')
+    ) {
       if (attempt < maxRetries) {
-        await new Promise(resolve => setTimeout(resolve, retryDelay));
+        await new Promise((resolve) => setTimeout(resolve, retryDelay));
         continue;
       }
     }
@@ -437,7 +479,11 @@ export const executeSQLiteQueryWithRetry = async (
     break;
   }
 
-  return err(new Error(`Query failed after ${maxRetries + 1} attempts: ${lastError?.message || 'Unknown error'}`));
+  return err(
+    new Error(
+      `Query failed after ${maxRetries + 1} attempts: ${lastError?.message || 'Unknown error'}`
+    )
+  );
 };
 
 /**

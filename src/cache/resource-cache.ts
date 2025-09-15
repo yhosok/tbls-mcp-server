@@ -1,6 +1,10 @@
 import { LRUCache } from 'lru-cache';
 import { promises as fs } from 'fs';
-import { DatabaseSchema, DatabaseTable, TableReference } from '../schemas/database';
+import {
+  DatabaseSchema,
+  DatabaseTable,
+  TableReference,
+} from '../schemas/database';
 import { safeExecuteAsync } from '../utils/result';
 
 /**
@@ -120,7 +124,9 @@ export class ResourceCache {
    */
   async getSchema(schemaPath: string): Promise<DatabaseSchema | null> {
     const cacheKey = `schema:${schemaPath}`;
-    const cached = this.cache.get(cacheKey) as CacheEntry<DatabaseSchema> | undefined;
+    const cached = this.cache.get(cacheKey) as
+      | CacheEntry<DatabaseSchema>
+      | undefined;
 
     if (!cached) {
       this.misses++;
@@ -165,9 +171,13 @@ export class ResourceCache {
   /**
    * Gets table references from cache if valid, null if expired or missing
    */
-  async getTableReferences(schemaPath: string): Promise<TableReference[] | null> {
+  async getTableReferences(
+    schemaPath: string
+  ): Promise<TableReference[] | null> {
     const cacheKey = `tableRefs:${schemaPath}`;
-    const cached = this.cache.get(cacheKey) as CacheEntry<TableReference[]> | undefined;
+    const cached = this.cache.get(cacheKey) as
+      | CacheEntry<TableReference[]>
+      | undefined;
 
     if (!cached) {
       this.misses++;
@@ -189,7 +199,10 @@ export class ResourceCache {
   /**
    * Caches table references with current directory mtime
    */
-  async setTableReferences(schemaPath: string, tableReferences: TableReference[]): Promise<void> {
+  async setTableReferences(
+    schemaPath: string,
+    tableReferences: TableReference[]
+  ): Promise<void> {
     const statResult = await safeExecuteAsync(
       async () => await fs.stat(schemaPath),
       'Failed to get directory stats'
@@ -214,7 +227,9 @@ export class ResourceCache {
    */
   async getTable(tablePath: string): Promise<DatabaseTable | null> {
     const cacheKey = `table:${tablePath}`;
-    const cached = this.cache.get(cacheKey) as CacheEntry<DatabaseTable> | undefined;
+    const cached = this.cache.get(cacheKey) as
+      | CacheEntry<DatabaseTable>
+      | undefined;
 
     if (!cached) {
       this.misses++;
@@ -313,7 +328,9 @@ export class ResourceCache {
   /**
    * Checks if a directory-based cache entry is still valid
    */
-  private async isDirectoryEntryValid(entry: CacheEntry<unknown>): Promise<boolean> {
+  private async isDirectoryEntryValid(
+    entry: CacheEntry<unknown>
+  ): Promise<boolean> {
     const statResult = await safeExecuteAsync(
       async () => await fs.stat(entry.path),
       'Failed to get directory stats for validation'
@@ -326,6 +343,8 @@ export class ResourceCache {
     const stats = statResult.value;
 
     // Entry is valid if it's a directory and mtime hasn't changed
-    return stats.isDirectory() && stats.mtime.getTime() === entry.mtime.getTime();
+    return (
+      stats.isDirectory() && stats.mtime.getTime() === entry.mtime.getTime()
+    );
   }
 }

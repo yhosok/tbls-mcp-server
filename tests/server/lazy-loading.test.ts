@@ -35,7 +35,12 @@ interface MockResourceReadResponse {
 }
 
 interface MockServer {
-  _requestHandlers: Map<string, (req: MockRequest) => Promise<MockResourceListResponse | MockResourceReadResponse>>;
+  _requestHandlers: Map<
+    string,
+    (
+      req: MockRequest
+    ) => Promise<MockResourceListResponse | MockResourceReadResponse>
+  >;
 }
 
 interface MockLazyResourceMetadata {
@@ -58,7 +63,10 @@ interface MockResourceRegistryMetadata {
   cacheStrategy: { ttlMs: number };
 }
 
-type MockDiscoveryHandler = (uri: string, cache?: ResourceCache) => Promise<MockResourceReadResponse>;
+type MockDiscoveryHandler = (
+  uri: string,
+  cache?: ResourceCache
+) => Promise<MockResourceReadResponse>;
 
 /**
  * Test suite for analyzing current resource registration performance problems
@@ -83,11 +91,26 @@ describe('Server Resource Registration Performance Analysis', () => {
   let schemaDir: string;
 
   // Spy on all file parsing operations to track performance
-  const parseSchemaOverviewSpy = jest.spyOn(schemaAdapter, 'parseSchemaOverview');
-  const parseTableReferencesSpy = jest.spyOn(schemaAdapter, 'parseTableReferences');
-  const parseSingleTableFileSpy = jest.spyOn(schemaAdapter, 'parseSingleTableFile');
-  const handleSchemaListResourceSpy = jest.spyOn(schemaResource, 'handleSchemaListResource');
-  const handleSchemaTablesResourceSpy = jest.spyOn(tableResource, 'handleSchemaTablesResource');
+  const parseSchemaOverviewSpy = jest.spyOn(
+    schemaAdapter,
+    'parseSchemaOverview'
+  );
+  const parseTableReferencesSpy = jest.spyOn(
+    schemaAdapter,
+    'parseTableReferences'
+  );
+  const parseSingleTableFileSpy = jest.spyOn(
+    schemaAdapter,
+    'parseSingleTableFile'
+  );
+  const handleSchemaListResourceSpy = jest.spyOn(
+    schemaResource,
+    'handleSchemaListResource'
+  );
+  const handleSchemaTablesResourceSpy = jest.spyOn(
+    tableResource,
+    'handleSchemaTablesResource'
+  );
 
   beforeEach(async () => {
     // Reset all spies
@@ -137,21 +160,27 @@ describe('Server Resource Registration Performance Analysis', () => {
       }));
 
       // Mock the resource handlers to return predictable data
-      handleSchemaListResourceSpy.mockResolvedValue(ok({ schemas: mockSchemas }));
-      handleSchemaTablesResourceSpy.mockResolvedValue(ok({
-        schemaName: 'test',
-        tables: mockTables
-      }));
+      handleSchemaListResourceSpy.mockResolvedValue(
+        ok({ schemas: mockSchemas })
+      );
+      handleSchemaTablesResourceSpy.mockResolvedValue(
+        ok({
+          schemaName: 'test',
+          tables: mockTables,
+        })
+      );
 
       const server = new TblsMcpServer(mockConfig);
 
       // Simulate ListResourcesRequest which should use lazy discovery
-      const listHandler = (server as unknown as { server: MockServer }).server._requestHandlers.get('resources/list');
+      const listHandler = (
+        server as unknown as { server: MockServer }
+      ).server._requestHandlers.get('resources/list');
       expect(listHandler).toBeDefined();
 
       const result = await listHandler({
         method: 'resources/list',
-        params: {}
+        params: {},
       });
 
       // Verify that lazy loading returns static patterns + discovered resources
@@ -179,44 +208,71 @@ describe('Server Resource Registration Performance Analysis', () => {
 
     it('should show reduced file parsing operations during lazy registration', async () => {
       // Mock file parsing operations to track calls
-      parseSchemaOverviewSpy.mockReturnValue(ok({
-        name: 'test',
-        tableCount: 10,
-        generated: new Date(),
-        version: '1.0',
-        description: 'Test schema'
-      }));
+      parseSchemaOverviewSpy.mockReturnValue(
+        ok({
+          name: 'test',
+          tableCount: 10,
+          generated: new Date(),
+          version: '1.0',
+          description: 'Test schema',
+        })
+      );
 
-      parseTableReferencesSpy.mockReturnValue(ok([
-        { name: 'users', type: 'table', comment: null },
-        { name: 'orders', type: 'table', comment: null },
-        { name: 'products', type: 'table', comment: null },
-      ]));
+      parseTableReferencesSpy.mockReturnValue(
+        ok([
+          { name: 'users', type: 'table', comment: null },
+          { name: 'orders', type: 'table', comment: null },
+          { name: 'products', type: 'table', comment: null },
+        ])
+      );
 
-      parseSingleTableFileSpy.mockReturnValue(ok({
-        metadata: { name: 'test', tableCount: 1, generated: new Date(), version: '1.0', description: null },
-        tables: [{ name: 'test_table', type: 'table', comment: null, columns: [], indexes: [], constraints: [], triggers: [] }],
-        tableReferences: [],
-        indexes: [],
-        relations: []
-      }));
+      parseSingleTableFileSpy.mockReturnValue(
+        ok({
+          metadata: {
+            name: 'test',
+            tableCount: 1,
+            generated: new Date(),
+            version: '1.0',
+            description: null,
+          },
+          tables: [
+            {
+              name: 'test_table',
+              type: 'table',
+              comment: null,
+              columns: [],
+              indexes: [],
+              constraints: [],
+              triggers: [],
+            },
+          ],
+          tableReferences: [],
+          indexes: [],
+          relations: [],
+        })
+      );
 
       const server = new TblsMcpServer(mockConfig);
-      const listHandler = (server as unknown as { server: MockServer }).server._requestHandlers.get('resources/list');
+      const listHandler = (
+        server as unknown as { server: MockServer }
+      ).server._requestHandlers.get('resources/list');
 
       await listHandler({
         method: 'resources/list',
-        params: {}
+        params: {},
       });
 
       // With lazy loading, we still do discovery but more efficiently
-      const totalFileOperations = parseSchemaOverviewSpy.mock.calls.length +
-                                parseTableReferencesSpy.mock.calls.length +
-                                parseSingleTableFileSpy.mock.calls.length;
+      const totalFileOperations =
+        parseSchemaOverviewSpy.mock.calls.length +
+        parseTableReferencesSpy.mock.calls.length +
+        parseSingleTableFileSpy.mock.calls.length;
 
       // parseSingleTableFile should not be called during listResources in lazy mode
       expect(parseSingleTableFileSpy).not.toHaveBeenCalled();
-      console.log(`File operations during registration: ${totalFileOperations}`);
+      console.log(
+        `File operations during registration: ${totalFileOperations}`
+      );
     });
 
     it('should measure response time improvement with lazy loading', async () => {
@@ -224,31 +280,35 @@ describe('Server Resource Registration Performance Analysis', () => {
       const slowParseDelay = 50; // 50ms per operation
 
       handleSchemaListResourceSpy.mockImplementation(async () => {
-        await new Promise(resolve => setTimeout(resolve, slowParseDelay));
-        return ok({ schemas: [
-          { name: 'schema1', tableCount: 20, description: 'Test schema' }
-        ]});
+        await new Promise((resolve) => setTimeout(resolve, slowParseDelay));
+        return ok({
+          schemas: [
+            { name: 'schema1', tableCount: 20, description: 'Test schema' },
+          ],
+        });
       });
 
       handleSchemaTablesResourceSpy.mockImplementation(async () => {
-        await new Promise(resolve => setTimeout(resolve, slowParseDelay));
+        await new Promise((resolve) => setTimeout(resolve, slowParseDelay));
         return ok({
           schemaName: 'schema1',
           tables: Array.from({ length: 20 }, (_, i) => ({
             name: `table_${i}`,
             type: 'table' as const,
             comment: null,
-          }))
+          })),
         });
       });
 
       const server = new TblsMcpServer(mockConfig);
-      const listHandler = (server as unknown as { server: MockServer }).server._requestHandlers.get('resources/list');
+      const listHandler = (
+        server as unknown as { server: MockServer }
+      ).server._requestHandlers.get('resources/list');
 
       const startTime = Date.now();
       await listHandler({
         method: 'resources/list',
-        params: {}
+        params: {},
       });
       const endTime = Date.now();
 
@@ -276,7 +336,7 @@ describe('Server Resource Registration Performance Analysis', () => {
             discoveryRequired: true,
             resourceType: 'schema-list',
             cacheable: true,
-          }
+          },
         },
         {
           uri: 'schema://discovery/*',
@@ -289,8 +349,8 @@ describe('Server Resource Registration Performance Analysis', () => {
             resourceType: 'schema-dynamic',
             pattern: 'schema://{schema}/tables',
             cacheable: true,
-          }
-        }
+          },
+        },
       ];
 
       // Verify lightweight registration concept
@@ -310,8 +370,14 @@ describe('Server Resource Registration Performance Analysis', () => {
 
       interface LazyResourceDiscovery {
         discoverSchemas(basePath: string): Promise<string[]>;
-        discoverTables(schemaPath: string, schemaName: string): Promise<string[]>;
-        createDynamicResource(uri: string, type: string): Promise<{ uri: string; type: string; data: string }>;
+        discoverTables(
+          schemaPath: string,
+          schemaName: string
+        ): Promise<string[]>;
+        createDynamicResource(
+          uri: string,
+          type: string
+        ): Promise<{ uri: string; type: string; data: string }>;
       }
 
       const mockLazyDiscovery: LazyResourceDiscovery = {
@@ -328,22 +394,31 @@ describe('Server Resource Registration Performance Analysis', () => {
           return ['table1', 'table2', 'table3'];
         },
 
-        async createDynamicResource(uri: string, type: string): Promise<{ uri: string; type: string; data: string }> {
+        async createDynamicResource(
+          uri: string,
+          type: string
+        ): Promise<{ uri: string; type: string; data: string }> {
           // This would create the actual resource on-demand
           expect(uri).toBeDefined();
           expect(type).toBeDefined();
           return { uri, type, data: 'mock-data' };
-        }
+        },
       };
 
       // Simulate lazy discovery workflow
       const schemas = await mockLazyDiscovery.discoverSchemas('/test/schemas');
       expect(schemas).toHaveLength(3);
 
-      const tables = await mockLazyDiscovery.discoverTables('/test/schemas/schema1', 'schema1');
+      const tables = await mockLazyDiscovery.discoverTables(
+        '/test/schemas/schema1',
+        'schema1'
+      );
       expect(tables).toHaveLength(3);
 
-      const resource = await mockLazyDiscovery.createDynamicResource('table://schema1/table1', 'table-info');
+      const resource = await mockLazyDiscovery.createDynamicResource(
+        'table://schema1/table1',
+        'table-info'
+      );
       expect(resource.uri).toBe('table://schema1/table1');
     });
 
@@ -353,14 +428,25 @@ describe('Server Resource Registration Performance Analysis', () => {
       interface LazyLoadingCache extends ResourceCache {
         // Resource discovery caching
         getDiscoveredSchemas(basePath: string): Promise<string[] | null>;
-        setDiscoveredSchemas(basePath: string, schemas: string[]): Promise<void>;
+        setDiscoveredSchemas(
+          basePath: string,
+          schemas: string[]
+        ): Promise<void>;
 
         getDiscoveredTables(schemaPath: string): Promise<string[] | null>;
-        setDiscoveredTables(schemaPath: string, tables: string[]): Promise<void>;
+        setDiscoveredTables(
+          schemaPath: string,
+          tables: string[]
+        ): Promise<void>;
 
         // Resource metadata caching
-        getResourceMetadata(uri: string): Promise<{ uri: string; cached: boolean; timestamp: Date } | null>;
-        setResourceMetadata(uri: string, metadata: { uri?: string; name?: string; [key: string]: unknown }): Promise<void>;
+        getResourceMetadata(
+          uri: string
+        ): Promise<{ uri: string; cached: boolean; timestamp: Date } | null>;
+        setResourceMetadata(
+          uri: string,
+          metadata: { uri?: string; name?: string; [key: string]: unknown }
+        ): Promise<void>;
 
         // Discovery timestamp tracking
         getDiscoveryTimestamp(path: string): Promise<Date | null>;
@@ -371,7 +457,9 @@ describe('Server Resource Registration Performance Analysis', () => {
       const mockLazyCache = {
         async getDiscoveredSchemas(basePath: string) {
           // Return cached schema names if available
-          return basePath === '/cached/schemas' ? ['cached_schema1', 'cached_schema2'] : null;
+          return basePath === '/cached/schemas'
+            ? ['cached_schema1', 'cached_schema2']
+            : null;
         },
 
         async setDiscoveredSchemas(basePath: string, schemas: string[]) {
@@ -382,7 +470,9 @@ describe('Server Resource Registration Performance Analysis', () => {
 
         async getDiscoveredTables(schemaPath: string) {
           // Return cached table names if available
-          return schemaPath === '/cached/schema1' ? ['cached_table1', 'cached_table2'] : null;
+          return schemaPath === '/cached/schema1'
+            ? ['cached_table1', 'cached_table2']
+            : null;
         },
 
         async setDiscoveredTables(schemaPath: string, tables: string[]) {
@@ -393,10 +483,15 @@ describe('Server Resource Registration Performance Analysis', () => {
 
         async getResourceMetadata(uri: string) {
           // Return cached resource metadata
-          return uri === 'cached://resource' ? { uri, cached: true, timestamp: new Date() } : null;
+          return uri === 'cached://resource'
+            ? { uri, cached: true, timestamp: new Date() }
+            : null;
         },
 
-        async setResourceMetadata(uri: string, metadata: { uri?: string; name?: string; [key: string]: unknown }) {
+        async setResourceMetadata(
+          uri: string,
+          metadata: { uri?: string; name?: string; [key: string]: unknown }
+        ) {
           // Cache resource metadata
           expect(metadata).toBeDefined();
           expect(metadata.uri || metadata.name).toBeDefined();
@@ -410,17 +505,22 @@ describe('Server Resource Registration Performance Analysis', () => {
         async setDiscoveryTimestamp(path: string, timestamp: Date) {
           // Track when discovery was performed
           expect(timestamp).toBeInstanceOf(Date);
-        }
+        },
       } as LazyLoadingCache;
 
       // Test cache behavior
-      const cachedSchemas = await mockLazyCache.getDiscoveredSchemas('/cached/schemas');
+      const cachedSchemas =
+        await mockLazyCache.getDiscoveredSchemas('/cached/schemas');
       expect(cachedSchemas).toEqual(['cached_schema1', 'cached_schema2']);
 
-      const uncachedSchemas = await mockLazyCache.getDiscoveredSchemas('/uncached/schemas');
+      const uncachedSchemas =
+        await mockLazyCache.getDiscoveredSchemas('/uncached/schemas');
       expect(uncachedSchemas).toBeNull();
 
-      await mockLazyCache.setDiscoveredSchemas('/new/schemas', ['new_schema1', 'new_schema2']);
+      await mockLazyCache.setDiscoveredSchemas('/new/schemas', [
+        'new_schema1',
+        'new_schema2',
+      ]);
       await mockLazyCache.setDiscoveryTimestamp('/new/schemas', new Date());
     });
   });
@@ -444,31 +544,35 @@ Generated at: 2024-01-15T10:30:00Z
 
       // Track how resources are typically accessed by clients
       const accessPatterns = {
-        listResourcesFirst: true,  // Clients always call ListResources first
-        readSpecificResources: true,  // Then read specific resources
-        randomAccess: false,  // Resources are not accessed randomly
-        bulkAccess: false,  // Multiple resources are not typically read at once
+        listResourcesFirst: true, // Clients always call ListResources first
+        readSpecificResources: true, // Then read specific resources
+        randomAccess: false, // Resources are not accessed randomly
+        bulkAccess: false, // Multiple resources are not typically read at once
       };
 
       const server = new TblsMcpServer(mockConfig);
 
       // Simulate typical client workflow
       // 1. Client calls ListResources (should be fast with lazy loading)
-      const listHandler = (server as unknown as { server: MockServer }).server._requestHandlers.get('resources/list');
+      const listHandler = (
+        server as unknown as { server: MockServer }
+      ).server._requestHandlers.get('resources/list');
       const listResult = await listHandler({
         method: 'resources/list',
-        params: {}
+        params: {},
       });
 
       expect(listResult.resources).toBeDefined();
       expect(listResult.resources.length).toBeGreaterThan(0);
 
       // 2. Client reads specific resource (this should be when parsing happens)
-      const readHandler = (server as unknown as { server: MockServer }).server._requestHandlers.get('resources/read');
+      const readHandler = (
+        server as unknown as { server: MockServer }
+      ).server._requestHandlers.get('resources/read');
 
       const readResult = await readHandler({
         method: 'resources/read',
-        params: { uri: 'schema://list' }
+        params: { uri: 'schema://list' },
       });
 
       expect(readResult.contents).toBeDefined();
@@ -481,7 +585,11 @@ Generated at: 2024-01-15T10:30:00Z
 
     it('should test lazy loading access patterns', async () => {
       // Simulate lazy loading access pattern
-      const lazyAccessLog: { operation: string; timestamp: number; cost: number }[] = [];
+      const lazyAccessLog: {
+        operation: string;
+        timestamp: number;
+        cost: number;
+      }[] = [];
 
       const mockLazyServer = {
         async listResources(): Promise<MockLazyResourceResponse> {
@@ -489,11 +597,19 @@ Generated at: 2024-01-15T10:30:00Z
           // Lazy loading: Only return lightweight resource metadata
           const resources = [
             { uri: 'schema://list', name: 'Schema List', lazy: true },
-            { uri: 'schema://*/tables', name: 'Schema Tables Pattern', lazy: true },
+            {
+              uri: 'schema://*/tables',
+              name: 'Schema Tables Pattern',
+              lazy: true,
+            },
             { uri: 'table://*/*', name: 'Table Info Pattern', lazy: true },
           ];
           const cost = Date.now() - start;
-          lazyAccessLog.push({ operation: 'listResources', timestamp: start, cost });
+          lazyAccessLog.push({
+            operation: 'listResources',
+            timestamp: start,
+            cost,
+          });
           return { resources };
         },
 
@@ -503,39 +619,68 @@ Generated at: 2024-01-15T10:30:00Z
 
           if (uri === 'schema://list') {
             // This is where discovery and parsing would happen
-            await new Promise(resolve => setTimeout(resolve, 100)); // Simulate parsing
+            await new Promise((resolve) => setTimeout(resolve, 100)); // Simulate parsing
             cost = Date.now() - start;
-            lazyAccessLog.push({ operation: `readResource(${uri})`, timestamp: start, cost });
-            return { contents: [{ uri, mimeType: 'application/json', text: '{"schemas":[]}' }] };
+            lazyAccessLog.push({
+              operation: `readResource(${uri})`,
+              timestamp: start,
+              cost,
+            });
+            return {
+              contents: [
+                { uri, mimeType: 'application/json', text: '{"schemas":[]}' },
+              ],
+            };
           }
 
           if (uri.match(/^schema:\/\/.+\/tables$/)) {
             // This is where table discovery would happen
-            await new Promise(resolve => setTimeout(resolve, 50)); // Simulate table parsing
+            await new Promise((resolve) => setTimeout(resolve, 50)); // Simulate table parsing
             cost = Date.now() - start;
-            lazyAccessLog.push({ operation: `readResource(${uri})`, timestamp: start, cost });
-            return { contents: [{ uri, mimeType: 'application/json', text: '{"tables":[]}' }] };
+            lazyAccessLog.push({
+              operation: `readResource(${uri})`,
+              timestamp: start,
+              cost,
+            });
+            return {
+              contents: [
+                { uri, mimeType: 'application/json', text: '{"tables":[]}' },
+              ],
+            };
           }
 
           cost = Date.now() - start;
-          lazyAccessLog.push({ operation: `readResource(${uri})`, timestamp: start, cost });
-          return { contents: [{ uri, mimeType: 'application/json', text: '{}' }] };
-        }
+          lazyAccessLog.push({
+            operation: `readResource(${uri})`,
+            timestamp: start,
+            cost,
+          });
+          return {
+            contents: [{ uri, mimeType: 'application/json', text: '{}' }],
+          };
+        },
       };
 
       // Simulate client access pattern with lazy loading
       const listResult = await mockLazyServer.listResources();
       expect(listResult.resources).toHaveLength(3);
 
-      const schemaListResult = await mockLazyServer.readResource('schema://list');
+      const schemaListResult =
+        await mockLazyServer.readResource('schema://list');
       expect(schemaListResult.contents).toBeDefined();
 
-      const schemaTablesResult = await mockLazyServer.readResource('schema://test/tables');
+      const schemaTablesResult = await mockLazyServer.readResource(
+        'schema://test/tables'
+      );
       expect(schemaTablesResult.contents).toBeDefined();
 
       // Analyze performance characteristics
-      const listOperation = lazyAccessLog.find(op => op.operation === 'listResources');
-      const readOperations = lazyAccessLog.filter(op => op.operation.startsWith('readResource'));
+      const listOperation = lazyAccessLog.find(
+        (op) => op.operation === 'listResources'
+      );
+      const readOperations = lazyAccessLog.filter((op) =>
+        op.operation.startsWith('readResource')
+      );
 
       expect(listOperation?.cost).toBeLessThan(10); // Should be very fast
       expect(readOperations[0].cost).toBeGreaterThan(50); // First read should take time
@@ -551,12 +696,15 @@ Generated at: 2024-01-15T10:30:00Z
       const mockCachingLazyServer = {
         cache: new Map<string, MockCacheEntry>(),
 
-        async readResourceWithCaching(uri: string): Promise<MockResourceReadResponse> {
+        async readResourceWithCaching(
+          uri: string
+        ): Promise<MockResourceReadResponse> {
           // Check cache first
           const cached = this.cache.get(uri);
           const now = Date.now();
 
-          if (cached && (now - cached.timestamp) < 60000) { // 1 minute TTL
+          if (cached && now - cached.timestamp < 60000) {
+            // 1 minute TTL
             cacheHits++;
             return cached.data;
           }
@@ -572,13 +720,15 @@ Generated at: 2024-01-15T10:30:00Z
           if (uri.includes('tables')) parseTime = 50;
           if (uri.includes('table://')) parseTime = 25;
 
-          await new Promise(resolve => setTimeout(resolve, parseTime));
+          await new Promise((resolve) => setTimeout(resolve, parseTime));
 
-          const data = { contents: [{ uri, mimeType: 'application/json', text: '{}' }] };
+          const data = {
+            contents: [{ uri, mimeType: 'application/json', text: '{}' }],
+          };
           this.cache.set(uri, { data, timestamp: now });
 
           return data;
-        }
+        },
       };
 
       // Test caching behavior
@@ -593,12 +743,18 @@ Generated at: 2024-01-15T10:30:00Z
       expect(cacheMisses).toBe(1);
 
       // Multiple different resources
-      await mockCachingLazyServer.readResourceWithCaching('schema://test/tables');
+      await mockCachingLazyServer.readResourceWithCaching(
+        'schema://test/tables'
+      );
       await mockCachingLazyServer.readResourceWithCaching('table://test/users');
-      await mockCachingLazyServer.readResourceWithCaching('table://test/orders');
+      await mockCachingLazyServer.readResourceWithCaching(
+        'table://test/orders'
+      );
 
       // Access same resources again
-      await mockCachingLazyServer.readResourceWithCaching('schema://test/tables');
+      await mockCachingLazyServer.readResourceWithCaching(
+        'schema://test/tables'
+      );
       await mockCachingLazyServer.readResourceWithCaching('table://test/users');
 
       // Verify caching effectiveness
@@ -608,7 +764,7 @@ Generated at: 2024-01-15T10:30:00Z
       console.log(`Cache Statistics:
         - Hits: ${cacheHits}
         - Misses: ${cacheMisses}
-        - Hit Rate: ${(cacheHits / (cacheHits + cacheMisses) * 100).toFixed(1)}%
+        - Hit Rate: ${((cacheHits / (cacheHits + cacheMisses)) * 100).toFixed(1)}%
         - Parse Calls: ${JSON.stringify(Object.fromEntries(parseCalls))}`);
     });
   });
@@ -618,14 +774,26 @@ Generated at: 2024-01-15T10:30:00Z
       // Define the interface for lazy loading implementation
       interface LazyResourceRegistry {
         // Lightweight resource registration
-        registerResourcePattern(pattern: string, metadata: ResourcePatternMetadata): void;
-        registerStaticResource(uri: string, metadata: StaticResourceMetadata): void;
+        registerResourcePattern(
+          pattern: string,
+          metadata: ResourcePatternMetadata
+        ): void;
+        registerStaticResource(
+          uri: string,
+          metadata: StaticResourceMetadata
+        ): void;
 
         // Dynamic resource discovery
-        discoverResources(pattern: string, context: DiscoveryContext): Promise<ResourceDescriptor[]>;
+        discoverResources(
+          pattern: string,
+          context: DiscoveryContext
+        ): Promise<ResourceDescriptor[]>;
 
         // Resource materialization
-        materializeResource(uri: string, context: MaterializationContext): Promise<ResourceContent>;
+        materializeResource(
+          uri: string,
+          context: MaterializationContext
+        ): Promise<ResourceContent>;
 
         // Caching integration
         setCacheStrategy(pattern: string, strategy: CacheStrategy): void;
@@ -715,22 +883,30 @@ Generated at: 2024-01-15T10:30:00Z
       };
 
       mockRegistry.registerResourcePattern('schema://*', schemaPattern);
-      expect(mockRegistry.registerResourcePattern).toHaveBeenCalledWith('schema://*', schemaPattern);
+      expect(mockRegistry.registerResourcePattern).toHaveBeenCalledWith(
+        'schema://*',
+        schemaPattern
+      );
     });
 
     it('should define lazy loading server architecture', () => {
       // Define the architecture for lazy loading server
       class LazyTblsMcpServer {
-        private resourceRegistry: Map<string, MockResourceRegistryMetadata> = new Map();
-        private discoveryHandlers: Map<string, MockDiscoveryHandler> = new Map();
-        private materializationHandlers: Map<string, MockDiscoveryHandler> = new Map();
+        private resourceRegistry: Map<string, MockResourceRegistryMetadata> =
+          new Map();
+        private discoveryHandlers: Map<string, MockDiscoveryHandler> =
+          new Map();
+        private materializationHandlers: Map<string, MockDiscoveryHandler> =
+          new Map();
         private cache?: ResourceCache;
 
         constructor(config: ServerConfig) {
-          this.cache = config.cache?.enabled ? new ResourceCache({
-            maxItems: config.cache.maxItems ?? 1000,
-            ttlMs: config.cache.ttlMs ?? 300000,
-          }) : undefined;
+          this.cache = config.cache?.enabled
+            ? new ResourceCache({
+                maxItems: config.cache.maxItems ?? 1000,
+                ttlMs: config.cache.ttlMs ?? 300000,
+              })
+            : undefined;
         }
 
         // Setup lightweight resource registration
@@ -738,37 +914,46 @@ Generated at: 2024-01-15T10:30:00Z
           // Register patterns instead of discovering all resources
           this.registerResourcePattern('schema://list', {
             discoveryHandler: 'discoverSchemaList',
-            cacheStrategy: { ttlMs: 300000 }
+            cacheStrategy: { ttlMs: 300000 },
           });
 
           this.registerResourcePattern('schema://*/tables', {
             discoveryHandler: 'discoverSchemaTables',
-            cacheStrategy: { ttlMs: 300000 }
+            cacheStrategy: { ttlMs: 300000 },
           });
 
           this.registerResourcePattern('table://*/*', {
             discoveryHandler: 'discoverTableInfo',
-            cacheStrategy: { ttlMs: 300000 }
+            cacheStrategy: { ttlMs: 300000 },
           });
 
           this.registerResourcePattern('table://*/*/indexes', {
             discoveryHandler: 'discoverTableIndexes',
-            cacheStrategy: { ttlMs: 300000 }
+            cacheStrategy: { ttlMs: 300000 },
           });
         }
 
         // Lightweight pattern registration (no file I/O)
-        registerResourcePattern(pattern: string, metadata: MockResourceRegistryMetadata): void {
+        registerResourcePattern(
+          pattern: string,
+          metadata: MockResourceRegistryMetadata
+        ): void {
           this.resourceRegistry.set(pattern, metadata);
         }
 
         // Discovery handlers (called on-demand)
-        registerDiscoveryHandler(name: string, handler: MockDiscoveryHandler): void {
+        registerDiscoveryHandler(
+          name: string,
+          handler: MockDiscoveryHandler
+        ): void {
           this.discoveryHandlers.set(name, handler);
         }
 
         // Materialization handlers (called when resource is read)
-        registerMaterializationHandler(name: string, handler: MockDiscoveryHandler): void {
+        registerMaterializationHandler(
+          name: string,
+          handler: MockDiscoveryHandler
+        ): void {
           this.materializationHandlers.set(name, handler);
         }
 
@@ -783,7 +968,8 @@ Generated at: 2024-01-15T10:30:00Z
                 uri: 'schema://list',
                 mimeType: 'application/json',
                 name: 'Database Schemas',
-                description: 'List of all available database schemas with metadata',
+                description:
+                  'List of all available database schemas with metadata',
               });
             }
             // Add pattern-based resources as placeholders
@@ -794,7 +980,9 @@ Generated at: 2024-01-15T10:30:00Z
         }
 
         // Handle ReadResource with on-demand materialization
-        async handleReadResource(uri: string): Promise<MockResourceReadResponse> {
+        async handleReadResource(
+          uri: string
+        ): Promise<MockResourceReadResponse> {
           // Find matching pattern
           const matchingPattern = this.findMatchingPattern(uri);
           if (!matchingPattern) {
@@ -808,7 +996,9 @@ Generated at: 2024-01-15T10:30:00Z
           const handler = this.discoveryHandlers.get(metadata.discoveryHandler);
 
           if (!handler) {
-            throw new Error(`No discovery handler: ${metadata.discoveryHandler}`);
+            throw new Error(
+              `No discovery handler: ${metadata.discoveryHandler}`
+            );
           }
 
           // This is where the actual file parsing happens
@@ -827,7 +1017,9 @@ Generated at: 2024-01-15T10:30:00Z
 
         private matchesPattern(uri: string, pattern: string): boolean {
           // Convert pattern to regex
-          const regexPattern = pattern.replace(/\*/g, '[^/]*').replace(/\*\*/g, '.*');
+          const regexPattern = pattern
+            .replace(/\*/g, '[^/]*')
+            .replace(/\*\*/g, '.*');
           const regex = new RegExp(`^${regexPattern}$`);
           return regex.test(uri);
         }
@@ -838,10 +1030,17 @@ Generated at: 2024-01-15T10:30:00Z
       lazyServer.setupLazyResourceHandlers();
 
       // Register discovery handlers
-      lazyServer.registerDiscoveryHandler('discoverSchemaList', async (uri: string, _cache?: ResourceCache) => {
-        // This would call handleSchemaListResource when needed
-        return { contents: [{ uri, mimeType: 'application/json', text: '{"schemas":[]}' }] };
-      });
+      lazyServer.registerDiscoveryHandler(
+        'discoverSchemaList',
+        async (uri: string, _cache?: ResourceCache) => {
+          // This would call handleSchemaListResource when needed
+          return {
+            contents: [
+              { uri, mimeType: 'application/json', text: '{"schemas":[]}' },
+            ],
+          };
+        }
+      );
 
       expect(lazyServer).toBeInstanceOf(LazyTblsMcpServer);
       expect(typeof lazyServer.handleListResources).toBe('function');

@@ -63,7 +63,9 @@ describe('sql query tool', () => {
         const result = validateSqlQuery(query);
         expect(result.isErr()).toBe(true);
         if (result.isErr()) {
-          expect(result.error.message).toContain('Only SELECT, PRAGMA, SHOW, DESCRIBE, and EXPLAIN queries are allowed');
+          expect(result.error.message).toContain(
+            'Only SELECT, PRAGMA, SHOW, DESCRIBE, and EXPLAIN queries are allowed'
+          );
         }
       });
     });
@@ -93,7 +95,9 @@ describe('sql query tool', () => {
         const result = validateSqlQuery(query);
         expect(result.isErr()).toBe(true);
         if (result.isErr()) {
-          expect(result.error.message).toContain('Multiple statements are not allowed');
+          expect(result.error.message).toContain(
+            'Multiple statements are not allowed'
+          );
         }
       });
     });
@@ -143,8 +147,14 @@ describe('sql query tool', () => {
     it('should trim whitespace from queries', () => {
       const queries = [
         { input: '  SELECT * FROM users  ', expected: 'SELECT * FROM users' },
-        { input: '\n\t SELECT id FROM users \n', expected: 'SELECT id FROM users' },
-        { input: '   \n  SELECT name FROM users   \t  ', expected: 'SELECT name FROM users' },
+        {
+          input: '\n\t SELECT id FROM users \n',
+          expected: 'SELECT id FROM users',
+        },
+        {
+          input: '   \n  SELECT name FROM users   \t  ',
+          expected: 'SELECT name FROM users',
+        },
       ];
 
       queries.forEach(({ input, expected }) => {
@@ -160,15 +170,15 @@ describe('sql query tool', () => {
       const queries = [
         {
           input: 'SELECT    id,   name   FROM   users',
-          expected: 'SELECT id, name FROM users'
+          expected: 'SELECT id, name FROM users',
         },
         {
           input: 'SELECT\nid,\nname\nFROM\nusers',
-          expected: 'SELECT id, name FROM users'
+          expected: 'SELECT id, name FROM users',
         },
         {
           input: 'SELECT\t\tid,\t\tname\t\tFROM\t\tusers',
-          expected: 'SELECT id, name FROM users'
+          expected: 'SELECT id, name FROM users',
         },
       ];
 
@@ -185,11 +195,11 @@ describe('sql query tool', () => {
       const queries = [
         {
           input: `SELECT name FROM users WHERE name = 'John  Doe'`,
-          expected: `SELECT name FROM users WHERE name = 'John  Doe'`
+          expected: `SELECT name FROM users WHERE name = 'John  Doe'`,
         },
         {
           input: `SELECT * FROM users WHERE comment = "Has   multiple   spaces"`,
-          expected: `SELECT * FROM users WHERE comment = "Has   multiple   spaces"`
+          expected: `SELECT * FROM users WHERE comment = "Has   multiple   spaces"`,
         },
       ];
 
@@ -209,7 +219,9 @@ describe('sql query tool', () => {
         const result = sanitizeQuery(query as unknown as string);
         expect(result.isErr()).toBe(true);
         if (result.isErr()) {
-          expect(result.error.message).toMatch(/Query cannot be (empty after sanitization|null or undefined)/);
+          expect(result.error.message).toMatch(
+            /Query cannot be (empty after sanitization|null or undefined)/
+          );
         }
       });
     });
@@ -240,7 +252,10 @@ describe('sql query tool', () => {
         executionTimeMs: 42.5,
       };
 
-      const { getPooledConnection, executeQuery } = require('../../src/database/connection');
+      const {
+        getPooledConnection,
+        executeQuery,
+      } = require('../../src/database/connection');
       getPooledConnection.mockResolvedValue(ok(mockConnection));
       executeQuery.mockResolvedValue(ok(mockQueryResult));
 
@@ -275,7 +290,9 @@ describe('sql query tool', () => {
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
-        expect(result.error.message).toContain('Only SELECT, PRAGMA, SHOW, DESCRIBE, and EXPLAIN queries are allowed');
+        expect(result.error.message).toContain(
+          'Only SELECT, PRAGMA, SHOW, DESCRIBE, and EXPLAIN queries are allowed'
+        );
       }
 
       const { getPooledConnection } = require('../../src/database/connection');
@@ -302,7 +319,10 @@ describe('sql query tool', () => {
     });
 
     it('should handle query execution errors', async () => {
-      const { getPooledConnection, executeQuery } = require('../../src/database/connection');
+      const {
+        getPooledConnection,
+        executeQuery,
+      } = require('../../src/database/connection');
       getPooledConnection.mockResolvedValue(ok(mockConnection));
       executeQuery.mockResolvedValue(
         err(new Error('Table "nonexistent" does not exist'))
@@ -317,7 +337,9 @@ describe('sql query tool', () => {
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
-        expect(result.error.message).toContain('Table "nonexistent" does not exist');
+        expect(result.error.message).toContain(
+          'Table "nonexistent" does not exist'
+        );
       }
     });
 
@@ -329,7 +351,10 @@ describe('sql query tool', () => {
         executionTimeMs: 10.2,
       };
 
-      const { getPooledConnection, executeQuery } = require('../../src/database/connection');
+      const {
+        getPooledConnection,
+        executeQuery,
+      } = require('../../src/database/connection');
       getPooledConnection.mockResolvedValue(ok(mockConnection));
       executeQuery.mockResolvedValue(ok(mockQueryResult));
 
@@ -357,7 +382,10 @@ describe('sql query tool', () => {
         executionTimeMs: 15.3,
       };
 
-      const { getPooledConnection, executeQuery } = require('../../src/database/connection');
+      const {
+        getPooledConnection,
+        executeQuery,
+      } = require('../../src/database/connection');
       getPooledConnection.mockResolvedValue(ok(mockConnection));
       executeQuery.mockResolvedValue(ok(mockQueryResult));
 
@@ -385,7 +413,10 @@ describe('sql query tool', () => {
         executionTimeMs: 5.1,
       };
 
-      const { getPooledConnection, executeQuery } = require('../../src/database/connection');
+      const {
+        getPooledConnection,
+        executeQuery,
+      } = require('../../src/database/connection');
       getPooledConnection.mockResolvedValue(ok(mockConnection));
       executeQuery.mockResolvedValue(ok(mockQueryResult));
 
@@ -437,7 +468,8 @@ describe('sql query tool', () => {
       // Parameters property should be optional array
       expect(schema.properties.parameters).toEqual({
         type: 'array',
-        description: 'Query parameters for prepared statements (use ? placeholders in query)',
+        description:
+          'Query parameters for prepared statements (use ? placeholders in query)',
         items: {},
         default: [],
       });
@@ -462,9 +494,13 @@ describe('sql query tool', () => {
       };
 
       // Mock handleSqlQuery
-      const originalHandleSqlQuery = require('../../src/tools/sql-query-tool').handleSqlQuery;
-      const mockHandleSqlQuery = jest.fn().mockResolvedValue(ok(mockQueryResult));
-      require('../../src/tools/sql-query-tool').handleSqlQuery = mockHandleSqlQuery;
+      const originalHandleSqlQuery =
+        require('../../src/tools/sql-query-tool').handleSqlQuery;
+      const mockHandleSqlQuery = jest
+        .fn()
+        .mockResolvedValue(ok(mockQueryResult));
+      require('../../src/tools/sql-query-tool').handleSqlQuery =
+        mockHandleSqlQuery;
 
       const tool = createSqlQueryTool(mockConfig);
 
@@ -483,16 +519,19 @@ describe('sql query tool', () => {
       expect(mockHandleSqlQuery).toHaveBeenCalledWith(input, mockConfig, 30000);
 
       // Restore original function
-      require('../../src/tools/sql-query-tool').handleSqlQuery = originalHandleSqlQuery;
+      require('../../src/tools/sql-query-tool').handleSqlQuery =
+        originalHandleSqlQuery;
     });
 
     it('should handle tool execution errors', async () => {
       // Mock handleSqlQuery to return error
-      const originalHandleSqlQuery = require('../../src/tools/sql-query-tool').handleSqlQuery;
-      const mockHandleSqlQuery = jest.fn().mockResolvedValue(
-        err(new Error('Database connection failed'))
-      );
-      require('../../src/tools/sql-query-tool').handleSqlQuery = mockHandleSqlQuery;
+      const originalHandleSqlQuery =
+        require('../../src/tools/sql-query-tool').handleSqlQuery;
+      const mockHandleSqlQuery = jest
+        .fn()
+        .mockResolvedValue(err(new Error('Database connection failed')));
+      require('../../src/tools/sql-query-tool').handleSqlQuery =
+        mockHandleSqlQuery;
 
       const tool = createSqlQueryTool(mockConfig);
 
@@ -509,16 +548,17 @@ describe('sql query tool', () => {
       }
 
       // Restore original function
-      require('../../src/tools/sql-query-tool').handleSqlQuery = originalHandleSqlQuery;
+      require('../../src/tools/sql-query-tool').handleSqlQuery =
+        originalHandleSqlQuery;
     });
   });
 
   describe('security tests', () => {
     it('should prevent SQL injection through query validation', () => {
       const maliciousQueries = [
-        "SELECT * FROM users WHERE id = 1; DROP TABLE users; --",
-        "SELECT * FROM users UNION SELECT * FROM sensitive_table",
-        "SELECT * FROM users WHERE 1=1; UPDATE users SET admin=1; --",
+        'SELECT * FROM users WHERE id = 1; DROP TABLE users; --',
+        'SELECT * FROM users UNION SELECT * FROM sensitive_table',
+        'SELECT * FROM users WHERE 1=1; UPDATE users SET admin=1; --',
         "'; DROP TABLE users; SELECT * FROM users WHERE '1'='1",
       ];
 
@@ -554,14 +594,17 @@ describe('sql query tool', () => {
         executionTimeMs: 10,
       };
 
-      const { getPooledConnection, executeQuery } = require('../../src/database/connection');
+      const {
+        getPooledConnection,
+        executeQuery,
+      } = require('../../src/database/connection');
       getPooledConnection.mockResolvedValue(ok(mockConnection));
       executeQuery.mockResolvedValue(ok(mockQueryResult));
 
       // Parameters with potential SQL injection
       const request = {
         query: 'SELECT * FROM users WHERE name = ? AND id = ?',
-        parameters: ["'; DROP TABLE users; --", "1 OR 1=1"],
+        parameters: ["'; DROP TABLE users; --", '1 OR 1=1'],
       };
 
       const result = await handleSqlQuery(request, mockConfig);
@@ -570,7 +613,7 @@ describe('sql query tool', () => {
       expect(executeQuery).toHaveBeenCalledWith(
         mockConnection,
         'SELECT * FROM users WHERE name = ? AND id = ?',
-        ["'; DROP TABLE users; --", "1 OR 1=1"],
+        ["'; DROP TABLE users; --", '1 OR 1=1'],
         30000
       );
     });
@@ -586,7 +629,10 @@ describe('sql query tool', () => {
         path: ':memory:',
       };
 
-      const { getPooledConnection, executeQuery } = require('../../src/database/connection');
+      const {
+        getPooledConnection,
+        executeQuery,
+      } = require('../../src/database/connection');
       getPooledConnection.mockResolvedValue(ok(mockConnection));
       executeQuery.mockResolvedValue(
         err(new Error('Query execution timeout after 30000ms'))

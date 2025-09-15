@@ -10,7 +10,14 @@ import { handleSchemaTablesResource } from '../src/resources/table-resource';
  * This function should discover all individual table and table index resources
  * for comprehensive resource discovery in the tbls-mcp-server
  */
-async function discoverAllResources(schemaDir: string): Promise<{ resources: Array<{ uri: string; mimeType: string; name: string; description: string }> }> {
+async function discoverAllResources(schemaDir: string): Promise<{
+  resources: Array<{
+    uri: string;
+    mimeType: string;
+    name: string;
+    description: string;
+  }>;
+}> {
   const resources = [
     {
       uri: 'schema://list',
@@ -36,7 +43,10 @@ async function discoverAllResources(schemaDir: string): Promise<{ resources: Arr
 
         // GREEN PHASE IMPLEMENTATION: Discover individual table and index resources
         try {
-          const tablesResult = await handleSchemaTablesResource(schemaDir, schema.name);
+          const tablesResult = await handleSchemaTablesResource(
+            schemaDir,
+            schema.name
+          );
           if (tablesResult.isOk()) {
             const tables = tablesResult.value.tables;
             for (const table of tables) {
@@ -56,7 +66,10 @@ async function discoverAllResources(schemaDir: string): Promise<{ resources: Arr
           }
         } catch (tableError) {
           // Log warning but continue processing other schemas
-          console.warn(`Warning: Could not discover tables for schema ${schema.name}:`, tableError);
+          console.warn(
+            `Warning: Could not discover tables for schema ${schema.name}:`,
+            tableError
+          );
         }
       }
     }
@@ -93,7 +106,7 @@ describe('Enhanced Resource Discovery (TDD - RED Phase)', () => {
       const resources = result.resources;
 
       // Verify that all expected resource types are discovered
-      const resourceUris = resources.map(r => r.uri).sort();
+      const resourceUris = resources.map((r) => r.uri).sort();
 
       const expectedResources = [
         // Base schema list resource
@@ -121,24 +134,32 @@ describe('Enhanced Resource Discovery (TDD - RED Phase)', () => {
       expect(resourceUris).toEqual(expectedResources);
 
       // Verify resource metadata for individual table resources
-      const usersTableResource = resources.find(r => r.uri === 'table://public/users');
+      const usersTableResource = resources.find(
+        (r) => r.uri === 'table://public/users'
+      );
       expect(usersTableResource).toEqual({
         uri: 'table://public/users',
         mimeType: 'application/json',
         name: 'users table (public schema)',
-        description: 'Detailed information about the users table including columns, indexes, and relationships',
+        description:
+          'Detailed information about the users table including columns, indexes, and relationships',
       });
 
-      const eventsTableResource = resources.find(r => r.uri === 'table://analytics/events');
+      const eventsTableResource = resources.find(
+        (r) => r.uri === 'table://analytics/events'
+      );
       expect(eventsTableResource).toEqual({
         uri: 'table://analytics/events',
         mimeType: 'application/json',
         name: 'events table (analytics schema)',
-        description: 'Detailed information about the events table including columns, indexes, and relationships',
+        description:
+          'Detailed information about the events table including columns, indexes, and relationships',
       });
 
       // Verify resource metadata for table index resources
-      const usersIndexesResource = resources.find(r => r.uri === 'table://public/users/indexes');
+      const usersIndexesResource = resources.find(
+        (r) => r.uri === 'table://public/users/indexes'
+      );
       expect(usersIndexesResource).toEqual({
         uri: 'table://public/users/indexes',
         mimeType: 'application/json',
@@ -146,7 +167,9 @@ describe('Enhanced Resource Discovery (TDD - RED Phase)', () => {
         description: 'Index information for the users table',
       });
 
-      const eventsIndexesResource = resources.find(r => r.uri === 'table://analytics/events/indexes');
+      const eventsIndexesResource = resources.find(
+        (r) => r.uri === 'table://analytics/events/indexes'
+      );
       expect(eventsIndexesResource).toEqual({
         uri: 'table://analytics/events/indexes',
         mimeType: 'application/json',
@@ -161,7 +184,7 @@ describe('Enhanced Resource Discovery (TDD - RED Phase)', () => {
 
       const result = await discoverAllResources(schemaDir);
       const resources = result.resources;
-      const resourceUris = resources.map(r => r.uri).sort();
+      const resourceUris = resources.map((r) => r.uri).sort();
 
       const expectedResources = [
         'schema://list',
@@ -182,7 +205,7 @@ describe('Enhanced Resource Discovery (TDD - RED Phase)', () => {
       // Empty schema directory - should only return base schema list resource
       const result = await discoverAllResources(schemaDir);
       const resources = result.resources;
-      const resourceUris = resources.map(r => r.uri);
+      const resourceUris = resources.map((r) => r.uri);
 
       expect(resourceUris).toEqual(['schema://list']);
     });
@@ -193,7 +216,7 @@ describe('Enhanced Resource Discovery (TDD - RED Phase)', () => {
 
       const result = await discoverAllResources(schemaDir);
       const resources = result.resources;
-      const resourceUris = resources.map(r => r.uri).sort();
+      const resourceUris = resources.map((r) => r.uri).sort();
 
       const expectedResources = [
         'schema://list',
@@ -231,7 +254,7 @@ async function setupMultiSchemaTestData(schemaDir: string): Promise<void> {
             nullable: false,
             default: null,
             extra_def: 'auto_increment',
-            comment: 'Primary key'
+            comment: 'Primary key',
           },
           {
             name: 'email',
@@ -239,7 +262,7 @@ async function setupMultiSchemaTestData(schemaDir: string): Promise<void> {
             nullable: false,
             default: null,
             extra_def: '',
-            comment: 'User email'
+            comment: 'User email',
           },
           {
             name: 'name',
@@ -247,7 +270,7 @@ async function setupMultiSchemaTestData(schemaDir: string): Promise<void> {
             nullable: false,
             default: null,
             extra_def: '',
-            comment: 'User name'
+            comment: 'User name',
           },
           {
             name: 'created_at',
@@ -255,7 +278,7 @@ async function setupMultiSchemaTestData(schemaDir: string): Promise<void> {
             nullable: false,
             default: 'CURRENT_TIMESTAMP',
             extra_def: '',
-            comment: 'Creation time'
+            comment: 'Creation time',
           },
           {
             name: 'updated_at',
@@ -263,8 +286,8 @@ async function setupMultiSchemaTestData(schemaDir: string): Promise<void> {
             nullable: true,
             default: 'CURRENT_TIMESTAMP',
             extra_def: 'on update CURRENT_TIMESTAMP',
-            comment: 'Update time'
-          }
+            comment: 'Update time',
+          },
         ],
         indexes: [
           {
@@ -272,16 +295,16 @@ async function setupMultiSchemaTestData(schemaDir: string): Promise<void> {
             def: 'PRIMARY KEY (id)',
             table: 'users',
             columns: ['id'],
-            comment: ''
+            comment: '',
           },
           {
             name: 'users_email_unique',
             def: 'UNIQUE (email)',
             table: 'users',
             columns: ['email'],
-            comment: ''
-          }
-        ]
+            comment: '',
+          },
+        ],
       },
       {
         name: 'products',
@@ -294,7 +317,7 @@ async function setupMultiSchemaTestData(schemaDir: string): Promise<void> {
             nullable: false,
             default: null,
             extra_def: 'auto_increment',
-            comment: 'Primary key'
+            comment: 'Primary key',
           },
           {
             name: 'name',
@@ -302,7 +325,7 @@ async function setupMultiSchemaTestData(schemaDir: string): Promise<void> {
             nullable: false,
             default: null,
             extra_def: '',
-            comment: 'Product name'
+            comment: 'Product name',
           },
           {
             name: 'price',
@@ -310,7 +333,7 @@ async function setupMultiSchemaTestData(schemaDir: string): Promise<void> {
             nullable: false,
             default: null,
             extra_def: '',
-            comment: 'Product price'
+            comment: 'Product price',
           },
           {
             name: 'description',
@@ -318,7 +341,7 @@ async function setupMultiSchemaTestData(schemaDir: string): Promise<void> {
             nullable: true,
             default: null,
             extra_def: '',
-            comment: 'Product description'
+            comment: 'Product description',
           },
           {
             name: 'category_id',
@@ -326,7 +349,7 @@ async function setupMultiSchemaTestData(schemaDir: string): Promise<void> {
             nullable: true,
             default: null,
             extra_def: '',
-            comment: 'Category reference'
+            comment: 'Category reference',
           },
           {
             name: 'created_at',
@@ -334,7 +357,7 @@ async function setupMultiSchemaTestData(schemaDir: string): Promise<void> {
             nullable: false,
             default: 'CURRENT_TIMESTAMP',
             extra_def: '',
-            comment: 'Creation time'
+            comment: 'Creation time',
           },
           {
             name: 'updated_at',
@@ -342,7 +365,7 @@ async function setupMultiSchemaTestData(schemaDir: string): Promise<void> {
             nullable: true,
             default: 'CURRENT_TIMESTAMP',
             extra_def: 'on update CURRENT_TIMESTAMP',
-            comment: 'Update time'
+            comment: 'Update time',
           },
           {
             name: 'is_active',
@@ -350,8 +373,8 @@ async function setupMultiSchemaTestData(schemaDir: string): Promise<void> {
             nullable: false,
             default: 'true',
             extra_def: '',
-            comment: 'Active status'
-          }
+            comment: 'Active status',
+          },
         ],
         indexes: [
           {
@@ -359,28 +382,31 @@ async function setupMultiSchemaTestData(schemaDir: string): Promise<void> {
             def: 'PRIMARY KEY (id)',
             table: 'products',
             columns: ['id'],
-            comment: ''
+            comment: '',
           },
           {
             name: 'products_name_idx',
             def: 'INDEX (name)',
             table: 'products',
             columns: ['name'],
-            comment: ''
+            comment: '',
           },
           {
             name: 'products_category_idx',
             def: 'INDEX (category_id)',
             table: 'products',
             columns: ['category_id'],
-            comment: ''
-          }
-        ]
-      }
-    ]
+            comment: '',
+          },
+        ],
+      },
+    ],
   };
 
-  await fs.writeFile(join(publicSchemaDir, 'schema.json'), JSON.stringify(publicSchema, null, 2));
+  await fs.writeFile(
+    join(publicSchemaDir, 'schema.json'),
+    JSON.stringify(publicSchema, null, 2)
+  );
 
   // Create analytics schema
   const analyticsSchemaDir = join(schemaDir, 'analytics');
@@ -401,7 +427,7 @@ async function setupMultiSchemaTestData(schemaDir: string): Promise<void> {
             nullable: false,
             default: null,
             extra_def: '',
-            comment: 'Event ID'
+            comment: 'Event ID',
           },
           {
             name: 'user_id',
@@ -413,9 +439,9 @@ async function setupMultiSchemaTestData(schemaDir: string): Promise<void> {
             parent_relations: [
               {
                 table: 'public.users',
-                columns: ['id']
-              }
-            ]
+                columns: ['id'],
+              },
+            ],
           },
           {
             name: 'event_type',
@@ -423,7 +449,7 @@ async function setupMultiSchemaTestData(schemaDir: string): Promise<void> {
             nullable: false,
             default: null,
             extra_def: '',
-            comment: 'Event type'
+            comment: 'Event type',
           },
           {
             name: 'event_data',
@@ -431,7 +457,7 @@ async function setupMultiSchemaTestData(schemaDir: string): Promise<void> {
             nullable: true,
             default: null,
             extra_def: '',
-            comment: 'Event payload'
+            comment: 'Event payload',
           },
           {
             name: 'timestamp',
@@ -439,7 +465,7 @@ async function setupMultiSchemaTestData(schemaDir: string): Promise<void> {
             nullable: false,
             default: 'CURRENT_TIMESTAMP',
             extra_def: '',
-            comment: 'Event timestamp'
+            comment: 'Event timestamp',
           },
           {
             name: 'session_id',
@@ -447,8 +473,8 @@ async function setupMultiSchemaTestData(schemaDir: string): Promise<void> {
             nullable: true,
             default: null,
             extra_def: '',
-            comment: 'Session reference'
-          }
+            comment: 'Session reference',
+          },
         ],
         indexes: [
           {
@@ -456,23 +482,23 @@ async function setupMultiSchemaTestData(schemaDir: string): Promise<void> {
             def: 'PRIMARY KEY (id)',
             table: 'events',
             columns: ['id'],
-            comment: ''
+            comment: '',
           },
           {
             name: 'events_timestamp_idx',
             def: 'INDEX (timestamp)',
             table: 'events',
             columns: ['timestamp'],
-            comment: ''
+            comment: '',
           },
           {
             name: 'events_user_id_idx',
             def: 'INDEX (user_id)',
             table: 'events',
             columns: ['user_id'],
-            comment: ''
-          }
-        ]
+            comment: '',
+          },
+        ],
       },
       {
         name: 'sessions',
@@ -485,7 +511,7 @@ async function setupMultiSchemaTestData(schemaDir: string): Promise<void> {
             nullable: false,
             default: null,
             extra_def: '',
-            comment: 'Session ID'
+            comment: 'Session ID',
           },
           {
             name: 'user_id',
@@ -497,9 +523,9 @@ async function setupMultiSchemaTestData(schemaDir: string): Promise<void> {
             parent_relations: [
               {
                 table: 'public.users',
-                columns: ['id']
-              }
-            ]
+                columns: ['id'],
+              },
+            ],
           },
           {
             name: 'started_at',
@@ -507,7 +533,7 @@ async function setupMultiSchemaTestData(schemaDir: string): Promise<void> {
             nullable: false,
             default: 'CURRENT_TIMESTAMP',
             extra_def: '',
-            comment: 'Session start'
+            comment: 'Session start',
           },
           {
             name: 'ended_at',
@@ -515,8 +541,8 @@ async function setupMultiSchemaTestData(schemaDir: string): Promise<void> {
             nullable: true,
             default: null,
             extra_def: '',
-            comment: 'Session end'
-          }
+            comment: 'Session end',
+          },
         ],
         indexes: [
           {
@@ -524,21 +550,24 @@ async function setupMultiSchemaTestData(schemaDir: string): Promise<void> {
             def: 'PRIMARY KEY (id)',
             table: 'sessions',
             columns: ['id'],
-            comment: ''
+            comment: '',
           },
           {
             name: 'sessions_user_id_idx',
             def: 'INDEX (user_id)',
             table: 'sessions',
             columns: ['user_id'],
-            comment: ''
-          }
-        ]
-      }
-    ]
+            comment: '',
+          },
+        ],
+      },
+    ],
   };
 
-  await fs.writeFile(join(analyticsSchemaDir, 'schema.json'), JSON.stringify(analyticsSchema, null, 2));
+  await fs.writeFile(
+    join(analyticsSchemaDir, 'schema.json'),
+    JSON.stringify(analyticsSchema, null, 2)
+  );
 }
 
 /**
@@ -560,7 +589,7 @@ async function setupSingleSchemaTestData(schemaDir: string): Promise<void> {
             nullable: false,
             default: null,
             extra_def: 'auto_increment',
-            comment: ''
+            comment: '',
           },
           {
             name: 'email',
@@ -568,7 +597,7 @@ async function setupSingleSchemaTestData(schemaDir: string): Promise<void> {
             nullable: false,
             default: null,
             extra_def: '',
-            comment: ''
+            comment: '',
           },
           {
             name: 'name',
@@ -576,8 +605,8 @@ async function setupSingleSchemaTestData(schemaDir: string): Promise<void> {
             nullable: false,
             default: null,
             extra_def: '',
-            comment: ''
-          }
+            comment: '',
+          },
         ],
         indexes: [
           {
@@ -585,9 +614,9 @@ async function setupSingleSchemaTestData(schemaDir: string): Promise<void> {
             def: 'PRIMARY KEY (id)',
             table: 'users',
             columns: ['id'],
-            comment: ''
-          }
-        ]
+            comment: '',
+          },
+        ],
       },
       {
         name: 'posts',
@@ -600,7 +629,7 @@ async function setupSingleSchemaTestData(schemaDir: string): Promise<void> {
             nullable: false,
             default: null,
             extra_def: 'auto_increment',
-            comment: ''
+            comment: '',
           },
           {
             name: 'user_id',
@@ -612,9 +641,9 @@ async function setupSingleSchemaTestData(schemaDir: string): Promise<void> {
             parent_relations: [
               {
                 table: 'users',
-                columns: ['id']
-              }
-            ]
+                columns: ['id'],
+              },
+            ],
           },
           {
             name: 'title',
@@ -622,7 +651,7 @@ async function setupSingleSchemaTestData(schemaDir: string): Promise<void> {
             nullable: false,
             default: null,
             extra_def: '',
-            comment: ''
+            comment: '',
           },
           {
             name: 'content',
@@ -630,8 +659,8 @@ async function setupSingleSchemaTestData(schemaDir: string): Promise<void> {
             nullable: true,
             default: null,
             extra_def: '',
-            comment: ''
-          }
+            comment: '',
+          },
         ],
         indexes: [
           {
@@ -639,9 +668,9 @@ async function setupSingleSchemaTestData(schemaDir: string): Promise<void> {
             def: 'PRIMARY KEY (id)',
             table: 'posts',
             columns: ['id'],
-            comment: ''
-          }
-        ]
+            comment: '',
+          },
+        ],
       },
       {
         name: 'comments',
@@ -654,7 +683,7 @@ async function setupSingleSchemaTestData(schemaDir: string): Promise<void> {
             nullable: false,
             default: null,
             extra_def: 'auto_increment',
-            comment: ''
+            comment: '',
           },
           {
             name: 'post_id',
@@ -666,9 +695,9 @@ async function setupSingleSchemaTestData(schemaDir: string): Promise<void> {
             parent_relations: [
               {
                 table: 'posts',
-                columns: ['id']
-              }
-            ]
+                columns: ['id'],
+              },
+            ],
           },
           {
             name: 'content',
@@ -676,8 +705,8 @@ async function setupSingleSchemaTestData(schemaDir: string): Promise<void> {
             nullable: false,
             default: null,
             extra_def: '',
-            comment: ''
-          }
+            comment: '',
+          },
         ],
         indexes: [
           {
@@ -685,14 +714,17 @@ async function setupSingleSchemaTestData(schemaDir: string): Promise<void> {
             def: 'PRIMARY KEY (id)',
             table: 'comments',
             columns: ['id'],
-            comment: ''
-          }
-        ]
-      }
-    ]
+            comment: '',
+          },
+        ],
+      },
+    ],
   };
 
-  await fs.writeFile(join(schemaDir, 'schema.json'), JSON.stringify(schema, null, 2));
+  await fs.writeFile(
+    join(schemaDir, 'schema.json'),
+    JSON.stringify(schema, null, 2)
+  );
 }
 
 /**
@@ -707,15 +739,21 @@ async function setupEmptySchemaTestData(schemaDir: string): Promise<void> {
   const emptySchema1 = {
     name: 'empty1',
     desc: 'Empty schema with no tables defined',
-    tables: []
+    tables: [],
   };
 
   const emptySchema2 = {
     name: 'empty2',
     desc: 'Empty schema with no tables defined',
-    tables: []
+    tables: [],
   };
 
-  await fs.writeFile(join(emptySchema1Dir, 'schema.json'), JSON.stringify(emptySchema1, null, 2));
-  await fs.writeFile(join(emptySchema2Dir, 'schema.json'), JSON.stringify(emptySchema2, null, 2));
+  await fs.writeFile(
+    join(emptySchema1Dir, 'schema.json'),
+    JSON.stringify(emptySchema1, null, 2)
+  );
+  await fs.writeFile(
+    join(emptySchema2Dir, 'schema.json'),
+    JSON.stringify(emptySchema2, null, 2)
+  );
 }

@@ -23,7 +23,9 @@ export type DatabaseColumn = z.infer<typeof DatabaseColumnSchema>;
  */
 export const DatabaseIndexSchema = z.object({
   name: z.string().min(1),
-  columns: z.array(z.string().min(1)).min(1, 'Index must have at least one column'),
+  columns: z
+    .array(z.string().min(1))
+    .min(1, 'Index must have at least one column'),
   isUnique: z.boolean().default(false),
   isPrimary: z.boolean().default(false),
   type: z.string().optional(),
@@ -50,7 +52,9 @@ export type DatabaseRelation = z.infer<typeof DatabaseRelationSchema>;
 export const DatabaseTableSchema = z.object({
   name: z.string().min(1),
   comment: z.string().nullable().optional(),
-  columns: z.array(DatabaseColumnSchema).min(1, 'Table must have at least one column'),
+  columns: z
+    .array(DatabaseColumnSchema)
+    .min(1, 'Table must have at least one column'),
   indexes: z.array(DatabaseIndexSchema).default([]),
   relations: z.array(DatabaseRelationSchema).default([]),
 });
@@ -112,9 +116,13 @@ export type SqlQueryRequest = z.infer<typeof SqlQueryRequestSchema>;
  * Resource URI schemas for MCP resources
  */
 export const SchemaListUriSchema = z.literal('schema://list');
-export const SchemaTablesUriSchema = z.string().regex(/^schema:\/\/[^/]+\/tables$/);
+export const SchemaTablesUriSchema = z
+  .string()
+  .regex(/^schema:\/\/[^/]+\/tables$/);
 export const TableInfoUriSchema = z.string().regex(/^table:\/\/[^/]+\/[^/]+$/);
-export const TableIndexesUriSchema = z.string().regex(/^table:\/\/[^/]+\/[^/]+\/indexes$/);
+export const TableIndexesUriSchema = z
+  .string()
+  .regex(/^table:\/\/[^/]+\/[^/]+\/indexes$/);
 
 export type SchemaListUri = z.infer<typeof SchemaListUriSchema>;
 export type SchemaTablesUri = z.infer<typeof SchemaTablesUriSchema>;
@@ -125,11 +133,13 @@ export type TableIndexesUri = z.infer<typeof TableIndexesUriSchema>;
  * MCP Resource content schemas
  */
 export const SchemaListResourceSchema = z.object({
-  schemas: z.array(z.object({
-    name: z.string(),
-    tableCount: z.number().int().min(0).optional(),
-    description: z.string().nullable().optional(),
-  })),
+  schemas: z.array(
+    z.object({
+      name: z.string(),
+      tableCount: z.number().int().min(0).optional(),
+      description: z.string().nullable().optional(),
+    })
+  ),
 });
 export type SchemaListResource = z.infer<typeof SchemaListResourceSchema>;
 
@@ -157,14 +167,16 @@ export type TableIndexesResource = z.infer<typeof TableIndexesResourceSchema>;
  * @param data - Table data object to validate
  * @returns Result containing validated table or error message
  */
-export const validateTableData = (data: unknown): Result<DatabaseTable, string> => {
+export const validateTableData = (
+  data: unknown
+): Result<DatabaseTable, string> => {
   try {
     const validated = DatabaseTableSchema.parse(data);
     return ok(validated);
   } catch (error) {
     if (error instanceof z.ZodError) {
       const errorMessage = `Table validation failed: ${error.errors
-        .map(e => `${e.path.join('.')}: ${e.message}`)
+        .map((e) => `${e.path.join('.')}: ${e.message}`)
         .join(', ')}`;
       return err(errorMessage);
     }
@@ -177,14 +189,16 @@ export const validateTableData = (data: unknown): Result<DatabaseTable, string> 
  * @param data - Schema data object to validate
  * @returns Result containing validated schema or error message
  */
-export const validateSchemaData = (data: unknown): Result<DatabaseSchema, string> => {
+export const validateSchemaData = (
+  data: unknown
+): Result<DatabaseSchema, string> => {
   try {
     const validated = DatabaseSchemaSchema.parse(data);
     return ok(validated);
   } catch (error) {
     if (error instanceof z.ZodError) {
       const errorMessage = `Schema validation failed: ${error.errors
-        .map(e => `${e.path.join('.')}: ${e.message}`)
+        .map((e) => `${e.path.join('.')}: ${e.message}`)
         .join(', ')}`;
       return err(errorMessage);
     }
@@ -197,14 +211,16 @@ export const validateSchemaData = (data: unknown): Result<DatabaseSchema, string
  * @param data - Query result data to validate
  * @returns Result containing validated query result or error message
  */
-export const validateQueryResult = (data: unknown): Result<QueryResult, string> => {
+export const validateQueryResult = (
+  data: unknown
+): Result<QueryResult, string> => {
   try {
     const validated = QueryResultSchema.parse(data);
     return ok(validated);
   } catch (error) {
     if (error instanceof z.ZodError) {
       const errorMessage = `Query result validation failed: ${error.errors
-        .map(e => `${e.path.join('.')}: ${e.message}`)
+        .map((e) => `${e.path.join('.')}: ${e.message}`)
         .join(', ')}`;
       return err(errorMessage);
     }
@@ -217,14 +233,16 @@ export const validateQueryResult = (data: unknown): Result<QueryResult, string> 
  * @param data - SQL query request data to validate
  * @returns Result containing validated request or error message
  */
-export const validateSqlQueryRequest = (data: unknown): Result<SqlQueryRequest, string> => {
+export const validateSqlQueryRequest = (
+  data: unknown
+): Result<SqlQueryRequest, string> => {
   try {
     const validated = SqlQueryRequestSchema.parse(data);
     return ok(validated);
   } catch (error) {
     if (error instanceof z.ZodError) {
       const errorMessage = `SQL query request validation failed: ${error.errors
-        .map(e => `${e.path.join('.')}: ${e.message}`)
+        .map((e) => `${e.path.join('.')}: ${e.message}`)
         .join(', ')}`;
       return err(errorMessage);
     }
@@ -248,7 +266,7 @@ export const validateSqlQuery = (query: string): Result<string, Error> => {
   }
 
   // Check for multiple statements (basic SQL injection prevention)
-  const statements = trimmedQuery.split(';').filter(s => s.trim().length > 0);
+  const statements = trimmedQuery.split(';').filter((s) => s.trim().length > 0);
   if (statements.length > 1) {
     return err(new Error('Multiple statements are not allowed'));
   }
@@ -262,11 +280,22 @@ export const validateSqlQuery = (query: string): Result<string, Error> => {
     .replace(/^\s*--.*$/gm, '') // Remove -- comments
     .trim();
 
-  const allowedQueryTypes = ['select', 'pragma', 'show', 'describe', 'desc', 'explain'];
+  const allowedQueryTypes = [
+    'select',
+    'pragma',
+    'show',
+    'describe',
+    'desc',
+    'explain',
+  ];
   const queryType = cleanQuery.split(/\s+/)[0];
 
   if (!allowedQueryTypes.includes(queryType)) {
-    return err(new Error('Only SELECT, PRAGMA, SHOW, DESCRIBE, and EXPLAIN queries are allowed'));
+    return err(
+      new Error(
+        'Only SELECT, PRAGMA, SHOW, DESCRIBE, and EXPLAIN queries are allowed'
+      )
+    );
   }
 
   return ok(query);

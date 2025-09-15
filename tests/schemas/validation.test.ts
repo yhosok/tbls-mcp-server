@@ -13,22 +13,36 @@ describe('validation utilities', () => {
     it('should return true for valid SELECT queries', () => {
       expect(isSelectQuery('SELECT * FROM users')).toBe(true);
       expect(isSelectQuery('select id, name from users')).toBe(true);
-      expect(isSelectQuery('  SELECT COUNT(*) FROM posts WHERE status = ?')).toBe(true);
-      expect(isSelectQuery('\n\tSELECT u.name FROM users u JOIN posts p ON u.id = p.user_id')).toBe(true);
+      expect(
+        isSelectQuery('  SELECT COUNT(*) FROM posts WHERE status = ?')
+      ).toBe(true);
+      expect(
+        isSelectQuery(
+          '\n\tSELECT u.name FROM users u JOIN posts p ON u.id = p.user_id'
+        )
+      ).toBe(true);
     });
 
     it('should return false for non-SELECT queries', () => {
       expect(isSelectQuery('INSERT INTO users (name) VALUES (?)')).toBe(false);
-      expect(isSelectQuery('UPDATE users SET name = ? WHERE id = ?')).toBe(false);
+      expect(isSelectQuery('UPDATE users SET name = ? WHERE id = ?')).toBe(
+        false
+      );
       expect(isSelectQuery('DELETE FROM users WHERE id = ?')).toBe(false);
       expect(isSelectQuery('DROP TABLE users')).toBe(false);
       expect(isSelectQuery('CREATE TABLE users (id INT)')).toBe(false);
-      expect(isSelectQuery('ALTER TABLE users ADD COLUMN email VARCHAR(255)')).toBe(false);
+      expect(
+        isSelectQuery('ALTER TABLE users ADD COLUMN email VARCHAR(255)')
+      ).toBe(false);
     });
 
     it('should return false for potentially malicious queries', () => {
-      expect(isSelectQuery('SELECT * FROM users; DROP TABLE users;')).toBe(false);
-      expect(isSelectQuery('SELECT * FROM users UNION SELECT * FROM admin')).toBe(true); // UNION is allowed in SELECT
+      expect(isSelectQuery('SELECT * FROM users; DROP TABLE users;')).toBe(
+        false
+      );
+      expect(
+        isSelectQuery('SELECT * FROM users UNION SELECT * FROM admin')
+      ).toBe(true); // UNION is allowed in SELECT
       expect(isSelectQuery('TRUNCATE TABLE users')).toBe(false);
     });
 
@@ -48,7 +62,7 @@ describe('validation utilities', () => {
         'SELECT u.name, COUNT(p.id) FROM users u LEFT JOIN posts p ON u.id = p.user_id GROUP BY u.id',
       ];
 
-      queries.forEach(query => {
+      queries.forEach((query) => {
         const result = validateSqlQuery(query);
         expect(result.isOk()).toBe(true);
         if (result.isOk()) {
@@ -66,7 +80,7 @@ describe('validation utilities', () => {
         'CREATE TABLE test (id INT)',
       ];
 
-      queries.forEach(query => {
+      queries.forEach((query) => {
         const result = validateSqlQuery(query);
         expect(result.isErr()).toBe(true);
         if (result.isErr()) {
@@ -103,7 +117,7 @@ describe('validation utilities', () => {
         'TABLE_NAME',
       ];
 
-      validNames.forEach(name => {
+      validNames.forEach((name) => {
         const result = sanitizeTableName(name);
         expect(result.isOk()).toBe(true);
         if (result.isOk()) {
@@ -124,7 +138,7 @@ describe('validation utilities', () => {
         'where',
       ];
 
-      invalidNames.forEach(name => {
+      invalidNames.forEach((name) => {
         const result = sanitizeTableName(name);
         expect(result.isErr()).toBe(true);
         if (result.isErr()) {
@@ -142,9 +156,18 @@ describe('validation utilities', () => {
     });
 
     it('should return error for SQL keywords', () => {
-      const sqlKeywords = ['SELECT', 'FROM', 'WHERE', 'DROP', 'CREATE', 'INSERT', 'UPDATE', 'DELETE'];
+      const sqlKeywords = [
+        'SELECT',
+        'FROM',
+        'WHERE',
+        'DROP',
+        'CREATE',
+        'INSERT',
+        'UPDATE',
+        'DELETE',
+      ];
 
-      sqlKeywords.forEach(keyword => {
+      sqlKeywords.forEach((keyword) => {
         const result = sanitizeTableName(keyword.toLowerCase());
         expect(result.isErr()).toBe(true);
         if (result.isErr()) {
@@ -165,7 +188,7 @@ describe('validation utilities', () => {
         'MY_COLUMN',
       ];
 
-      validNames.forEach(name => {
+      validNames.forEach((name) => {
         const result = sanitizeColumnName(name);
         expect(result.isOk()).toBe(true);
         if (result.isOk()) {
@@ -185,7 +208,7 @@ describe('validation utilities', () => {
         'where',
       ];
 
-      invalidNames.forEach(name => {
+      invalidNames.forEach((name) => {
         const result = sanitizeColumnName(name);
         expect(result.isErr()).toBe(true);
         if (result.isErr()) {
@@ -198,7 +221,9 @@ describe('validation utilities', () => {
       const result = sanitizeColumnName('');
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
-        expect(result.error).toContain('Column name must be a non-empty string');
+        expect(result.error).toContain(
+          'Column name must be a non-empty string'
+        );
       }
     });
   });
@@ -213,7 +238,7 @@ describe('validation utilities', () => {
           'mysql://root:password@127.0.0.1/myapp',
         ];
 
-        validStrings.forEach(str => {
+        validStrings.forEach((str) => {
           const result = validateConnectionString(str);
           expect(result.isOk()).toBe(true);
           if (result.isOk()) {
@@ -229,7 +254,7 @@ describe('validation utilities', () => {
           'mysql://user@localhost:invalid/testdb', // invalid port
         ];
 
-        invalidStrings.forEach(str => {
+        invalidStrings.forEach((str) => {
           const result = validateConnectionString(str);
           expect(result.isErr()).toBe(true);
         });
@@ -243,7 +268,7 @@ describe('validation utilities', () => {
           'invalid://user@localhost/testdb', // wrong protocol - should be rejected by SQLite validation
         ];
 
-        invalidProtocolStrings.forEach(str => {
+        invalidProtocolStrings.forEach((str) => {
           const result = validateConnectionString(str);
           expect(result.isErr()).toBe(true);
         });
@@ -260,7 +285,7 @@ describe('validation utilities', () => {
           'file:test.db',
         ];
 
-        validPaths.forEach(path => {
+        validPaths.forEach((path) => {
           const result = validateConnectionString(path);
           expect(result.isOk()).toBe(true);
           if (result.isOk()) {
@@ -270,14 +295,9 @@ describe('validation utilities', () => {
       });
 
       it('should return error for invalid SQLite paths', () => {
-        const invalidPaths = [
-          '',
-          '   ',
-          'invalid<>path',
-          'path|with|pipes',
-        ];
+        const invalidPaths = ['', '   ', 'invalid<>path', 'path|with|pipes'];
 
-        invalidPaths.forEach(path => {
+        invalidPaths.forEach((path) => {
           const result = validateConnectionString(path);
           expect(result.isErr()).toBe(true);
         });
@@ -287,7 +307,8 @@ describe('validation utilities', () => {
 
   describe('parseConnectionString', () => {
     it('should parse MySQL connection strings correctly', () => {
-      const connectionString = 'mysql://testuser:testpass@localhost:3306/testdb';
+      const connectionString =
+        'mysql://testuser:testpass@localhost:3306/testdb';
       const result = parseConnectionString(connectionString);
 
       expect(result.isOk()).toBe(true);
@@ -323,7 +344,7 @@ describe('validation utilities', () => {
     it('should detect SQLite paths', () => {
       const paths = ['/path/to/db.db', ':memory:', 'file:test.db'];
 
-      paths.forEach(path => {
+      paths.forEach((path) => {
         const result = parseConnectionString(path);
         expect(result.isOk()).toBe(true);
         if (result.isOk()) {
@@ -336,14 +357,9 @@ describe('validation utilities', () => {
     });
 
     it('should return error for invalid connection strings', () => {
-      const invalidStrings = [
-        'invalid://connection',
-        'mysql://',
-        '',
-        '   ',
-      ];
+      const invalidStrings = ['invalid://connection', 'mysql://', '', '   '];
 
-      invalidStrings.forEach(str => {
+      invalidStrings.forEach((str) => {
         const result = parseConnectionString(str);
         expect(result.isErr()).toBe(true);
       });

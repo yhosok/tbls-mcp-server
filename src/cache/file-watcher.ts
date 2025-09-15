@@ -186,7 +186,12 @@ export class FileWatcher {
 
     // Set up change event handling
     watcher.on('change', (eventType, filename) => {
-      this.handleDirectoryChange(dirPath, eventType, filename?.toString() ?? null, options.fileFilter);
+      this.handleDirectoryChange(
+        dirPath,
+        eventType,
+        filename?.toString() ?? null,
+        options.fileFilter
+      );
     });
 
     // Set up error handling
@@ -240,7 +245,11 @@ export class FileWatcher {
   /**
    * Handles file change events with debouncing
    */
-  private handleFileChange(filePath: string, _eventType: string, _filename: string | null): void {
+  private handleFileChange(
+    filePath: string,
+    _eventType: string,
+    _filename: string | null
+  ): void {
     const watcherState = this.watchers.get(filePath);
     if (!watcherState) {
       return;
@@ -290,7 +299,10 @@ export class FileWatcher {
   /**
    * Checks if file has actually changed by comparing modification times
    */
-  private async checkFileChange(filePath: string, watcherState: WatcherState): Promise<void> {
+  private async checkFileChange(
+    filePath: string,
+    watcherState: WatcherState
+  ): Promise<void> {
     const statResult = await safeExecuteAsync(
       async () => await fs.stat(filePath),
       'Failed to check file modification time'
@@ -306,7 +318,9 @@ export class FileWatcher {
     const stats = statResult.value;
     if (!stats.isFile()) {
       if (watcherState.errorCallback) {
-        watcherState.errorCallback(new Error(`Path is no longer a file: ${filePath}`));
+        watcherState.errorCallback(
+          new Error(`Path is no longer a file: ${filePath}`)
+        );
       }
       return;
     }
@@ -324,7 +338,10 @@ export class FileWatcher {
   /**
    * Checks if directory has actually changed by comparing modification times
    */
-  private async checkDirectoryChange(dirPath: string, watcherState: WatcherState): Promise<void> {
+  private async checkDirectoryChange(
+    dirPath: string,
+    watcherState: WatcherState
+  ): Promise<void> {
     const statResult = await safeExecuteAsync(
       async () => await fs.stat(dirPath),
       'Failed to check directory modification time'
@@ -340,7 +357,9 @@ export class FileWatcher {
     const stats = statResult.value;
     if (!stats.isDirectory()) {
       if (watcherState.errorCallback) {
-        watcherState.errorCallback(new Error(`Path is no longer a directory: ${dirPath}`));
+        watcherState.errorCallback(
+          new Error(`Path is no longer a directory: ${dirPath}`)
+        );
       }
       return;
     }

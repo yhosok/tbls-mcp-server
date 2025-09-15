@@ -47,7 +47,9 @@ describe('config schemas', () => {
         const configWithoutConnection = {
           type: 'mysql' as const,
         };
-        expect(() => DatabaseConfigSchema.parse(configWithoutConnection)).toThrow();
+        expect(() =>
+          DatabaseConfigSchema.parse(configWithoutConnection)
+        ).toThrow();
       });
 
       it('should reject invalid MySQL connection string format', () => {

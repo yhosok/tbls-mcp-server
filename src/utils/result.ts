@@ -44,7 +44,9 @@ export const safeExecuteAsync = async <T>(
  * @param results - Array of Result objects
  * @returns Result containing array of values or first error encountered
  */
-export const combineResults = <T, E>(results: Result<T, E>[]): Result<T[], E> => {
+export const combineResults = <T, E>(
+  results: Result<T, E>[]
+): Result<T[], E> => {
   const values: T[] = [];
 
   for (const result of results) {
@@ -192,10 +194,16 @@ export const fromPromise = async <T>(
  * @param args - Arguments for message formatting
  * @returns Error Result with formatted message
  */
-export const createError = (message: string, ...args: unknown[]): Result<never, Error> => {
-  const formattedMessage = args.length > 0
-    ? message.replace(/\{(\d+)\}/g, (match, index) => String(args[parseInt(index)] ?? match))
-    : message;
+export const createError = (
+  message: string,
+  ...args: unknown[]
+): Result<never, Error> => {
+  const formattedMessage =
+    args.length > 0
+      ? message.replace(/\{(\d+)\}/g, (match, index) =>
+          String(args[parseInt(index)] ?? match)
+        )
+      : message;
 
   return err(new Error(formattedMessage));
 };
@@ -240,7 +248,7 @@ export const retry = async <T, E>(
     }
 
     if (i < retries && delay > 0) {
-      await new Promise(resolve => setTimeout(resolve, delay));
+      await new Promise((resolve) => setTimeout(resolve, delay));
     }
   }
 

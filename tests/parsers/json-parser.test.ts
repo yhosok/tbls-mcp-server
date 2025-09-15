@@ -7,7 +7,10 @@ import {
   parseJsonContent,
   parseJsonSchema,
 } from '../../src/parsers/json-parser';
-import { DatabaseTableSchema, DatabaseSchemaSchema } from '../../src/schemas/database';
+import {
+  DatabaseTableSchema,
+  DatabaseSchemaSchema,
+} from '../../src/schemas/database';
 
 describe('Tbls JSON Parser', () => {
   let testDir: string;
@@ -41,29 +44,29 @@ describe('Tbls JSON Parser', () => {
             nullable: false,
             default: null,
             extra_def: 'auto_increment',
-            comment: 'Primary key'
+            comment: 'Primary key',
           },
           {
             name: 'email',
             type: 'varchar(255)',
             nullable: false,
             default: null,
-            comment: 'Email address'
+            comment: 'Email address',
           },
           {
             name: 'name',
             type: 'varchar(255)',
             nullable: true,
             default: 'NULL',
-            comment: 'Full name'
+            comment: 'Full name',
           },
           {
             name: 'created_at',
             type: 'timestamp',
             nullable: false,
             default: 'CURRENT_TIMESTAMP',
-            comment: 'Registration time'
-          }
+            comment: 'Registration time',
+          },
         ],
         indexes: [
           {
@@ -71,15 +74,15 @@ describe('Tbls JSON Parser', () => {
             def: 'PRIMARY KEY (id)',
             table: 'users',
             columns: ['id'],
-            comment: 'Primary key index'
+            comment: 'Primary key index',
           },
           {
             name: 'idx_email',
             def: 'UNIQUE KEY idx_email (email)',
             table: 'users',
             columns: ['email'],
-            comment: 'Unique email index'
-          }
+            comment: 'Unique email index',
+          },
         ],
         constraints: [
           {
@@ -87,9 +90,9 @@ describe('Tbls JSON Parser', () => {
             type: 'UNIQUE',
             def: 'UNIQUE KEY `users_email_unique` (`email`)',
             table: 'users',
-            columns: ['email']
-          }
-        ]
+            columns: ['email'],
+          },
+        ],
       },
       {
         name: 'orders',
@@ -102,70 +105,70 @@ describe('Tbls JSON Parser', () => {
             nullable: false,
             default: null,
             extra_def: 'auto_increment',
-            comment: 'Primary key'
+            comment: 'Primary key',
           },
           {
             name: 'user_id',
             type: 'bigint(20) unsigned',
             nullable: false,
             default: null,
-            comment: 'Customer reference'
+            comment: 'Customer reference',
           },
           {
             name: 'status',
             type: "enum('pending','confirmed','shipped','delivered')",
             nullable: false,
             default: 'pending',
-            comment: 'Order status'
+            comment: 'Order status',
           },
           {
             name: 'total',
             type: 'decimal(10,2)',
             nullable: false,
             default: '0.00',
-            comment: 'Order total'
+            comment: 'Order total',
           },
           {
             name: 'created_at',
             type: 'timestamp',
             nullable: false,
             default: 'CURRENT_TIMESTAMP',
-            comment: 'Order date'
+            comment: 'Order date',
           },
           {
             name: 'updated_at',
             type: 'timestamp',
             nullable: false,
             default: 'CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
-            comment: 'Last update'
-          }
+            comment: 'Last update',
+          },
         ],
         indexes: [
           {
             name: 'PRIMARY',
             def: 'PRIMARY KEY (id)',
             table: 'orders',
-            columns: ['id']
+            columns: ['id'],
           },
           {
             name: 'idx_user_id',
             def: 'KEY idx_user_id (user_id)',
             table: 'orders',
-            columns: ['user_id']
+            columns: ['user_id'],
           },
           {
             name: 'idx_status',
             def: 'KEY idx_status (status)',
             table: 'orders',
-            columns: ['status']
+            columns: ['status'],
           },
           {
             name: 'idx_composite',
             def: 'KEY idx_composite (user_id, status, created_at)',
             table: 'orders',
-            columns: ['user_id', 'status', 'created_at']
-          }
-        ]
+            columns: ['user_id', 'status', 'created_at'],
+          },
+        ],
       },
       {
         name: 'products',
@@ -178,59 +181,59 @@ describe('Tbls JSON Parser', () => {
             nullable: false,
             default: null,
             extra_def: 'auto_increment',
-            comment: 'Primary key'
+            comment: 'Primary key',
           },
           {
             name: 'name',
             type: 'varchar(255)',
             nullable: false,
             default: null,
-            comment: 'Product name'
+            comment: 'Product name',
           },
           {
             name: 'description',
             type: 'text',
             nullable: true,
             default: null,
-            comment: 'Product description'
+            comment: 'Product description',
           },
           {
             name: 'price',
             type: 'decimal(10,2)',
             nullable: false,
             default: '0.00',
-            comment: 'Product price'
+            comment: 'Product price',
           },
           {
             name: 'metadata',
             type: 'json',
             nullable: true,
             default: '{}',
-            comment: 'Additional product metadata'
+            comment: 'Additional product metadata',
           },
           {
             name: 'created_at',
             type: 'timestamp',
             nullable: false,
             default: 'CURRENT_TIMESTAMP',
-            comment: 'Creation time'
-          }
+            comment: 'Creation time',
+          },
         ],
         indexes: [
           {
             name: 'PRIMARY',
             def: 'PRIMARY KEY (id)',
             table: 'products',
-            columns: ['id']
+            columns: ['id'],
           },
           {
             name: 'idx_name',
             def: 'KEY idx_name (name)',
             table: 'products',
-            columns: ['name']
-          }
-        ]
-      }
+            columns: ['name'],
+          },
+        ],
+      },
     ],
     relations: [
       {
@@ -239,9 +242,9 @@ describe('Tbls JSON Parser', () => {
         parent_table: 'users',
         parent_columns: ['id'],
         def: 'FOREIGN KEY (user_id) REFERENCES users (id)',
-        virtual: false
-      }
-    ]
+        virtual: false,
+      },
+    ],
   });
 
   const createSingleTableFixture = (): Record<string, unknown> => ({
@@ -257,87 +260,87 @@ describe('Tbls JSON Parser', () => {
             nullable: false,
             default: null,
             extra_def: 'auto_increment',
-            comment: 'Primary key'
+            comment: 'Primary key',
           },
           {
             name: 'name',
             type: 'varchar(100)',
             nullable: false,
             default: null,
-            comment: 'Name field'
+            comment: 'Name field',
           },
           {
             name: 'age',
             type: 'int(11)',
             nullable: true,
             default: null,
-            comment: 'Age in years'
+            comment: 'Age in years',
           },
           {
             name: 'balance',
             type: 'decimal(15,2)',
             nullable: false,
             default: '0.00',
-            comment: 'Account balance'
+            comment: 'Account balance',
           },
           {
             name: 'active',
             type: 'tinyint(1)',
             nullable: false,
             default: '1',
-            comment: 'Active status'
+            comment: 'Active status',
           },
           {
             name: 'created_date',
             type: 'date',
             nullable: true,
             default: null,
-            comment: 'Creation date'
+            comment: 'Creation date',
           },
           {
             name: 'updated_time',
             type: 'datetime',
             nullable: true,
             default: null,
-            comment: 'Last update time'
+            comment: 'Last update time',
           },
           {
             name: 'notes',
             type: 'text',
             nullable: true,
             default: null,
-            comment: 'Additional notes'
+            comment: 'Additional notes',
           },
           {
             name: 'config',
             type: 'json',
             nullable: true,
             default: '{}',
-            comment: 'Configuration data'
-          }
+            comment: 'Configuration data',
+          },
         ],
         indexes: [
           {
             name: 'PRIMARY',
             def: 'PRIMARY KEY (id)',
             table: 'simple_table',
-            columns: ['id']
+            columns: ['id'],
           },
           {
             name: 'idx_name_unique',
             def: 'UNIQUE KEY idx_name_unique (name)',
             table: 'simple_table',
-            columns: ['name']
+            columns: ['name'],
           },
           {
             name: 'idx_age_balance',
             def: 'KEY idx_age_balance (age, balance)',
             table: 'simple_table',
-            columns: ['age', 'balance']
-          }
-        ]
-      }
-    ]
+            columns: ['age', 'balance'],
+          },
+        ],
+      },
+    ],
   });
 
   const createMinimalSchemaFixture = (): Record<string, unknown> => ({
@@ -349,11 +352,11 @@ describe('Tbls JSON Parser', () => {
           {
             name: 'id',
             type: 'int(11)',
-            nullable: false
-          }
-        ]
-      }
-    ]
+            nullable: false,
+          },
+        ],
+      },
+    ],
   });
 
   describe('parseJsonSchema', () => {
@@ -368,13 +371,15 @@ describe('Tbls JSON Parser', () => {
 
         // Validate metadata
         expect(schema.metadata.name).toBe('ecommerce_db');
-        expect(schema.metadata.description).toBe('E-commerce database schema with user management and order processing');
+        expect(schema.metadata.description).toBe(
+          'E-commerce database schema with user management and order processing'
+        );
 
         // Validate tables
         expect(schema.tables).toHaveLength(3);
 
         // Validate users table
-        const usersTable = schema.tables.find(t => t.name === 'users');
+        const usersTable = schema.tables.find((t) => t.name === 'users');
         expect(usersTable).toBeDefined();
         expect(usersTable?.comment).toBe('User account information');
         expect(usersTable?.columns).toHaveLength(4);
@@ -382,85 +387,111 @@ describe('Tbls JSON Parser', () => {
         expect(usersTable?.relations).toHaveLength(1);
 
         // Validate user columns
-        const idColumn = usersTable?.columns.find(c => c.name === 'id');
-        expect(idColumn).toEqual(expect.objectContaining({
-          name: 'id',
-          type: 'bigint(20) unsigned',
-          nullable: false,
-          defaultValue: null,
-          isAutoIncrement: true,
-          comment: 'Primary key'
-        }));
+        const idColumn = usersTable?.columns.find((c) => c.name === 'id');
+        expect(idColumn).toEqual(
+          expect.objectContaining({
+            name: 'id',
+            type: 'bigint(20) unsigned',
+            nullable: false,
+            defaultValue: null,
+            isAutoIncrement: true,
+            comment: 'Primary key',
+          })
+        );
 
-        const emailColumn = usersTable?.columns.find(c => c.name === 'email');
-        expect(emailColumn).toEqual(expect.objectContaining({
-          name: 'email',
-          type: 'varchar(255)',
-          nullable: false,
-          defaultValue: null,
-          comment: 'Email address'
-        }));
+        const emailColumn = usersTable?.columns.find((c) => c.name === 'email');
+        expect(emailColumn).toEqual(
+          expect.objectContaining({
+            name: 'email',
+            type: 'varchar(255)',
+            nullable: false,
+            defaultValue: null,
+            comment: 'Email address',
+          })
+        );
 
-        const nameColumn = usersTable?.columns.find(c => c.name === 'name');
-        expect(nameColumn).toEqual(expect.objectContaining({
-          name: 'name',
-          type: 'varchar(255)',
-          nullable: true,
-          defaultValue: 'NULL',
-          comment: 'Full name'
-        }));
+        const nameColumn = usersTable?.columns.find((c) => c.name === 'name');
+        expect(nameColumn).toEqual(
+          expect.objectContaining({
+            name: 'name',
+            type: 'varchar(255)',
+            nullable: true,
+            defaultValue: 'NULL',
+            comment: 'Full name',
+          })
+        );
 
         // Validate indexes
-        const primaryIndex = usersTable?.indexes.find(i => i.name === 'PRIMARY');
-        expect(primaryIndex).toEqual(expect.objectContaining({
-          name: 'PRIMARY',
-          columns: ['id'],
-          isPrimary: true,
-          isUnique: true
-        }));
+        const primaryIndex = usersTable?.indexes.find(
+          (i) => i.name === 'PRIMARY'
+        );
+        expect(primaryIndex).toEqual(
+          expect.objectContaining({
+            name: 'PRIMARY',
+            columns: ['id'],
+            isPrimary: true,
+            isUnique: true,
+          })
+        );
 
-        const emailIndex = usersTable?.indexes.find(i => i.name === 'idx_email');
-        expect(emailIndex).toEqual(expect.objectContaining({
-          name: 'idx_email',
-          columns: ['email'],
-          isPrimary: false,
-          isUnique: true
-        }));
+        const emailIndex = usersTable?.indexes.find(
+          (i) => i.name === 'idx_email'
+        );
+        expect(emailIndex).toEqual(
+          expect.objectContaining({
+            name: 'idx_email',
+            columns: ['email'],
+            isPrimary: false,
+            isUnique: true,
+          })
+        );
 
         // Validate orders table
-        const ordersTable = schema.tables.find(t => t.name === 'orders');
+        const ordersTable = schema.tables.find((t) => t.name === 'orders');
         expect(ordersTable).toBeDefined();
         expect(ordersTable?.columns).toHaveLength(6);
         expect(ordersTable?.indexes).toHaveLength(4);
         expect(ordersTable?.relations).toHaveLength(1);
 
         // Validate composite index
-        const compositeIndex = ordersTable?.indexes.find(i => i.name === 'idx_composite');
-        expect(compositeIndex).toEqual(expect.objectContaining({
-          name: 'idx_composite',
-          columns: ['user_id', 'status', 'created_at'],
-          isPrimary: false,
-          isUnique: false
-        }));
+        const compositeIndex = ordersTable?.indexes.find(
+          (i) => i.name === 'idx_composite'
+        );
+        expect(compositeIndex).toEqual(
+          expect.objectContaining({
+            name: 'idx_composite',
+            columns: ['user_id', 'status', 'created_at'],
+            isPrimary: false,
+            isUnique: false,
+          })
+        );
 
         // Validate relation mapping
-        const ordersRelation = ordersTable?.relations.find(r => r.referencedTable === 'users');
-        expect(ordersRelation).toEqual(expect.objectContaining({
-          type: 'belongsTo',
-          table: 'orders',
-          columns: ['user_id'],
-          referencedTable: 'users',
-          referencedColumns: ['id']
-        }));
+        const ordersRelation = ordersTable?.relations.find(
+          (r) => r.referencedTable === 'users'
+        );
+        expect(ordersRelation).toEqual(
+          expect.objectContaining({
+            type: 'belongsTo',
+            table: 'orders',
+            columns: ['user_id'],
+            referencedTable: 'users',
+            referencedColumns: ['id'],
+          })
+        );
 
-        const usersRelation = usersTable?.relations.find(r => r.table === 'orders');
-        expect(usersRelation).toEqual(expect.objectContaining({
-          type: 'hasMany',
-          table: 'orders',
-          columns: ['user_id'],
-          referencedTable: 'users',
-          referencedColumns: ['id']
-        }));
+        const usersRelation = usersTable?.relations.find(
+          (r) => r.table === 'orders'
+        );
+        expect(usersRelation).toEqual(
+          expect.objectContaining({
+            type: 'hasMany',
+            table: 'orders',
+            columns: ['user_id'],
+            referencedTable: 'users',
+            referencedColumns: ['id'],
+          })
+        );
 
         // Validate table references
         expect(schema.tableReferences).toHaveLength(3);
@@ -492,31 +523,35 @@ describe('Tbls JSON Parser', () => {
         const columns = table.columns;
 
         // Auto increment column
-        const idCol = columns.find(c => c.name === 'id');
+        const idCol = columns.find((c) => c.name === 'id');
         expect(idCol?.isAutoIncrement).toBe(true);
 
         // Nullable column with null default
-        const ageCol = columns.find(c => c.name === 'age');
+        const ageCol = columns.find((c) => c.name === 'age');
         expect(ageCol?.nullable).toBe(true);
         expect(ageCol?.defaultValue).toBeNull();
 
         // Non-nullable with string default
-        const balanceCol = columns.find(c => c.name === 'balance');
+        const balanceCol = columns.find((c) => c.name === 'balance');
         expect(balanceCol?.nullable).toBe(false);
         expect(balanceCol?.defaultValue).toBe('0.00');
 
         // JSON column with object default
-        const configCol = columns.find(c => c.name === 'config');
+        const configCol = columns.find((c) => c.name === 'config');
         expect(configCol?.type).toBe('json');
         expect(configCol?.defaultValue).toBe('{}');
 
         // Test unique index
-        const uniqueIndex = table.indexes.find(i => i.name === 'idx_name_unique');
+        const uniqueIndex = table.indexes.find(
+          (i) => i.name === 'idx_name_unique'
+        );
         expect(uniqueIndex?.isUnique).toBe(true);
         expect(uniqueIndex?.isPrimary).toBe(false);
 
         // Test composite index
-        const compositeIndex = table.indexes.find(i => i.name === 'idx_age_balance');
+        const compositeIndex = table.indexes.find(
+          (i) => i.name === 'idx_age_balance'
+        );
         expect(compositeIndex?.columns).toEqual(['age', 'balance']);
       }
     });
@@ -551,50 +586,52 @@ describe('Tbls JSON Parser', () => {
 
     it('should handle various index definitions', () => {
       const schemaData = {
-        tables: [{
-          name: 'index_test',
-          type: 'TABLE',
-          columns: [
-            { name: 'id', type: 'int(11)', nullable: false },
-            { name: 'name', type: 'varchar(100)', nullable: false },
-            { name: 'email', type: 'varchar(255)', nullable: false },
-            { name: 'status', type: 'int(11)', nullable: true },
-            { name: 'created_at', type: 'timestamp', nullable: false }
-          ],
-          indexes: [
-            {
-              name: 'PRIMARY',
-              def: 'PRIMARY KEY (id) USING BTREE',
-              table: 'index_test',
-              columns: ['id'],
-              comment: 'Primary key with explicit algorithm'
-            },
-            {
-              name: 'uk_email',
-              def: 'UNIQUE KEY uk_email (email)',
-              table: 'index_test',
-              columns: ['email']
-            },
-            {
-              name: 'idx_name',
-              def: 'KEY idx_name (name)',
-              table: 'index_test',
-              columns: ['name']
-            },
-            {
-              name: 'idx_compound',
-              def: 'KEY idx_compound (name, status) USING HASH',
-              table: 'index_test',
-              columns: ['name', 'status']
-            },
-            {
-              name: 'idx_partial',
-              def: 'UNIQUE KEY idx_partial (name) WHERE status IS NOT NULL',
-              table: 'index_test',
-              columns: ['name']
-            }
-          ]
-        }]
+        tables: [
+          {
+            name: 'index_test',
+            type: 'TABLE',
+            columns: [
+              { name: 'id', type: 'int(11)', nullable: false },
+              { name: 'name', type: 'varchar(100)', nullable: false },
+              { name: 'email', type: 'varchar(255)', nullable: false },
+              { name: 'status', type: 'int(11)', nullable: true },
+              { name: 'created_at', type: 'timestamp', nullable: false },
+            ],
+            indexes: [
+              {
+                name: 'PRIMARY',
+                def: 'PRIMARY KEY (id) USING BTREE',
+                table: 'index_test',
+                columns: ['id'],
+                comment: 'Primary key with explicit algorithm',
+              },
+              {
+                name: 'uk_email',
+                def: 'UNIQUE KEY uk_email (email)',
+                table: 'index_test',
+                columns: ['email'],
+              },
+              {
+                name: 'idx_name',
+                def: 'KEY idx_name (name)',
+                table: 'index_test',
+                columns: ['name'],
+              },
+              {
+                name: 'idx_compound',
+                def: 'KEY idx_compound (name, status) USING HASH',
+                table: 'index_test',
+                columns: ['name', 'status'],
+              },
+              {
+                name: 'idx_partial',
+                def: 'UNIQUE KEY idx_partial (name) WHERE status IS NOT NULL',
+                table: 'index_test',
+                columns: ['name'],
+              },
+            ],
+          },
+        ],
       };
 
       const result = parseJsonSchema(schemaData);
@@ -607,26 +644,26 @@ describe('Tbls JSON Parser', () => {
         expect(indexes).toHaveLength(5);
 
         // Primary key
-        const primaryIndex = indexes.find(i => i.name === 'PRIMARY');
+        const primaryIndex = indexes.find((i) => i.name === 'PRIMARY');
         expect(primaryIndex?.isPrimary).toBe(true);
         expect(primaryIndex?.isUnique).toBe(true);
 
         // Unique key
-        const uniqueIndex = indexes.find(i => i.name === 'uk_email');
+        const uniqueIndex = indexes.find((i) => i.name === 'uk_email');
         expect(uniqueIndex?.isPrimary).toBe(false);
         expect(uniqueIndex?.isUnique).toBe(true);
 
         // Regular index
-        const regularIndex = indexes.find(i => i.name === 'idx_name');
+        const regularIndex = indexes.find((i) => i.name === 'idx_name');
         expect(regularIndex?.isPrimary).toBe(false);
         expect(regularIndex?.isUnique).toBe(false);
 
         // Compound index
-        const compoundIndex = indexes.find(i => i.name === 'idx_compound');
+        const compoundIndex = indexes.find((i) => i.name === 'idx_compound');
         expect(compoundIndex?.columns).toEqual(['name', 'status']);
 
         // Partial unique index
-        const partialIndex = indexes.find(i => i.name === 'idx_partial');
+        const partialIndex = indexes.find((i) => i.name === 'idx_partial');
         expect(partialIndex?.isUnique).toBe(true);
       }
     });
@@ -637,16 +674,12 @@ describe('Tbls JSON Parser', () => {
           {
             name: 'parent1',
             type: 'TABLE',
-            columns: [
-              { name: 'id', type: 'int(11)', nullable: false }
-            ]
+            columns: [{ name: 'id', type: 'int(11)', nullable: false }],
           },
           {
             name: 'parent2',
             type: 'TABLE',
-            columns: [
-              { name: 'id', type: 'int(11)', nullable: false }
-            ]
+            columns: [{ name: 'id', type: 'int(11)', nullable: false }],
           },
           {
             name: 'child',
@@ -654,9 +687,9 @@ describe('Tbls JSON Parser', () => {
             columns: [
               { name: 'id', type: 'int(11)', nullable: false },
               { name: 'parent1_id', type: 'int(11)', nullable: false },
-              { name: 'parent2_id', type: 'int(11)', nullable: false }
-            ]
-          }
+              { name: 'parent2_id', type: 'int(11)', nullable: false },
+            ],
+          },
         ],
         relations: [
           {
@@ -665,7 +698,7 @@ describe('Tbls JSON Parser', () => {
             parent_table: 'parent1',
             parent_columns: ['id'],
             def: 'FOREIGN KEY (parent1_id) REFERENCES parent1 (id)',
-            virtual: false
+            virtual: false,
           },
           {
             table: 'child',
@@ -673,9 +706,9 @@ describe('Tbls JSON Parser', () => {
             parent_table: 'parent2',
             parent_columns: ['id'],
             def: 'FOREIGN KEY (parent2_id) REFERENCES parent2 (id)',
-            virtual: false
-          }
-        ]
+            virtual: false,
+          },
+        ],
       };
 
       const result = parseJsonSchema(schemaData);
@@ -684,33 +717,41 @@ describe('Tbls JSON Parser', () => {
       if (result.isOk()) {
         const schema = result.value;
 
-        const childTable = schema.tables.find(t => t.name === 'child');
+        const childTable = schema.tables.find((t) => t.name === 'child');
         expect(childTable?.relations).toHaveLength(2);
 
-        const parent1Relation = childTable?.relations.find(r => r.referencedTable === 'parent1');
-        expect(parent1Relation).toEqual(expect.objectContaining({
-          type: 'belongsTo',
-          table: 'child',
-          columns: ['parent1_id'],
-          referencedTable: 'parent1',
-          referencedColumns: ['id']
-        }));
+        const parent1Relation = childTable?.relations.find(
+          (r) => r.referencedTable === 'parent1'
+        );
+        expect(parent1Relation).toEqual(
+          expect.objectContaining({
+            type: 'belongsTo',
+            table: 'child',
+            columns: ['parent1_id'],
+            referencedTable: 'parent1',
+            referencedColumns: ['id'],
+          })
+        );
 
-        const parent2Relation = childTable?.relations.find(r => r.referencedTable === 'parent2');
-        expect(parent2Relation).toEqual(expect.objectContaining({
-          type: 'belongsTo',
-          table: 'child',
-          columns: ['parent2_id'],
-          referencedTable: 'parent2',
-          referencedColumns: ['id']
-        }));
+        const parent2Relation = childTable?.relations.find(
+          (r) => r.referencedTable === 'parent2'
+        );
+        expect(parent2Relation).toEqual(
+          expect.objectContaining({
+            type: 'belongsTo',
+            table: 'child',
+            columns: ['parent2_id'],
+            referencedTable: 'parent2',
+            referencedColumns: ['id'],
+          })
+        );
 
         // Check reverse relations
-        const parent1Table = schema.tables.find(t => t.name === 'parent1');
+        const parent1Table = schema.tables.find((t) => t.name === 'parent1');
         expect(parent1Table?.relations).toHaveLength(1);
         expect(parent1Table?.relations[0].type).toBe('hasMany');
 
-        const parent2Table = schema.tables.find(t => t.name === 'parent2');
+        const parent2Table = schema.tables.find((t) => t.name === 'parent2');
         expect(parent2Table?.relations).toHaveLength(1);
         expect(parent2Table?.relations[0].type).toBe('hasMany');
       }
@@ -724,8 +765,8 @@ describe('Tbls JSON Parser', () => {
             type: 'TABLE',
             columns: [
               { name: 'tenant_id', type: 'int(11)', nullable: false },
-              { name: 'id', type: 'int(11)', nullable: false }
-            ]
+              { name: 'id', type: 'int(11)', nullable: false },
+            ],
           },
           {
             name: 'order_items',
@@ -733,9 +774,9 @@ describe('Tbls JSON Parser', () => {
             columns: [
               { name: 'id', type: 'int(11)', nullable: false },
               { name: 'tenant_id', type: 'int(11)', nullable: false },
-              { name: 'order_id', type: 'int(11)', nullable: false }
-            ]
-          }
+              { name: 'order_id', type: 'int(11)', nullable: false },
+            ],
+          },
         ],
         relations: [
           {
@@ -744,9 +785,9 @@ describe('Tbls JSON Parser', () => {
             parent_table: 'orders',
             parent_columns: ['tenant_id', 'id'],
             def: 'FOREIGN KEY (tenant_id, order_id) REFERENCES orders (tenant_id, id)',
-            virtual: false
-          }
-        ]
+            virtual: false,
+          },
+        ],
       };
 
       const result = parseJsonSchema(schemaData);
@@ -755,48 +796,54 @@ describe('Tbls JSON Parser', () => {
       if (result.isOk()) {
         const schema = result.value;
 
-        const orderItemsTable = schema.tables.find(t => t.name === 'order_items');
+        const orderItemsTable = schema.tables.find(
+          (t) => t.name === 'order_items'
+        );
         expect(orderItemsTable?.relations).toHaveLength(1);
 
         const relation = orderItemsTable?.relations[0];
-        expect(relation).toEqual(expect.objectContaining({
-          type: 'belongsTo',
-          table: 'order_items',
-          columns: ['tenant_id', 'order_id'],
-          referencedTable: 'orders',
-          referencedColumns: ['tenant_id', 'id']
-        }));
+        expect(relation).toEqual(
+          expect.objectContaining({
+            type: 'belongsTo',
+            table: 'order_items',
+            columns: ['tenant_id', 'order_id'],
+            referencedTable: 'orders',
+            referencedColumns: ['tenant_id', 'id'],
+          })
+        );
       }
     });
 
     it('should detect auto_increment columns correctly', () => {
       const schemaData = {
-        tables: [{
-          name: 'auto_increment_test',
-          type: 'TABLE',
-          columns: [
-            {
-              name: 'id',
-              type: 'bigint(20) unsigned',
-              nullable: false,
-              extra_def: 'auto_increment',
-              comment: 'Auto increment primary key'
-            },
-            {
-              name: 'serial_id',
-              type: 'int(11)',
-              nullable: false,
-              extra_def: 'auto_increment',
-              comment: 'Another auto increment column'
-            },
-            {
-              name: 'regular_id',
-              type: 'int(11)',
-              nullable: false,
-              comment: 'Regular column without auto increment'
-            }
-          ]
-        }]
+        tables: [
+          {
+            name: 'auto_increment_test',
+            type: 'TABLE',
+            columns: [
+              {
+                name: 'id',
+                type: 'bigint(20) unsigned',
+                nullable: false,
+                extra_def: 'auto_increment',
+                comment: 'Auto increment primary key',
+              },
+              {
+                name: 'serial_id',
+                type: 'int(11)',
+                nullable: false,
+                extra_def: 'auto_increment',
+                comment: 'Another auto increment column',
+              },
+              {
+                name: 'regular_id',
+                type: 'int(11)',
+                nullable: false,
+                comment: 'Regular column without auto increment',
+              },
+            ],
+          },
+        ],
       };
 
       const result = parseJsonSchema(schemaData);
@@ -806,13 +853,13 @@ describe('Tbls JSON Parser', () => {
         const table = result.value.tables[0];
         const columns = table.columns;
 
-        const idColumn = columns.find(c => c.name === 'id');
+        const idColumn = columns.find((c) => c.name === 'id');
         expect(idColumn?.isAutoIncrement).toBe(true);
 
-        const serialColumn = columns.find(c => c.name === 'serial_id');
+        const serialColumn = columns.find((c) => c.name === 'serial_id');
         expect(serialColumn?.isAutoIncrement).toBe(true);
 
-        const regularColumn = columns.find(c => c.name === 'regular_id');
+        const regularColumn = columns.find((c) => c.name === 'regular_id');
         expect(regularColumn?.isAutoIncrement).toBe(false);
       }
     });
@@ -823,16 +870,16 @@ describe('Tbls JSON Parser', () => {
           {
             name: 'users',
             type: 'TABLE',
-            columns: [{ name: 'id', type: 'int(11)', nullable: false }]
+            columns: [{ name: 'id', type: 'int(11)', nullable: false }],
           },
           {
             name: 'posts',
             type: 'TABLE',
             columns: [
               { name: 'id', type: 'int(11)', nullable: false },
-              { name: 'author_name', type: 'varchar(255)', nullable: false }
-            ]
-          }
+              { name: 'author_name', type: 'varchar(255)', nullable: false },
+            ],
+          },
         ],
         relations: [
           {
@@ -841,9 +888,9 @@ describe('Tbls JSON Parser', () => {
             parent_table: 'users',
             parent_columns: ['name'],
             def: 'Virtual relation based on name matching',
-            virtual: true
-          }
-        ]
+            virtual: true,
+          },
+        ],
       };
 
       const result = parseJsonSchema(schemaData);
@@ -851,18 +898,20 @@ describe('Tbls JSON Parser', () => {
 
       if (result.isOk()) {
         const schema = result.value;
-        const postsTable = schema.tables.find(t => t.name === 'posts');
+        const postsTable = schema.tables.find((t) => t.name === 'posts');
 
         // Virtual relations should still be parsed but could be handled differently
         expect(postsTable?.relations).toHaveLength(1);
         const relation = postsTable?.relations[0];
-        expect(relation).toEqual(expect.objectContaining({
-          type: 'belongsTo',
-          table: 'posts',
-          columns: ['author_name'],
-          referencedTable: 'users',
-          referencedColumns: ['name']
-        }));
+        expect(relation).toEqual(
+          expect.objectContaining({
+            type: 'belongsTo',
+            table: 'posts',
+            columns: ['author_name'],
+            referencedTable: 'users',
+            referencedColumns: ['name'],
+          })
+        );
       }
     });
   });
@@ -1031,7 +1080,7 @@ describe('Tbls JSON Parser', () => {
     it('should fail when tables array is missing', () => {
       const invalidSchema = {
         name: 'invalid_schema',
-        desc: 'Schema without tables'
+        desc: 'Schema without tables',
         // Missing tables array
       };
 
@@ -1039,7 +1088,9 @@ describe('Tbls JSON Parser', () => {
       expect(result.isErr()).toBe(true);
 
       if (result.isErr()) {
-        expect(result.error.message).toMatch(/tables.*required|must contain.*tables/i);
+        expect(result.error.message).toMatch(
+          /tables.*required|must contain.*tables/i
+        );
       }
     });
 
@@ -1048,17 +1099,19 @@ describe('Tbls JSON Parser', () => {
         tables: [
           {
             name: 'empty_table',
-            type: 'TABLE'
+            type: 'TABLE',
             // Missing columns array
-          }
-        ]
+          },
+        ],
       };
 
       const result = parseJsonSchema(invalidSchema);
       expect(result.isErr()).toBe(true);
 
       if (result.isErr()) {
-        expect(result.error.message).toMatch(/columns.*required|must have.*column/i);
+        expect(result.error.message).toMatch(
+          /columns.*required|must have.*column/i
+        );
       }
     });
 
@@ -1068,9 +1121,9 @@ describe('Tbls JSON Parser', () => {
           {
             name: 'no_columns_table',
             type: 'TABLE',
-            columns: []
-          }
-        ]
+            columns: [],
+          },
+        ],
       };
 
       const result = parseJsonSchema(invalidSchema);
@@ -1091,11 +1144,11 @@ describe('Tbls JSON Parser', () => {
               {
                 name: '',
                 type: 'int(11)',
-                nullable: false
-              }
-            ]
-          }
-        ]
+                nullable: false,
+              },
+            ],
+          },
+        ],
       };
 
       const result = parseJsonSchema(invalidSchema);
@@ -1116,11 +1169,11 @@ describe('Tbls JSON Parser', () => {
               {
                 name: 'id',
                 type: '',
-                nullable: false
-              }
-            ]
-          }
-        ]
+                nullable: false,
+              },
+            ],
+          },
+        ],
       };
 
       const result = parseJsonSchema(invalidSchema);
@@ -1141,18 +1194,20 @@ describe('Tbls JSON Parser', () => {
               {
                 name: 'id',
                 type: 'int(11)',
-                nullable: false
-              }
-            ]
-          }
-        ]
+                nullable: false,
+              },
+            ],
+          },
+        ],
       };
 
       const result = parseJsonSchema(invalidSchema);
       expect(result.isErr()).toBe(true);
 
       if (result.isErr()) {
-        expect(result.error.message).toMatch(/table.*name.*required|name.*empty/i);
+        expect(result.error.message).toMatch(
+          /table.*name.*required|name.*empty/i
+        );
       }
     });
 
@@ -1162,19 +1217,17 @@ describe('Tbls JSON Parser', () => {
           {
             name: 'invalid_index_table',
             type: 'TABLE',
-            columns: [
-              { name: 'id', type: 'int(11)', nullable: false }
-            ],
+            columns: [{ name: 'id', type: 'int(11)', nullable: false }],
             indexes: [
               {
                 name: 'empty_index',
                 def: 'KEY empty_index ()',
                 table: 'invalid_index_table',
-                columns: []
-              }
-            ]
-          }
-        ]
+                columns: [],
+              },
+            ],
+          },
+        ],
       };
 
       const result = parseJsonSchema(invalidSchema);
@@ -1193,17 +1246,17 @@ describe('Tbls JSON Parser', () => {
             type: 'TABLE',
             columns: [
               { name: 'id', type: 'int(11)', nullable: false },
-              { name: 'secondary_id', type: 'int(11)', nullable: false }
-            ]
+              { name: 'secondary_id', type: 'int(11)', nullable: false },
+            ],
           },
           {
             name: 'child',
             type: 'TABLE',
             columns: [
               { name: 'id', type: 'int(11)', nullable: false },
-              { name: 'parent_id', type: 'int(11)', nullable: false }
-            ]
-          }
+              { name: 'parent_id', type: 'int(11)', nullable: false },
+            ],
+          },
         ],
         relations: [
           {
@@ -1212,16 +1265,18 @@ describe('Tbls JSON Parser', () => {
             parent_table: 'parent',
             parent_columns: ['id', 'secondary_id'], // Mismatch: 1 vs 2 columns
             def: 'FOREIGN KEY (parent_id) REFERENCES parent (id, secondary_id)',
-            virtual: false
-          }
-        ]
+            virtual: false,
+          },
+        ],
       };
 
       const result = parseJsonSchema(invalidSchema);
       expect(result.isErr()).toBe(true);
 
       if (result.isErr()) {
-        expect(result.error.message).toMatch(/columns.*count.*mismatch|relation.*column.*mismatch/i);
+        expect(result.error.message).toMatch(
+          /columns.*count.*mismatch|relation.*column.*mismatch/i
+        );
       }
     });
 
@@ -1261,7 +1316,7 @@ describe('Tbls JSON Parser', () => {
         expect(validation.success).toBe(true);
 
         // Each table should also pass validation individually
-        result.value.tables.forEach(table => {
+        result.value.tables.forEach((table) => {
           const tableValidation = DatabaseTableSchema.safeParse(table);
           expect(tableValidation.success).toBe(true);
         });
@@ -1280,21 +1335,21 @@ describe('Tbls JSON Parser', () => {
               {
                 name: 'id',
                 type: 'int(11)',
-                nullable: false
+                nullable: false,
               },
               {
                 name: 'field_with_underscore',
                 type: 'varchar(255)',
-                nullable: true
+                nullable: true,
               },
               {
                 name: 'CamelCaseField',
                 type: 'text',
-                nullable: true
-              }
-            ]
-          }
-        ]
+                nullable: true,
+              },
+            ],
+          },
+        ],
       };
 
       const result = parseJsonSchema(schemaData);
@@ -1319,28 +1374,28 @@ describe('Tbls JSON Parser', () => {
                 name: 'null_default',
                 type: 'varchar(255)',
                 nullable: true,
-                default: null
+                default: null,
               },
               {
                 name: 'string_null_default',
                 type: 'varchar(255)',
                 nullable: true,
-                default: 'NULL'
+                default: 'NULL',
               },
               {
                 name: 'empty_string_default',
                 type: 'varchar(255)',
                 nullable: false,
-                default: ''
+                default: '',
               },
               {
                 name: 'no_default',
                 type: 'varchar(255)',
-                nullable: false
-              }
-            ]
-          }
-        ]
+                nullable: false,
+              },
+            ],
+          },
+        ],
       };
 
       const result = parseJsonSchema(schemaData);
@@ -1366,11 +1421,11 @@ describe('Tbls JSON Parser', () => {
               {
                 name: 'id',
                 type: 'int(11)',
-                nullable: false
-              }
-            ]
-          }
-        ]
+                nullable: false,
+              },
+            ],
+          },
+        ],
       };
 
       const result = parseJsonSchema(schemaData);
@@ -1395,36 +1450,36 @@ describe('Tbls JSON Parser', () => {
               { name: 'unique_field', type: 'varchar(100)', nullable: false },
               { name: 'indexed_field', type: 'varchar(100)', nullable: true },
               { name: 'compound_field1', type: 'int(11)', nullable: true },
-              { name: 'compound_field2', type: 'varchar(50)', nullable: true }
+              { name: 'compound_field2', type: 'varchar(50)', nullable: true },
             ],
             indexes: [
               {
                 name: 'PRIMARY',
                 def: 'PRIMARY KEY (id)',
                 table: 'mixed_indexes',
-                columns: ['id']
+                columns: ['id'],
               },
               {
                 name: 'uk_unique',
                 def: 'UNIQUE KEY uk_unique (unique_field)',
                 table: 'mixed_indexes',
-                columns: ['unique_field']
+                columns: ['unique_field'],
               },
               {
                 name: 'idx_regular',
                 def: 'KEY idx_regular (indexed_field)',
                 table: 'mixed_indexes',
-                columns: ['indexed_field']
+                columns: ['indexed_field'],
               },
               {
                 name: 'idx_compound',
                 def: 'KEY idx_compound (compound_field1, compound_field2)',
                 table: 'mixed_indexes',
-                columns: ['compound_field1', 'compound_field2']
-              }
-            ]
-          }
-        ]
+                columns: ['compound_field1', 'compound_field2'],
+              },
+            ],
+          },
+        ],
       };
 
       const result = parseJsonSchema(schemaData);
@@ -1434,19 +1489,19 @@ describe('Tbls JSON Parser', () => {
         const indexes = result.value.tables[0].indexes;
         expect(indexes).toHaveLength(4);
 
-        const primary = indexes.find(i => i.name === 'PRIMARY');
+        const primary = indexes.find((i) => i.name === 'PRIMARY');
         expect(primary?.isPrimary).toBe(true);
         expect(primary?.isUnique).toBe(true);
 
-        const unique = indexes.find(i => i.name === 'uk_unique');
+        const unique = indexes.find((i) => i.name === 'uk_unique');
         expect(unique?.isPrimary).toBe(false);
         expect(unique?.isUnique).toBe(true);
 
-        const regular = indexes.find(i => i.name === 'idx_regular');
+        const regular = indexes.find((i) => i.name === 'idx_regular');
         expect(regular?.isPrimary).toBe(false);
         expect(regular?.isUnique).toBe(false);
 
-        const compound = indexes.find(i => i.name === 'idx_compound');
+        const compound = indexes.find((i) => i.name === 'idx_compound');
         expect(compound?.columns).toHaveLength(2);
       }
     });

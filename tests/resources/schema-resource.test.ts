@@ -38,9 +38,9 @@ describe('Schema Resource Handler', () => {
                 type: 'int(11)',
                 nullable: false,
                 extra_def: 'auto_increment primary key',
-                comment: 'User ID'
-              }
-            ]
+                comment: 'User ID',
+              },
+            ],
           },
           {
             name: 'posts',
@@ -52,9 +52,9 @@ describe('Schema Resource Handler', () => {
                 type: 'int(11)',
                 nullable: false,
                 extra_def: 'auto_increment primary key',
-                comment: 'Post ID'
-              }
-            ]
+                comment: 'Post ID',
+              },
+            ],
           },
           {
             name: 'comments',
@@ -66,14 +66,17 @@ describe('Schema Resource Handler', () => {
                 type: 'int(11)',
                 nullable: false,
                 extra_def: 'auto_increment primary key',
-                comment: 'Comment ID'
-              }
-            ]
-          }
-        ]
+                comment: 'Comment ID',
+              },
+            ],
+          },
+        ],
       };
 
-      await fs.writeFile(join(schemaSource, 'schema.json'), JSON.stringify(schema, null, 2));
+      await fs.writeFile(
+        join(schemaSource, 'schema.json'),
+        JSON.stringify(schema, null, 2)
+      );
 
       const result = await handleSchemaListResource(schemaSource);
 
@@ -84,7 +87,7 @@ describe('Schema Resource Handler', () => {
         expect(resource.schemas[0]).toEqual({
           name: 'default',
           tableCount: 3,
-          description: 'Default database schema'
+          description: 'Default database schema',
         });
       }
     });
@@ -108,15 +111,29 @@ describe('Schema Resource Handler', () => {
             name: 'users',
             type: 'TABLE',
             comment: 'User accounts',
-            columns: [{ name: 'id', type: 'int(11)', nullable: false, comment: 'User ID' }]
+            columns: [
+              {
+                name: 'id',
+                type: 'int(11)',
+                nullable: false,
+                comment: 'User ID',
+              },
+            ],
           },
           {
             name: 'products',
             type: 'TABLE',
             comment: 'Product catalog',
-            columns: [{ name: 'id', type: 'int(11)', nullable: false, comment: 'Product ID' }]
-          }
-        ]
+            columns: [
+              {
+                name: 'id',
+                type: 'int(11)',
+                nullable: false,
+                comment: 'Product ID',
+              },
+            ],
+          },
+        ],
       };
 
       const analyticsSchema = {
@@ -127,21 +144,42 @@ describe('Schema Resource Handler', () => {
             name: 'events',
             type: 'TABLE',
             comment: 'User events',
-            columns: [{ name: 'id', type: 'int(11)', nullable: false, comment: 'Event ID' }]
+            columns: [
+              {
+                name: 'id',
+                type: 'int(11)',
+                nullable: false,
+                comment: 'Event ID',
+              },
+            ],
           },
           {
             name: 'sessions',
             type: 'TABLE',
             comment: 'User sessions',
-            columns: [{ name: 'id', type: 'int(11)', nullable: false, comment: 'Session ID' }]
+            columns: [
+              {
+                name: 'id',
+                type: 'int(11)',
+                nullable: false,
+                comment: 'Session ID',
+              },
+            ],
           },
           {
             name: 'conversions',
             type: 'TABLE',
             comment: 'Conversion tracking',
-            columns: [{ name: 'id', type: 'int(11)', nullable: false, comment: 'Conversion ID' }]
-          }
-        ]
+            columns: [
+              {
+                name: 'id',
+                type: 'int(11)',
+                nullable: false,
+                comment: 'Conversion ID',
+              },
+            ],
+          },
+        ],
       };
 
       const authSchema = {
@@ -152,14 +190,30 @@ describe('Schema Resource Handler', () => {
             name: 'tokens',
             type: 'TABLE',
             comment: 'Authentication tokens',
-            columns: [{ name: 'id', type: 'int(11)', nullable: false, comment: 'Token ID' }]
-          }
-        ]
+            columns: [
+              {
+                name: 'id',
+                type: 'int(11)',
+                nullable: false,
+                comment: 'Token ID',
+              },
+            ],
+          },
+        ],
       };
 
-      await fs.writeFile(join(schema1Dir, 'schema.json'), JSON.stringify(publicSchema, null, 2));
-      await fs.writeFile(join(schema2Dir, 'schema.json'), JSON.stringify(analyticsSchema, null, 2));
-      await fs.writeFile(join(schema3Dir, 'schema.json'), JSON.stringify(authSchema, null, 2));
+      await fs.writeFile(
+        join(schema1Dir, 'schema.json'),
+        JSON.stringify(publicSchema, null, 2)
+      );
+      await fs.writeFile(
+        join(schema2Dir, 'schema.json'),
+        JSON.stringify(analyticsSchema, null, 2)
+      );
+      await fs.writeFile(
+        join(schema3Dir, 'schema.json'),
+        JSON.stringify(authSchema, null, 2)
+      );
 
       const result = await handleSchemaListResource(schemaSource);
 
@@ -168,12 +222,14 @@ describe('Schema Resource Handler', () => {
         const resource: SchemaListResource = result.value;
         expect(resource.schemas).toHaveLength(3);
 
-        const schemaNames = resource.schemas.map(s => s.name).sort();
+        const schemaNames = resource.schemas.map((s) => s.name).sort();
         expect(schemaNames).toEqual(['analytics', 'auth', 'public']);
 
-        const publicSchema = resource.schemas.find(s => s.name === 'public');
-        const analyticsSchema = resource.schemas.find(s => s.name === 'analytics');
-        const authSchema = resource.schemas.find(s => s.name === 'auth');
+        const publicSchema = resource.schemas.find((s) => s.name === 'public');
+        const analyticsSchema = resource.schemas.find(
+          (s) => s.name === 'analytics'
+        );
+        const authSchema = resource.schemas.find((s) => s.name === 'auth');
 
         expect(publicSchema?.tableCount).toBe(2);
         expect(analyticsSchema?.tableCount).toBe(3);
@@ -215,7 +271,9 @@ describe('Schema Resource Handler', () => {
 
         expect(result.isErr()).toBe(true);
         if (result.isErr()) {
-          expect(result.error.message).toContain('Failed to read schema directory');
+          expect(result.error.message).toContain(
+            'Failed to read schema directory'
+          );
         }
       } finally {
         // Restore permissions for cleanup
@@ -238,7 +296,7 @@ describe('Schema Resource Handler', () => {
         expect(resource.schemas[0]).toEqual({
           name: 'default',
           tableCount: 0, // Should be 0 for malformed files
-          description: 'Default schema'
+          description: 'Default schema',
         });
       }
     });
@@ -262,14 +320,27 @@ describe('Schema Resource Handler', () => {
             name: 'test_table',
             type: 'TABLE',
             comment: 'Test table',
-            columns: [{ name: 'id', type: 'int(11)', nullable: false, comment: 'Test table ID' }]
-          }
-        ]
+            columns: [
+              {
+                name: 'id',
+                type: 'int(11)',
+                nullable: false,
+                comment: 'Test table ID',
+              },
+            ],
+          },
+        ],
       };
 
-      await fs.writeFile(join(validSchemaDir, 'schema.json'), JSON.stringify(validSchema, null, 2));
+      await fs.writeFile(
+        join(validSchemaDir, 'schema.json'),
+        JSON.stringify(validSchema, null, 2)
+      );
       // Create a different file in invalid schema (not schema.json)
-      await fs.writeFile(join(invalidSchemaDir, 'other.json'), '{"not": "schema"}');
+      await fs.writeFile(
+        join(invalidSchemaDir, 'other.json'),
+        '{"not": "schema"}'
+      );
 
       const result = await handleSchemaListResource(schemaSource);
 
@@ -291,9 +362,16 @@ describe('Schema Resource Handler', () => {
             name: 'main_table',
             type: 'TABLE',
             comment: 'Main table',
-            columns: [{ name: 'id', type: 'int(11)', nullable: false, comment: 'Main table ID' }]
-          }
-        ]
+            columns: [
+              {
+                name: 'id',
+                type: 'int(11)',
+                nullable: false,
+                comment: 'Main table ID',
+              },
+            ],
+          },
+        ],
       };
 
       const subSchemaDir = join(schemaSource, 'sub_schema');
@@ -307,13 +385,26 @@ describe('Schema Resource Handler', () => {
             name: 'sub_table',
             type: 'TABLE',
             comment: 'Sub table',
-            columns: [{ name: 'id', type: 'int(11)', nullable: false, comment: 'Sub table ID' }]
-          }
-        ]
+            columns: [
+              {
+                name: 'id',
+                type: 'int(11)',
+                nullable: false,
+                comment: 'Sub table ID',
+              },
+            ],
+          },
+        ],
       };
 
-      await fs.writeFile(join(schemaSource, 'schema.json'), JSON.stringify(singleSchema, null, 2));
-      await fs.writeFile(join(subSchemaDir, 'schema.json'), JSON.stringify(subSchema, null, 2));
+      await fs.writeFile(
+        join(schemaSource, 'schema.json'),
+        JSON.stringify(singleSchema, null, 2)
+      );
+      await fs.writeFile(
+        join(subSchemaDir, 'schema.json'),
+        JSON.stringify(subSchema, null, 2)
+      );
 
       const result = await handleSchemaListResource(schemaSource);
 
@@ -322,7 +413,7 @@ describe('Schema Resource Handler', () => {
         const resource: SchemaListResource = result.value;
         expect(resource.schemas).toHaveLength(2);
 
-        const schemaNames = resource.schemas.map(s => s.name).sort();
+        const schemaNames = resource.schemas.map((s) => s.name).sort();
         expect(schemaNames).toEqual(['default', 'sub_schema']);
       }
     });
@@ -332,10 +423,13 @@ describe('Schema Resource Handler', () => {
       const schemaWithoutTables = {
         name: 'default',
         desc: 'Schema without tables',
-        tables: []
+        tables: [],
       };
 
-      await fs.writeFile(join(schemaSource, 'schema.json'), JSON.stringify(schemaWithoutTables, null, 2));
+      await fs.writeFile(
+        join(schemaSource, 'schema.json'),
+        JSON.stringify(schemaWithoutTables, null, 2)
+      );
 
       const result = await handleSchemaListResource(schemaSource);
 
@@ -346,7 +440,7 @@ describe('Schema Resource Handler', () => {
         expect(resource.schemas[0]).toEqual({
           name: 'default',
           tableCount: 0,
-          description: 'Schema without tables'
+          description: 'Schema without tables',
         });
       }
     });
@@ -367,17 +461,34 @@ describe('Schema Resource Handler', () => {
                   name: `table_${i}_1`,
                   type: 'TABLE',
                   comment: `Table 1 for schema ${i}`,
-                  columns: [{ name: 'id', type: 'int(11)', nullable: false, comment: 'Table ID' }]
+                  columns: [
+                    {
+                      name: 'id',
+                      type: 'int(11)',
+                      nullable: false,
+                      comment: 'Table ID',
+                    },
+                  ],
                 },
                 {
                   name: `table_${i}_2`,
                   type: 'TABLE',
                   comment: `Table 2 for schema ${i}`,
-                  columns: [{ name: 'id', type: 'int(11)', nullable: false, comment: 'Table ID' }]
-                }
-              ]
+                  columns: [
+                    {
+                      name: 'id',
+                      type: 'int(11)',
+                      nullable: false,
+                      comment: 'Table ID',
+                    },
+                  ],
+                },
+              ],
             };
-            await fs.writeFile(join(schemaSourcePath, 'schema.json'), JSON.stringify(schemaContent, null, 2));
+            await fs.writeFile(
+              join(schemaSourcePath, 'schema.json'),
+              JSON.stringify(schemaContent, null, 2)
+            );
           })
         );
       }
@@ -395,7 +506,7 @@ describe('Schema Resource Handler', () => {
         expect(endTime - startTime).toBeLessThan(5000); // Should complete within 5 seconds
 
         // Verify all schemas have correct table counts
-        resource.schemas.forEach(schema => {
+        resource.schemas.forEach((schema) => {
           expect(schema.tableCount).toBe(2);
         });
       }

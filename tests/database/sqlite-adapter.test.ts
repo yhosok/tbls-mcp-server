@@ -15,9 +15,14 @@ import {
   closeSQLiteConnection,
 } from '../../src/database/sqlite-adapter';
 
-const mockCreateSQLiteConnection = createSQLiteConnection as jest.MockedFunction<typeof createSQLiteConnection>;
-const mockExecuteSQLiteQuery = executeSQLiteQuery as jest.MockedFunction<typeof executeSQLiteQuery>;
-const mockCloseSQLiteConnection = closeSQLiteConnection as jest.MockedFunction<typeof closeSQLiteConnection>;
+const mockCreateSQLiteConnection =
+  createSQLiteConnection as jest.MockedFunction<typeof createSQLiteConnection>;
+const mockExecuteSQLiteQuery = executeSQLiteQuery as jest.MockedFunction<
+  typeof executeSQLiteQuery
+>;
+const mockCloseSQLiteConnection = closeSQLiteConnection as jest.MockedFunction<
+  typeof closeSQLiteConnection
+>;
 
 describe('sqlite adapter (mocked)', () => {
   const mockConnection = {
@@ -30,11 +35,13 @@ describe('sqlite adapter (mocked)', () => {
 
     // Set up default successful responses
     mockCreateSQLiteConnection.mockResolvedValue(ok(mockConnection));
-    mockExecuteSQLiteQuery.mockResolvedValue(ok({
-      rows: [],
-      rowCount: 0,
-      executionTime: 1,
-    }));
+    mockExecuteSQLiteQuery.mockResolvedValue(
+      ok({
+        rows: [],
+        rowCount: 0,
+        executionTime: 1,
+      })
+    );
     mockCloseSQLiteConnection.mockResolvedValue(ok(undefined));
   });
 
@@ -69,7 +76,9 @@ describe('sqlite adapter (mocked)', () => {
         path: '/invalid/path.db',
       };
 
-      mockCreateSQLiteConnection.mockResolvedValue(err(new Error('Connection failed')));
+      mockCreateSQLiteConnection.mockResolvedValue(
+        err(new Error('Connection failed'))
+      );
 
       const result = await createSQLiteConnection(config);
 
@@ -81,7 +90,11 @@ describe('sqlite adapter (mocked)', () => {
     it('should execute queries successfully', async () => {
       const result = await executeSQLiteQuery(mockConnection, 'SELECT 1', []);
 
-      expect(mockExecuteSQLiteQuery).toHaveBeenCalledWith(mockConnection, 'SELECT 1', []);
+      expect(mockExecuteSQLiteQuery).toHaveBeenCalledWith(
+        mockConnection,
+        'SELECT 1',
+        []
+      );
       expect(result.isOk()).toBe(true);
     });
   });

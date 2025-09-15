@@ -1,4 +1,10 @@
-import { existsSync, writeFileSync, mkdirSync, unlinkSync, rmdirSync } from 'fs';
+import {
+  existsSync,
+  writeFileSync,
+  mkdirSync,
+  unlinkSync,
+  rmdirSync,
+} from 'fs';
 import path from 'path';
 import {
   createSchemaParser,
@@ -27,34 +33,33 @@ const sampleJsonSchema = {
           type: 'int(11)',
           nullable: false,
           extra_def: 'auto_increment primary key',
-          comment: 'User ID'
+          comment: 'User ID',
         },
         {
           name: 'username',
           type: 'varchar(50)',
           nullable: false,
-          comment: 'Username'
+          comment: 'Username',
         },
         {
           name: 'email',
           type: 'varchar(100)',
           nullable: false,
-          comment: 'Email address'
-        }
+          comment: 'Email address',
+        },
       ],
       indexes: [
         {
           name: 'PRIMARY',
           columns: ['id'],
           def: 'PRIMARY KEY (id)',
-          comment: null
-        }
-      ]
-    }
+          comment: null,
+        },
+      ],
+    },
   ],
-  relations: []
+  relations: [],
 };
-
 
 describe('Schema Adapter', () => {
   beforeAll(() => {
@@ -81,10 +86,10 @@ describe('Schema Adapter', () => {
       'test-schema.json',
       'schema.json',
       'database.json',
-      'invalid.txt'
+      'invalid.txt',
     ];
 
-    files.forEach(file => {
+    files.forEach((file) => {
       const filePath = path.join(TEST_DIR, file);
       if (existsSync(filePath)) {
         unlinkSync(filePath);
@@ -99,17 +104,20 @@ describe('Schema Adapter', () => {
       expect(result._unsafeUnwrap()).toBeDefined();
     });
 
-
     it('should return error for unsupported file extensions', () => {
       const result = createSchemaParser('test.txt');
       expect(result.isErr()).toBe(true);
-      expect(result._unsafeUnwrapErr().message).toContain('Unsupported file extension: .txt');
+      expect(result._unsafeUnwrapErr().message).toContain(
+        'Unsupported file extension: .txt'
+      );
     });
 
     it('should return error for empty file path', () => {
       const result = createSchemaParser('');
       expect(result.isErr()).toBe(true);
-      expect(result._unsafeUnwrapErr().message).toContain('File path must be a non-empty string');
+      expect(result._unsafeUnwrapErr().message).toContain(
+        'File path must be a non-empty string'
+      );
     });
   });
 
@@ -127,11 +135,12 @@ describe('Schema Adapter', () => {
       expect(schema.tables[0].name).toBe('users');
     });
 
-
     it('should return error for non-existent file', () => {
       const result = parseSchemaFile('/non/existent/file.json');
       expect(result.isErr()).toBe(true);
-      expect(result._unsafeUnwrapErr().message).toContain('File does not exist');
+      expect(result._unsafeUnwrapErr().message).toContain(
+        'File does not exist'
+      );
     });
 
     it('should auto-resolve schema.json from directory', () => {
@@ -144,7 +153,6 @@ describe('Schema Adapter', () => {
       const schema = result._unsafeUnwrap();
       expect(schema.metadata.name).toBe('test_database');
     });
-
   });
 
   describe('parseSingleTableFile', () => {
@@ -158,7 +166,6 @@ describe('Schema Adapter', () => {
       const schema = result._unsafeUnwrap();
       expect(schema.tables).toHaveLength(1);
     });
-
   });
 
   describe('parseSchemaOverview', () => {
@@ -173,7 +180,6 @@ describe('Schema Adapter', () => {
       expect(metadata.name).toBe('test_database');
       expect(metadata.tableCount).toBe(1);
     });
-
   });
 
   describe('parseTableReferences', () => {
@@ -188,7 +194,6 @@ describe('Schema Adapter', () => {
       expect(references).toHaveLength(1);
       expect(references[0].name).toBe('users');
     });
-
   });
 
   describe('getSchemaParser', () => {
@@ -206,7 +211,9 @@ describe('Schema Adapter', () => {
 
       const result = createSchemaParser(mdPath);
       expect(result.isErr()).toBe(true);
-      expect(result._unsafeUnwrapErr().message).toContain('Markdown files are no longer supported');
+      expect(result._unsafeUnwrapErr().message).toContain(
+        'Markdown files are no longer supported'
+      );
     });
   });
 
@@ -217,7 +224,7 @@ describe('Schema Adapter', () => {
           name: 'test',
           tableCount: 1,
           generated: null,
-          description: null
+          description: null,
         },
         tables: [
           {
@@ -234,14 +241,14 @@ describe('Schema Adapter', () => {
                 isAutoIncrement: true,
                 maxLength: null,
                 precision: null,
-                scale: null
-              }
+                scale: null,
+              },
             ],
             indexes: [],
-            relations: []
-          }
+            relations: [],
+          },
         ],
-        tableReferences: []
+        tableReferences: [],
       };
 
       const result = validateParsedSchema(validSchema);
@@ -252,12 +259,14 @@ describe('Schema Adapter', () => {
       const invalidSchema = {
         metadata: { name: '' }, // Invalid: empty name
         tables: [],
-        tableReferences: []
+        tableReferences: [],
       };
 
       const result = validateParsedSchema(invalidSchema);
       expect(result.isErr()).toBe(true);
-      expect(result._unsafeUnwrapErr().message).toContain('Schema validation failed');
+      expect(result._unsafeUnwrapErr().message).toContain(
+        'Schema validation failed'
+      );
     });
   });
 
@@ -289,7 +298,9 @@ describe('Schema Adapter', () => {
     it('should return detailed error when no files found', () => {
       const result = parseSchemaWithFallback('/nonexistent/path');
       expect(result.isErr()).toBe(true);
-      expect(result._unsafeUnwrapErr().message).toContain('Failed to parse JSON schema from any candidate file');
+      expect(result._unsafeUnwrapErr().message).toContain(
+        'Failed to parse JSON schema from any candidate file'
+      );
     });
 
     it('should try all candidates and report attempts', () => {
@@ -299,7 +310,9 @@ describe('Schema Adapter', () => {
 
       const result = parseSchemaWithFallback(TEST_DIR);
       expect(result.isErr()).toBe(true);
-      expect(result._unsafeUnwrapErr().message).toContain('Failed to parse JSON schema from any candidate file');
+      expect(result._unsafeUnwrapErr().message).toContain(
+        'Failed to parse JSON schema from any candidate file'
+      );
       expect(result._unsafeUnwrapErr().message).toContain('schema.json');
     });
   });
