@@ -113,18 +113,18 @@ describe('Enhanced Resource Discovery (TDD - RED Phase)', () => {
         'schema://list',
 
         // Schema table list resources
-        'schema://analytics/tables',
+        'schema://reporting/tables',
         'schema://public/tables',
 
         // Individual table resources (these should fail with current implementation)
-        'table://analytics/events',
-        'table://analytics/sessions',
+        'table://reporting/events',
+        'table://reporting/sessions',
         'table://public/products',
         'table://public/users',
 
         // Individual table index resources (these should fail with current implementation)
-        'table://analytics/events/indexes',
-        'table://analytics/sessions/indexes',
+        'table://reporting/events/indexes',
+        'table://reporting/sessions/indexes',
         'table://public/products/indexes',
         'table://public/users/indexes',
       ].sort();
@@ -146,12 +146,12 @@ describe('Enhanced Resource Discovery (TDD - RED Phase)', () => {
       });
 
       const eventsTableResource = resources.find(
-        (r) => r.uri === 'table://analytics/events'
+        (r) => r.uri === 'table://reporting/events'
       );
       expect(eventsTableResource).toEqual({
-        uri: 'table://analytics/events',
+        uri: 'table://reporting/events',
         mimeType: 'application/json',
-        name: 'events table (analytics schema)',
+        name: 'events table (reporting schema)',
         description:
           'Detailed information about the events table including columns, indexes, and relationships',
       });
@@ -168,12 +168,12 @@ describe('Enhanced Resource Discovery (TDD - RED Phase)', () => {
       });
 
       const eventsIndexesResource = resources.find(
-        (r) => r.uri === 'table://analytics/events/indexes'
+        (r) => r.uri === 'table://reporting/events/indexes'
       );
       expect(eventsIndexesResource).toEqual({
-        uri: 'table://analytics/events/indexes',
+        uri: 'table://reporting/events/indexes',
         mimeType: 'application/json',
-        name: 'events table indexes (analytics schema)',
+        name: 'events table indexes (reporting schema)',
         description: 'Index information for the events table',
       });
     });
@@ -408,13 +408,13 @@ async function setupMultiSchemaTestData(schemaDir: string): Promise<void> {
     JSON.stringify(publicSchema, null, 2)
   );
 
-  // Create analytics schema
-  const analyticsSchemaDir = join(schemaDir, 'analytics');
-  await fs.mkdir(analyticsSchemaDir);
+  // Create reporting schema
+  const reportingSchemaDir = join(schemaDir, 'reporting');
+  await fs.mkdir(reportingSchemaDir);
 
-  const analyticsSchema = {
-    name: 'analytics',
-    desc: 'Analytics schema with event tracking and sessions',
+  const reportingSchema = {
+    name: 'reporting',
+    desc: 'Reporting schema with event tracking and sessions',
     tables: [
       {
         name: 'events',
@@ -565,8 +565,8 @@ async function setupMultiSchemaTestData(schemaDir: string): Promise<void> {
   };
 
   await fs.writeFile(
-    join(analyticsSchemaDir, 'schema.json'),
-    JSON.stringify(analyticsSchema, null, 2)
+    join(reportingSchemaDir, 'schema.json'),
+    JSON.stringify(reportingSchema, null, 2)
   );
 }
 

@@ -1,12 +1,11 @@
 import { Result, ok, err } from 'neverthrow';
-import { join } from 'path';
 import * as path from 'path';
 import { existsSync } from 'fs';
 import { SchemaTablesResource, TableInfoResource } from '../schemas/database';
 import {
   parseTableReferences,
   parseSingleTableFile,
-  resolveSchemaSource,
+  resolveSchemaName,
 } from '../parsers/schema-adapter';
 import { ResourceCache } from '../cache/resource-cache';
 
@@ -24,25 +23,27 @@ export const handleSchemaTablesResource = async (
   schemaName: string,
   cache?: ResourceCache
 ): Promise<Result<SchemaTablesResource, Error>> => {
-  // Resolve the schema source
-  const resolveResult = resolveSchemaSource(schemaSource);
-  if (resolveResult.isErr()) {
-    return err(resolveResult.error);
+  // Resolve schema name with backward compatibility support
+  const schemaResolveResult = resolveSchemaName(schemaSource, schemaName, cache);
+  if (schemaResolveResult.isErr()) {
+    return err(schemaResolveResult.error);
   }
 
-  const { type: sourceType, path: schemaPath } = resolveResult.value;
+  const { resolvedSchemaName, schemaPath, sourceType } = schemaResolveResult.value;
 
-  // Determine the path to the schema directory/file
+  // Determine the target path for parsing table references
   let targetPath: string;
   if (sourceType === 'file') {
-    // Single file - use the directory containing the file
-    targetPath = path.dirname(schemaPath);
+    // Single file - use the schema file directly for parsing
+    targetPath = schemaPath;
   } else {
-    // Directory - determine subdirectory for multi-schema setup
-    if (schemaName === 'default') {
-      targetPath = schemaPath;
+    // Directory - use the appropriate subdirectory or root
+    if (schemaName === 'default' && existsSync(path.join(path.dirname(schemaPath), 'schema.json'))) {
+      // Single schema setup in directory root
+      targetPath = path.dirname(schemaPath);
     } else {
-      targetPath = join(schemaPath, schemaName);
+      // Multi-schema setup or named schema
+      targetPath = path.dirname(schemaPath);
     }
   }
 
@@ -51,7 +52,7 @@ export const handleSchemaTablesResource = async (
     const cachedTableRefs = await cache.getTableReferences(targetPath);
     if (cachedTableRefs) {
       return ok({
-        schemaName,
+        schemaName: resolvedSchemaName,
         tables: cachedTableRefs,
       });
     }
@@ -71,7 +72,7 @@ export const handleSchemaTablesResource = async (
   }
 
   return ok({
-    schemaName,
+    schemaName: resolvedSchemaName,
     tables,
   });
 };
@@ -92,13 +93,13 @@ export const handleTableInfoResource = async (
   tableName: string,
   cache?: ResourceCache
 ): Promise<Result<TableInfoResource, Error>> => {
-  // Resolve the schema source
-  const resolveResult = resolveSchemaSource(schemaSource);
-  if (resolveResult.isErr()) {
-    return err(resolveResult.error);
+  // Resolve schema name with backward compatibility support
+  const schemaResolveResult = resolveSchemaName(schemaSource, schemaName, cache);
+  if (schemaResolveResult.isErr()) {
+    return err(schemaResolveResult.error);
   }
 
-  const { type: sourceType, path: schemaPath } = resolveResult.value;
+  const { resolvedSchemaName, schemaPath, sourceType } = schemaResolveResult.value;
 
   // Determine the path to the schema.json file
   let schemaJsonPath: string;
@@ -107,12 +108,8 @@ export const handleTableInfoResource = async (
     // Single schema.json file - use directly
     schemaJsonPath = schemaPath;
   } else {
-    // Directory - look for schema.json in appropriate subdirectory
-    if (schemaName === 'default') {
-      schemaJsonPath = join(schemaPath, 'schema.json');
-    } else {
-      schemaJsonPath = join(schemaPath, schemaName, 'schema.json');
-    }
+    // Directory - use the resolved schema path
+    schemaJsonPath = schemaPath;
 
     // Verify schema.json exists in directory
     if (!existsSync(schemaJsonPath)) {
@@ -124,12 +121,12 @@ export const handleTableInfoResource = async (
     }
   }
 
-  // Try to get cached table first
+  // Try to get cached table first using table-specific cache key
   if (cache) {
-    const cachedTable = await cache.getTable(schemaJsonPath);
+    const cachedTable = await cache.getTableByName(schemaJsonPath, tableName);
     if (cachedTable) {
       return ok({
-        schemaName,
+        schemaName: resolvedSchemaName,
         table: cachedTable,
       });
     }
@@ -151,13 +148,13 @@ export const handleTableInfoResource = async (
 
   const table = schema.tables[0];
 
-  // Cache the individual table if cache is available
+  // Cache the individual table using table-specific cache key if cache is available
   if (cache) {
-    await cache.setTable(schemaJsonPath, table);
+    await cache.setTableByName(schemaJsonPath, tableName, table);
   }
 
   return ok({
-    schemaName,
+    schemaName: resolvedSchemaName,
     table,
   });
 };

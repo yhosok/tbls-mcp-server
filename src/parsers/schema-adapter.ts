@@ -385,6 +385,84 @@ export const resolveSchemaSource = (
 };
 
 /**
+ * Resolves schema name with backward compatibility support
+ * Maps "default" requests to appropriate schema paths while preserving schema name expectations
+ * @param schemaSource - Path to schema file or directory
+ * @param requestedSchemaName - Schema name requested by client (might be "default")
+ * @param cache - Optional cache instance for performance optimization
+ * @returns Result containing resolved schema name and path information
+ */
+export const resolveSchemaName = (
+  schemaSource: string,
+  requestedSchemaName: string,
+  cache?: ResourceCache
+): Result<{ resolvedSchemaName: string; schemaPath: string; sourceType: 'file' | 'directory' }, Error> => {
+  // First resolve the schema source
+  const resolveResult = resolveSchemaSource(schemaSource);
+  if (resolveResult.isErr()) {
+    return createError(`Failed to resolve schema source: ${resolveResult.error.message}`);
+  }
+
+  const { type: sourceType, path: sourcePath } = resolveResult.value;
+
+  if (sourceType === 'file') {
+    // Single file setup
+    if (requestedSchemaName === 'default') {
+      // For backward compatibility, always return "default" when requested for single file setups
+      return ok({
+        resolvedSchemaName: 'default',
+        schemaPath: sourcePath,
+        sourceType: 'file'
+      });
+    }
+
+    // For named schema requests on single file, verify the name matches
+    const metadataResult = parseSchemaOverview(sourcePath, cache);
+    if (metadataResult.isOk() && metadataResult.value.name) {
+      const actualName = metadataResult.value.name;
+      if (actualName !== requestedSchemaName) {
+        return createError(
+          `Schema name mismatch: requested '${requestedSchemaName}' but schema file contains '${actualName}'. Use '${actualName}' or 'default' instead.`
+        );
+      }
+    }
+    return ok({
+      resolvedSchemaName: requestedSchemaName,
+      schemaPath: sourcePath,
+      sourceType: 'file'
+    });
+  }
+
+  // Directory setup - handle multi-schema case
+  if (requestedSchemaName === 'default') {
+    // Check if there's a root schema.json file (single schema setup in directory)
+    const rootSchemaPath = path.join(sourcePath, 'schema.json');
+    if (existsSync(rootSchemaPath)) {
+      // For backward compatibility, return "default" for single-schema directory setups
+      return ok({
+        resolvedSchemaName: 'default',
+        schemaPath: rootSchemaPath,
+        sourceType: 'directory'
+      });
+    }
+    // No root schema.json, use "default" as-is (multi-schema setup with default schema)
+    return ok({
+      resolvedSchemaName: 'default',
+      schemaPath: path.join(sourcePath, 'default'),
+      sourceType: 'directory'
+    });
+  }
+
+  // Named schema in directory - use as-is
+  const namedSchemaPath = path.join(sourcePath, requestedSchemaName, 'schema.json');
+  return ok({
+    resolvedSchemaName: requestedSchemaName,
+    schemaPath: namedSchemaPath,
+    sourceType: 'directory'
+  });
+};
+
+/**
  * Advanced function that tries multiple JSON file patterns
  * @param basePath - Base directory or file path to search
  * @param cache - Optional cache instance for performance optimization

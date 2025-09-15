@@ -127,8 +127,11 @@ export class ResourcePatterns {
 
           const resources: ResourceMetadata[] = [];
           for (const schema of schemaListResult.value.schemas) {
+            // For backward compatibility, use "default" in URIs for single-schema setups
+            const uriSchemaName = schemaListResult.value.schemas.length === 1 ? 'default' : schema.name;
+
             resources.push({
-              uri: `schema://${schema.name}/tables`,
+              uri: `schema://${uriSchemaName}/tables`,
               mimeType: 'application/json',
               name: `${schema.name} Schema Tables`,
               description: `List of tables in the ${schema.name} schema`,
@@ -187,21 +190,35 @@ export class ResourcePatterns {
           const resources: ResourceMetadata[] = [];
 
           // If scope specifies a particular schema, only generate for that schema
-          const targetSchemas = context.scope?.schemaName
-            ? schemaListResult.value.schemas.filter(
+          let targetSchemas = schemaListResult.value.schemas;
+          if (context.scope?.schemaName) {
+            // Handle "default" schema name resolution for single-schema setups
+            if (context.scope.schemaName === 'default' && schemaListResult.value.schemas.length === 1) {
+              // For single-schema setup, "default" should resolve to the only schema
+              targetSchemas = schemaListResult.value.schemas;
+            } else {
+              // For multi-schema setup or named schema request, filter by exact name
+              targetSchemas = schemaListResult.value.schemas.filter(
                 (s) => s.name === context.scope?.schemaName
-              )
-            : schemaListResult.value.schemas;
+              );
+            }
+          }
 
           for (const schema of targetSchemas) {
+            // Use the requested schema name for resolution (important for "default" handling)
+            const requestedSchemaName = context.scope?.schemaName || schema.name;
+
             const tablesResult = await handleSchemaTablesResource(
               context.schemaSource,
-              schema.name
+              requestedSchemaName
             );
             if (tablesResult.isOk()) {
+              // For backward compatibility, use "default" in URIs for single-schema setups
+              const uriSchemaName = schemaListResult.value.schemas.length === 1 ? 'default' : schema.name;
+
               for (const table of tablesResult.value.tables) {
                 resources.push({
-                  uri: `table://${schema.name}/${table.name}`,
+                  uri: `table://${uriSchemaName}/${table.name}`,
                   mimeType: 'application/json',
                   name: `${table.name} table (${schema.name} schema)`,
                   description: `Detailed information about the ${table.name} table including columns, indexes, and relationships`,
@@ -261,21 +278,35 @@ export class ResourcePatterns {
           const resources: ResourceMetadata[] = [];
 
           // If scope specifies a particular schema, only generate for that schema
-          const targetSchemas = context.scope?.schemaName
-            ? schemaListResult.value.schemas.filter(
+          let targetSchemas = schemaListResult.value.schemas;
+          if (context.scope?.schemaName) {
+            // Handle "default" schema name resolution for single-schema setups
+            if (context.scope.schemaName === 'default' && schemaListResult.value.schemas.length === 1) {
+              // For single-schema setup, "default" should resolve to the only schema
+              targetSchemas = schemaListResult.value.schemas;
+            } else {
+              // For multi-schema setup or named schema request, filter by exact name
+              targetSchemas = schemaListResult.value.schemas.filter(
                 (s) => s.name === context.scope?.schemaName
-              )
-            : schemaListResult.value.schemas;
+              );
+            }
+          }
 
           for (const schema of targetSchemas) {
+            // Use the requested schema name for resolution (important for "default" handling)
+            const requestedSchemaName = context.scope?.schemaName || schema.name;
+
             const tablesResult = await handleSchemaTablesResource(
               context.schemaSource,
-              schema.name
+              requestedSchemaName
             );
             if (tablesResult.isOk()) {
+              // For backward compatibility, use "default" in URIs for single-schema setups
+              const uriSchemaName = schemaListResult.value.schemas.length === 1 ? 'default' : schema.name;
+
               for (const table of tablesResult.value.tables) {
                 resources.push({
-                  uri: `table://${schema.name}/${table.name}/indexes`,
+                  uri: `table://${uriSchemaName}/${table.name}/indexes`,
                   mimeType: 'application/json',
                   name: `${table.name} table indexes (${schema.name} schema)`,
                   description: `Index information for the ${table.name} table`,

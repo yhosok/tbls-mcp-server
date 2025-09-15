@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import { promises as fs } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
-import { handleSchemaListResource } from '../../src/resources/schema-resource';
+import { handleSchemaListResource, parseSingleSchemaInfo } from '../../src/resources/schema-resource';
 import type { SchemaListResource } from '../../src/schemas/database';
 
 describe('Schema Resource Handler', () => {
@@ -508,6 +508,474 @@ describe('Schema Resource Handler', () => {
         // Verify all schemas have correct table counts
         resource.schemas.forEach((schema) => {
           expect(schema.tableCount).toBe(2);
+        });
+      }
+    });
+  });
+
+  describe('Schema Name Extraction (TDD - Failing Tests)', () => {
+    it('should extract actual schema name from single schema.json file instead of using "default"', async () => {
+      // Create a schema.json file with actual database name "test_database"
+      const schema = {
+        name: 'test_database',
+        desc: 'Test Database System',
+        tables: [
+          {
+            name: 'users',
+            type: 'TABLE',
+            comment: 'User accounts table',
+            columns: [
+              {
+                name: 'id',
+                type: 'int(11)',
+                nullable: false,
+                extra_def: 'auto_increment primary key',
+                comment: 'User ID',
+              },
+            ],
+          },
+          {
+            name: 'products',
+            type: 'TABLE',
+            comment: 'Product catalog table',
+            columns: [
+              {
+                name: 'id',
+                type: 'int(11)',
+                nullable: false,
+                extra_def: 'auto_increment primary key',
+                comment: 'Product ID',
+              },
+            ],
+          },
+        ],
+      };
+
+      await fs.writeFile(
+        join(schemaSource, 'schema.json'),
+        JSON.stringify(schema, null, 2)
+      );
+
+      const result = await handleSchemaListResource(schemaSource);
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const resource: SchemaListResource = result.value;
+        expect(resource.schemas).toHaveLength(1);
+        expect(resource.schemas[0]).toEqual({
+          name: 'test_database', // Should use actual name from schema.json, not 'default'
+          tableCount: 2,
+          description: 'Test Database System',
+        });
+      }
+    });
+
+    it('should extract schema name from schema.json in subdirectories', async () => {
+      // Create subdirectory with schema.json containing different name
+      const ecommerceDir = join(schemaSource, 'ecommerce_prod');
+      await fs.mkdir(ecommerceDir);
+
+      const ecommerceSchema = {
+        name: 'ecommerce_production',
+        desc: 'Production E-commerce Database',
+        tables: [
+          {
+            name: 'products',
+            type: 'TABLE',
+            comment: 'Product catalog table',
+            columns: [
+              {
+                name: 'id',
+                type: 'int(11)',
+                nullable: false,
+                comment: 'Product ID',
+              },
+            ],
+          },
+        ],
+      };
+
+      await fs.writeFile(
+        join(ecommerceDir, 'schema.json'),
+        JSON.stringify(ecommerceSchema, null, 2)
+      );
+
+      const result = await handleSchemaListResource(schemaSource);
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const resource: SchemaListResource = result.value;
+        expect(resource.schemas).toHaveLength(1);
+        expect(resource.schemas[0]).toEqual({
+          name: 'ecommerce_production', // Should use name from schema.json, not directory name
+          tableCount: 1,
+          description: 'Production E-commerce Database',
+        });
+      }
+    });
+
+    it('should use fallback schema name when name field is missing from schema.json', async () => {
+      // Create schema.json without name field
+      const schemaWithoutName = {
+        desc: 'Schema without name field',
+        tables: [
+          {
+            name: 'test_table',
+            type: 'TABLE',
+            comment: 'Test table',
+            columns: [
+              {
+                name: 'id',
+                type: 'int(11)',
+                nullable: false,
+                comment: 'Test ID',
+              },
+            ],
+          },
+        ],
+      };
+
+      await fs.writeFile(
+        join(schemaSource, 'schema.json'),
+        JSON.stringify(schemaWithoutName, null, 2)
+      );
+
+      const result = await handleSchemaListResource(schemaSource);
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const resource: SchemaListResource = result.value;
+        expect(resource.schemas).toHaveLength(1);
+        expect(resource.schemas[0]).toEqual({
+          name: 'database_schema', // Should use fallback name from metadata
+          tableCount: 1,
+          description: 'Schema without name field',
+        });
+      }
+    });
+
+    it('should handle schema.json with empty name field', async () => {
+      // Create schema.json with empty name field
+      const schemaWithEmptyName = {
+        name: '',
+        desc: 'Schema with empty name',
+        tables: [
+          {
+            name: 'test_table',
+            type: 'TABLE',
+            comment: 'Test table',
+            columns: [
+              {
+                name: 'id',
+                type: 'int(11)',
+                nullable: false,
+                comment: 'Test ID',
+              },
+            ],
+          },
+        ],
+      };
+
+      await fs.writeFile(
+        join(schemaSource, 'schema.json'),
+        JSON.stringify(schemaWithEmptyName, null, 2)
+      );
+
+      const result = await handleSchemaListResource(schemaSource);
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const resource: SchemaListResource = result.value;
+        expect(resource.schemas).toHaveLength(1);
+        expect(resource.schemas[0]).toEqual({
+          name: 'database_schema', // Should use fallback when name is empty
+          tableCount: 1,
+          description: 'Schema with empty name',
+        });
+      }
+    });
+
+    it('should extract names from multiple schemas with different actual names', async () => {
+      // Create multiple schemas with different actual names in schema.json
+      const schemas = [
+        {
+          dir: 'reporting',
+          data: {
+            name: 'reporting_prod',
+            desc: 'Reporting Production Database',
+            tables: [
+              {
+                name: 'events',
+                type: 'TABLE',
+                comment: 'Event tracking',
+                columns: [{ name: 'id', type: 'int(11)', nullable: false, comment: 'Event ID' }],
+              },
+            ],
+          },
+        },
+        {
+          dir: 'user_mgmt',
+          data: {
+            name: 'user_management_v2',
+            desc: 'User Management System v2',
+            tables: [
+              {
+                name: 'accounts',
+                type: 'TABLE',
+                comment: 'User accounts',
+                columns: [{ name: 'id', type: 'int(11)', nullable: false, comment: 'Account ID' }],
+              },
+              {
+                name: 'profiles',
+                type: 'TABLE',
+                comment: 'User profiles',
+                columns: [{ name: 'id', type: 'int(11)', nullable: false, comment: 'Profile ID' }],
+              },
+            ],
+          },
+        },
+        {
+          dir: 'inventory',
+          data: {
+            name: 'inventory_system',
+            desc: 'Inventory Management System',
+            tables: [
+              {
+                name: 'items',
+                type: 'TABLE',
+                comment: 'Inventory items',
+                columns: [{ name: 'id', type: 'int(11)', nullable: false, comment: 'Item ID' }],
+              },
+            ],
+          },
+        },
+      ];
+
+      // Create subdirectories and schema.json files
+      for (const schema of schemas) {
+        const schemaDir = join(schemaSource, schema.dir);
+        await fs.mkdir(schemaDir);
+        await fs.writeFile(
+          join(schemaDir, 'schema.json'),
+          JSON.stringify(schema.data, null, 2)
+        );
+      }
+
+      const result = await handleSchemaListResource(schemaSource);
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const resource: SchemaListResource = result.value;
+        expect(resource.schemas).toHaveLength(3);
+
+        // Sort by name for consistent testing
+        const sortedSchemas = resource.schemas.sort((a, b) => a.name.localeCompare(b.name));
+
+        expect(sortedSchemas[0]).toEqual({
+          name: 'inventory_system', // Should use name from schema.json, not directory name
+          tableCount: 1,
+          description: 'Inventory Management System',
+        });
+
+        expect(sortedSchemas[1]).toEqual({
+          name: 'reporting_prod', // Should use name from schema.json, not directory name
+          tableCount: 1,
+          description: 'Reporting Production Database',
+        });
+
+        expect(sortedSchemas[2]).toEqual({
+          name: 'user_management_v2', // Should use name from schema.json, not directory name
+          tableCount: 2,
+          description: 'User Management System v2',
+        });
+      }
+    });
+
+    it('should cache schema with actual name from schema.json', async () => {
+      // Test that caching works with actual schema names
+      const schema = {
+        name: 'production_database',
+        desc: 'Production Database Instance',
+        tables: [
+          {
+            name: 'orders',
+            type: 'TABLE',
+            comment: 'Customer orders',
+            columns: [
+              {
+                name: 'id',
+                type: 'int(11)',
+                nullable: false,
+                comment: 'Order ID',
+              },
+            ],
+          },
+        ],
+      };
+
+      await fs.writeFile(
+        join(schemaSource, 'schema.json'),
+        JSON.stringify(schema, null, 2)
+      );
+
+      // First call should parse and cache
+      const result1 = await handleSchemaListResource(schemaSource);
+      expect(result1.isOk()).toBe(true);
+
+      // Second call should use cached data with correct name
+      const result2 = await handleSchemaListResource(schemaSource);
+      expect(result2.isOk()).toBe(true);
+
+      if (result2.isOk()) {
+        const resource: SchemaListResource = result2.value;
+        expect(resource.schemas).toHaveLength(1);
+        expect(resource.schemas[0]).toEqual({
+          name: 'production_database', // Should maintain actual name even from cache
+          tableCount: 1,
+          description: 'Production Database Instance',
+        });
+      }
+    });
+
+    it('should handle non-string name field in schema.json gracefully', async () => {
+      // Create schema.json with non-string name field
+      const schemaWithInvalidName = {
+        name: 12345, // Invalid name type
+        desc: 'Schema with invalid name type',
+        tables: [
+          {
+            name: 'test_table',
+            type: 'TABLE',
+            comment: 'Test table',
+            columns: [
+              {
+                name: 'id',
+                type: 'int(11)',
+                nullable: false,
+                comment: 'Test ID',
+              },
+            ],
+          },
+        ],
+      };
+
+      await fs.writeFile(
+        join(schemaSource, 'schema.json'),
+        JSON.stringify(schemaWithInvalidName, null, 2)
+      );
+
+      const result = await handleSchemaListResource(schemaSource);
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const resource: SchemaListResource = result.value;
+        expect(resource.schemas).toHaveLength(1);
+        expect(resource.schemas[0]).toEqual({
+          name: 'database_schema', // Should use fallback when name is not a string
+          tableCount: 1,
+          description: 'Schema with invalid name type',
+        });
+      }
+    });
+  });
+
+  describe('parseSingleSchemaInfo Function (TDD - Failing Tests)', () => {
+    it('should extract schema name directly from schema.json content', async () => {
+      const schema = {
+        name: 'openlogi_local',
+        desc: 'OpenLogi Local Database',
+        tables: [
+          {
+            name: 'users',
+            type: 'TABLE',
+            comment: 'User accounts',
+            columns: [{ name: 'id', type: 'int(11)', nullable: false, comment: 'User ID' }],
+          },
+        ],
+      };
+
+      const schemaFilePath = join(schemaSource, 'schema.json');
+      await fs.writeFile(schemaFilePath, JSON.stringify(schema, null, 2));
+
+      // Test that parseSingleSchemaInfo extracts name from schema.json
+      const result = await parseSingleSchemaInfo(schemaFilePath, 'default');
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const schemaInfo = result.value;
+        expect(schemaInfo).toEqual({
+          name: 'openlogi_local', // Should use name from schema.json, not passed parameter
+          tableCount: 1,
+          description: 'OpenLogi Local Database',
+        });
+      }
+    });
+
+    it('should extract schema name for subdirectory schema.json files', async () => {
+      const ecommerceDir = join(schemaSource, 'ecommerce');
+      await fs.mkdir(ecommerceDir);
+
+      const schema = {
+        name: 'ecommerce_prod_v2',
+        desc: 'E-commerce Production v2',
+        tables: [
+          {
+            name: 'products',
+            type: 'TABLE',
+            comment: 'Products table',
+            columns: [{ name: 'id', type: 'int(11)', nullable: false, comment: 'Product ID' }],
+          },
+          {
+            name: 'locations',
+            type: 'TABLE',
+            comment: 'Location table',
+            columns: [{ name: 'id', type: 'int(11)', nullable: false, comment: 'Location ID' }],
+          },
+        ],
+      };
+
+      const schemaFilePath = join(ecommerceDir, 'schema.json');
+      await fs.writeFile(schemaFilePath, JSON.stringify(schema, null, 2));
+
+      // Test with directory name passed as schemaName parameter
+      const result = await parseSingleSchemaInfo(schemaFilePath, 'ecommerce');
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const schemaInfo = result.value;
+        expect(schemaInfo).toEqual({
+          name: 'ecommerce_prod_v2', // Should use actual name from schema.json, not directory name
+          tableCount: 2,
+          description: 'E-commerce Production v2',
+        });
+      }
+    });
+
+    it('should use fallback name when schema.json has no name field', async () => {
+      const schema = {
+        desc: 'Schema without name',
+        tables: [
+          {
+            name: 'test_table',
+            type: 'TABLE',
+            comment: 'Test table',
+            columns: [{ name: 'id', type: 'int(11)', nullable: false, comment: 'Test ID' }],
+          },
+        ],
+      };
+
+      const schemaFilePath = join(schemaSource, 'schema.json');
+      await fs.writeFile(schemaFilePath, JSON.stringify(schema, null, 2));
+
+      const result = await parseSingleSchemaInfo(schemaFilePath, 'default');
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const schemaInfo = result.value;
+        expect(schemaInfo).toEqual({
+          name: 'database_schema', // Should use fallback from metadata when no name field
+          tableCount: 1,
+          description: 'Schema without name',
         });
       }
     });

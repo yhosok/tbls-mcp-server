@@ -426,7 +426,7 @@ describe('Table Resource Handlers', () => {
       it('should extract specific table from single schema.json file', async () => {
         // Create a single schema.json file with multiple tables (tbls standard format)
         const fullSchema = {
-          name: 'openlogi_local',
+          name: 'test_database',
           desc: 'Full database schema with multiple tables',
           tables: [
             {
@@ -637,7 +637,7 @@ describe('Table Resource Handlers', () => {
       it('should extract different table from same schema.json file', async () => {
         // Use the same schema.json from previous test
         const fullSchema = {
-          name: 'openlogi_local',
+          name: 'test_database',
           desc: 'Full database schema with multiple tables',
           tables: [
             {
@@ -739,7 +739,7 @@ describe('Table Resource Handlers', () => {
 
       it('should handle non-existent table name in schema.json file', async () => {
         const fullSchema = {
-          name: 'openlogi_local',
+          name: 'test_database',
           desc: 'Full database schema',
           tables: [
             {
@@ -940,7 +940,7 @@ describe('Table Resource Handlers', () => {
       it('should prioritize single schema.json over individual files when both exist', async () => {
         // Create both: single schema.json AND individual table file
         const fullSchema = {
-          name: 'openlogi_local',
+          name: 'test_database',
           desc: 'Full database schema',
           tables: [
             {
@@ -1097,9 +1097,9 @@ describe('Table Resource Handlers', () => {
       it('should handle multi-schema setup with schema.json extraction', async () => {
         // Create multi-schema directory structure with schema.json files
         const publicDir = join(schemaSource, 'public');
-        const analyticsDir = join(schemaSource, 'analytics');
+        const reportingDir = join(schemaSource, 'reporting');
         await fs.mkdir(publicDir);
-        await fs.mkdir(analyticsDir);
+        await fs.mkdir(reportingDir);
 
         // Create schema.json for public schema
         const publicSchema = {
@@ -1128,15 +1128,15 @@ describe('Table Resource Handlers', () => {
           ],
         };
 
-        // Create schema.json for analytics schema
-        const analyticsSchema = {
-          name: 'analytics',
-          desc: 'Analytics schema',
+        // Create schema.json for reporting schema
+        const reportingSchema = {
+          name: 'reporting',
+          desc: 'Reporting schema',
           tables: [
             {
               name: 'events',
               type: 'TABLE',
-              comment: 'Events in analytics schema',
+              comment: 'Events in reporting schema',
               columns: [
                 {
                   name: 'id',
@@ -1145,10 +1145,10 @@ describe('Table Resource Handlers', () => {
                   comment: 'Primary key',
                 },
                 {
-                  name: 'analytics_field',
+                  name: 'reporting_field',
                   type: 'varchar(255)',
                   nullable: false,
-                  comment: 'Analytics field',
+                  comment: 'Reporting field',
                 },
               ],
             },
@@ -1160,8 +1160,8 @@ describe('Table Resource Handlers', () => {
           JSON.stringify(publicSchema, null, 2)
         );
         await fs.writeFile(
-          join(analyticsDir, 'schema.json'),
-          JSON.stringify(analyticsSchema, null, 2)
+          join(reportingDir, 'schema.json'),
+          JSON.stringify(reportingSchema, null, 2)
         );
 
         // Should extract table from public schema.json
@@ -1181,21 +1181,21 @@ describe('Table Resource Handlers', () => {
           expect(publicField).toBeDefined();
         }
 
-        // Should extract table from analytics schema.json
-        const analyticsResult = await handleTableInfoResource(
+        // Should extract table from reporting schema.json
+        const reportingResult = await handleTableInfoResource(
           schemaSource,
-          'analytics',
+          'reporting',
           'events'
         );
-        expect(analyticsResult.isOk()).toBe(true);
-        if (analyticsResult.isOk()) {
-          const resource = analyticsResult.value;
-          expect(resource.schemaName).toBe('analytics');
-          expect(resource.table.comment).toBe('Events in analytics schema');
-          const analyticsField = resource.table.columns.find(
-            (c) => c.name === 'analytics_field'
+        expect(reportingResult.isOk()).toBe(true);
+        if (reportingResult.isOk()) {
+          const resource = reportingResult.value;
+          expect(resource.schemaName).toBe('reporting');
+          expect(resource.table.comment).toBe('Events in reporting schema');
+          const reportingField = resource.table.columns.find(
+            (c) => c.name === 'reporting_field'
           );
-          expect(analyticsField).toBeDefined();
+          expect(reportingField).toBeDefined();
         }
       });
     });

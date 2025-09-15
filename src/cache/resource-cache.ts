@@ -224,6 +224,7 @@ export class ResourceCache {
 
   /**
    * Gets individual table from cache if valid, null if expired or missing
+   * @deprecated Use getTableByName instead for table-specific caching
    */
   async getTable(tablePath: string): Promise<DatabaseTable | null> {
     const cacheKey = `table:${tablePath}`;
@@ -250,6 +251,7 @@ export class ResourceCache {
 
   /**
    * Caches individual table with current file mtime
+   * @deprecated Use setTableByName instead for table-specific caching
    */
   async setTable(tablePath: string, table: DatabaseTable): Promise<void> {
     const statResult = await safeExecuteAsync(
@@ -268,6 +270,64 @@ export class ResourceCache {
       data: table,
       mtime: stats.mtime,
       path: tablePath,
+    });
+  }
+
+  /**
+   * Gets specific table by name from cache if valid, null if expired or missing
+   * Uses composite cache key that includes table name to prevent collisions
+   */
+  async getTableByName(
+    schemaPath: string,
+    tableName: string
+  ): Promise<DatabaseTable | null> {
+    const cacheKey = `table:${schemaPath}:${tableName}`;
+    const cached = this.cache.get(cacheKey) as
+      | CacheEntry<DatabaseTable>
+      | undefined;
+
+    if (!cached) {
+      this.misses++;
+      return null;
+    }
+
+    // Check if file modification time has changed
+    const isValid = await this.isFileEntryValid(cached);
+    if (!isValid) {
+      this.cache.delete(cacheKey);
+      this.misses++;
+      return null;
+    }
+
+    this.hits++;
+    return cached.data;
+  }
+
+  /**
+   * Caches specific table by name with current file mtime
+   * Uses composite cache key that includes table name to prevent collisions
+   */
+  async setTableByName(
+    schemaPath: string,
+    tableName: string,
+    table: DatabaseTable
+  ): Promise<void> {
+    const statResult = await safeExecuteAsync(
+      async () => await fs.stat(schemaPath),
+      'Failed to get file stats'
+    );
+
+    if (statResult.isErr()) {
+      return;
+    }
+
+    const stats = statResult.value;
+    const cacheKey = `table:${schemaPath}:${tableName}`;
+
+    this.cache.set(cacheKey, {
+      data: table,
+      mtime: stats.mtime,
+      path: schemaPath,
     });
   }
 
@@ -294,6 +354,14 @@ export class ResourceCache {
     for (const prefix of prefixes) {
       const cacheKey = `${prefix}${filePath}`;
       this.cache.delete(cacheKey);
+    }
+
+    // Also remove table-specific cache entries that use this file path
+    // Iterate through all cache keys to find table-specific entries
+    for (const [key] of this.cache.entries()) {
+      if (key.startsWith(`table:${filePath}:`)) {
+        this.cache.delete(key);
+      }
     }
   }
 

@@ -166,8 +166,8 @@ describe('Index Resource Handler', () => {
     });
 
     it('should return index information for table in multi-schema setup', async () => {
-      const analyticsDir = join(schemaSource, 'analytics');
-      await fs.mkdir(analyticsDir);
+      const reportingDir = join(schemaSource, 'reporting');
+      await fs.mkdir(reportingDir);
 
       const eventsTableContent = {
         name: 'events',
@@ -247,20 +247,20 @@ describe('Index Resource Handler', () => {
       };
 
       await fs.writeFile(
-        join(analyticsDir, 'events.json'),
+        join(reportingDir, 'events.json'),
         JSON.stringify(eventsTableContent, null, 2)
       );
 
       const result = await handleTableIndexesResource(
         schemaSource,
-        'analytics',
+        'reporting',
         'events'
       );
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
         const resource: TableIndexesResource = result.value;
-        expect(resource.schemaName).toBe('analytics');
+        expect(resource.schemaName).toBe('reporting');
         expect(resource.tableName).toBe('events');
         expect(resource.indexes).toHaveLength(5);
 

@@ -192,7 +192,7 @@ const parseSingleSchemaInfo = async (
   if (overviewResult.isOk()) {
     const metadata = overviewResult.value;
     const result = {
-      name: schemaName, // Use provided name instead of parsed name for consistency
+      name: metadata.name || schemaName, // Use parsed name from schema.json, fall back to provided name
       tableCount: metadata.tableCount ?? undefined,
       description: metadata.description,
     };
@@ -201,7 +201,7 @@ const parseSingleSchemaInfo = async (
     if (cache) {
       const cacheSchema = {
         metadata: {
-          name: metadata.name ?? schemaName,
+          name: metadata.name || schemaName,
           tableCount: metadata.tableCount,
           generated: metadata.generated ?? null,
           version: metadata.version ?? null,
@@ -263,3 +263,6 @@ const parseSingleSchemaInfo = async (
     description: schemaName === 'default' ? 'Default schema' : null,
   });
 };
+
+// Export parseSingleSchemaInfo for testing
+export { parseSingleSchemaInfo };
