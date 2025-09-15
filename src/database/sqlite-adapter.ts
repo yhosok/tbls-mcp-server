@@ -163,11 +163,16 @@ export const executeSQLiteQuery = async (
 
     // Apply timeout if specified
     if (timeout > 0) {
+      let timeoutId: NodeJS.Timeout;
       const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error(`Query execution timeout after ${timeout}ms`)), timeout);
+        timeoutId = setTimeout(() => reject(new Error(`Query execution timeout after ${timeout}ms`)), timeout);
       });
 
-      return Promise.race([queryPromise, timeoutPromise]);
+      return Promise.race([queryPromise, timeoutPromise]).finally(() => {
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+        }
+      });
     }
 
     return queryPromise;
@@ -196,11 +201,16 @@ export const closeSQLiteConnection = async (
     });
 
     // Apply timeout to close operation
+    let timeoutId: NodeJS.Timeout;
     const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error(`Connection close timeout after ${timeoutMs}ms`)), timeoutMs);
+      timeoutId = setTimeout(() => reject(new Error(`Connection close timeout after ${timeoutMs}ms`)), timeoutMs);
     });
 
-    await Promise.race([closePromise, timeoutPromise]);
+    await Promise.race([closePromise, timeoutPromise]).finally(() => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    });
   }, 'Failed to close SQLite connection');
 };
 

@@ -72,7 +72,7 @@ describe('sql query tool', () => {
       const emptyQueries = ['', '   ', '\n\t  ', null, undefined];
 
       emptyQueries.forEach((query) => {
-        const result = validateSqlQuery(query as any);
+        const result = validateSqlQuery(query as unknown as string);
         expect(result.isErr()).toBe(true);
         if (result.isErr()) {
           expect(result.error.message).toContain('Query cannot be empty');
@@ -206,7 +206,7 @@ describe('sql query tool', () => {
       const emptyQueries = ['', '   ', '\n\t'];
 
       emptyQueries.forEach((query) => {
-        const result = sanitizeQuery(query as any);
+        const result = sanitizeQuery(query as unknown as string);
         expect(result.isErr()).toBe(true);
         if (result.isErr()) {
           expect(result.error.message).toMatch(/Query cannot be (empty after sanitization|null or undefined)/);

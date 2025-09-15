@@ -180,7 +180,7 @@ describe('config schemas', () => {
 
     it('should return error for invalid configuration', () => {
       const config = {
-        type: 'invalid' as any,
+        type: 'invalid' as unknown,
       };
       const result = validateDatabaseConfig(config);
       expect(result.isErr()).toBe(true);

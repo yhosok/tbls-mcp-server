@@ -124,12 +124,16 @@ export const executeMySQLQuery = async (
 
     // Apply timeout if specified
     if (timeoutMs && timeoutMs > 0) {
-      queryPromise = Promise.race([
-        queryPromise,
-        new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error(`Query execution timeout after ${timeoutMs}ms`)), timeoutMs);
-        })
-      ]);
+      let timeoutId: NodeJS.Timeout;
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(() => reject(new Error(`Query execution timeout after ${timeoutMs}ms`)), timeoutMs);
+      });
+
+      queryPromise = Promise.race([queryPromise, timeoutPromise]).finally(() => {
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+        }
+      }) as typeof queryPromise;
     }
 
     const [rows, fields] = await queryPromise;
