@@ -25,7 +25,7 @@
     "docs:update": "npm run build:code && npm run docs:generate",
     "docs:validate": "tsx src/scripts/generate-docs.ts --validate",
     "docs:check": "npm run build:code && npm run docs:validate",
-    "prepublishOnly": "npm run build"
+    "prepare": "npm run build"
   },
   "keywords": [
     "mcp",
