@@ -13,14 +13,14 @@ A Model Context Protocol (MCP) server that provides access to database schema in
 - **SQL Query Execution**: Execute SELECT queries on MySQL and SQLite databases with comprehensive security
 - **Type Safety**: Full TypeScript implementation with zod validation
 - **Error Handling**: Robust error handling using neverthrow Result types
-- **MCP Compatible**: Works with Claude Desktop, Cline, and other MCP clients
+- **MCP Compatible**: Works with Claude Desktop and other MCP clients
 - **Flexible Configuration**: Support for both CLI arguments and configuration files
 
-## MCP Server Configuration
+## MCP Client Configuration
 
-To use this server with MCP clients, add the following configuration:
+To use this server with MCP clients, add the following configuration to your MCP client's configuration file.
 
-### Claude Desktop
+### Example: Claude Desktop
 
 Add to your Claude Desktop configuration file (`claude_desktop_config.json`):
 
@@ -39,36 +39,7 @@ Add to your Claude Desktop configuration file (`claude_desktop_config.json`):
 }
 ```
 
-### Cline (VS Code Extension)
-
-Add to your Cline MCP settings:
-
-```json
-{
-  "tbls": {
-    "command": "npx",
-    "args": [
-      "github:yhosok/tbls-mcp-server",
-      "--schema-source", "/path/to/your/tbls/schema.json"
-    ]
-  }
-}
-```
-
-### Configuration File Method
-
-Alternatively, create a `.tbls-mcp-server.json` configuration file and use:
-
-```json
-{
-  "mcpServers": {
-    "tbls": {
-      "command": "npx",
-      "args": ["github:yhosok/tbls-mcp-server"]
-    }
-  }
-}
-```
+**Note**: You can create a `.tbls-mcp-server.json` configuration file to specify server options (see Configuration section below) and use just the command without arguments in your MCP client configuration.
 
 ## Installation
 
@@ -91,16 +62,9 @@ git clone https://github.com/yhosok/tbls-mcp-server.git
 cd tbls-mcp-server
 npm install
 npm run build
+
+# Run the server
 node dist/index.js --schema-source /path/to/tbls/schema.json
-```
-
-### Local Development Installation
-
-```bash
-git clone https://github.com/your-username/tbls-mcp-server.git
-cd tbls-mcp-server
-npm install
-npm run build
 ```
 
 ## Usage
@@ -176,17 +140,16 @@ Example of a tbls-generated JSON schema file structure:
 
 ### Setting up with tbls
 
-First, generate schema documentation using tbls:
+First, install tbls by following the instructions at [https://github.com/k1LoW/tbls](https://github.com/k1LoW/tbls).
+
+Then generate schema documentation:
 
 ```bash
-# Install tbls
-go install github.com/k1LoW/tbls@latest
-
 # Generate schema documentation (default output: ./dbdoc)
 tbls doc mysql://user:pass@localhost:3306/mydb
 
 # Or generate JSON schema directly
-tbls doc --format=json mysql://user:pass@localhost:3306/mydb ./custom/schema/path
+tbls out -t json mysql://user:pass@localhost:3306/mydb -o ./custom/schema/path/schema.json
 
 # Start MCP server
 npx github:yhosok/tbls-mcp-server --schema-source ./dbdoc/schema.json
@@ -203,7 +166,7 @@ Expected tbls output structure:
 ```
 
 **Note**:
-- Use `tbls doc --format=json` to generate the JSON schema file
+- Use `tbls out -t json` to generate the JSON schema file
 - The default output file is `schema.json` in the specified directory
 - The `--schema-source` option can point to either a JSON file or directory containing JSON files
 
@@ -476,7 +439,7 @@ This will output detailed information about:
 ### Support
 
 For issues and questions:
-- Check the [GitHub Issues](https://github.com/your-username/tbls-mcp-server/issues)
+- Check the [GitHub Issues](https://github.com/yhosok/tbls-mcp-server/issues)
 - Review [tbls documentation](https://github.com/k1LoW/tbls)
 - Consult [MCP specification](https://modelcontextprotocol.io/)
 
@@ -490,7 +453,7 @@ For issues and questions:
 ### Setup
 
 ```bash
-git clone https://github.com/your-username/tbls-mcp-server.git
+git clone https://github.com/yhosok/tbls-mcp-server.git
 cd tbls-mcp-server
 npm install
 ```
