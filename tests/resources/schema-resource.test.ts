@@ -2,7 +2,10 @@ import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import { promises as fs } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
-import { handleSchemaListResource, parseSingleSchemaInfo } from '../../src/resources/schema-resource';
+import {
+  handleSchemaListResource,
+  parseSingleSchemaInfo,
+} from '../../src/resources/schema-resource';
 import type { SchemaListResource } from '../../src/schemas/database';
 
 describe('Schema Resource Handler', () => {
@@ -708,7 +711,14 @@ describe('Schema Resource Handler', () => {
                 name: 'events',
                 type: 'TABLE',
                 comment: 'Event tracking',
-                columns: [{ name: 'id', type: 'int(11)', nullable: false, comment: 'Event ID' }],
+                columns: [
+                  {
+                    name: 'id',
+                    type: 'int(11)',
+                    nullable: false,
+                    comment: 'Event ID',
+                  },
+                ],
               },
             ],
           },
@@ -723,13 +733,27 @@ describe('Schema Resource Handler', () => {
                 name: 'accounts',
                 type: 'TABLE',
                 comment: 'User accounts',
-                columns: [{ name: 'id', type: 'int(11)', nullable: false, comment: 'Account ID' }],
+                columns: [
+                  {
+                    name: 'id',
+                    type: 'int(11)',
+                    nullable: false,
+                    comment: 'Account ID',
+                  },
+                ],
               },
               {
                 name: 'profiles',
                 type: 'TABLE',
                 comment: 'User profiles',
-                columns: [{ name: 'id', type: 'int(11)', nullable: false, comment: 'Profile ID' }],
+                columns: [
+                  {
+                    name: 'id',
+                    type: 'int(11)',
+                    nullable: false,
+                    comment: 'Profile ID',
+                  },
+                ],
               },
             ],
           },
@@ -744,7 +768,14 @@ describe('Schema Resource Handler', () => {
                 name: 'items',
                 type: 'TABLE',
                 comment: 'Inventory items',
-                columns: [{ name: 'id', type: 'int(11)', nullable: false, comment: 'Item ID' }],
+                columns: [
+                  {
+                    name: 'id',
+                    type: 'int(11)',
+                    nullable: false,
+                    comment: 'Item ID',
+                  },
+                ],
               },
             ],
           },
@@ -769,7 +800,9 @@ describe('Schema Resource Handler', () => {
         expect(resource.schemas).toHaveLength(3);
 
         // Sort by name for consistent testing
-        const sortedSchemas = resource.schemas.sort((a, b) => a.name.localeCompare(b.name));
+        const sortedSchemas = resource.schemas.sort((a, b) =>
+          a.name.localeCompare(b.name)
+        );
 
         expect(sortedSchemas[0]).toEqual({
           name: 'inventory_system', // Should use name from schema.json, not directory name
@@ -882,14 +915,21 @@ describe('Schema Resource Handler', () => {
   describe('parseSingleSchemaInfo Function (TDD - Failing Tests)', () => {
     it('should extract schema name directly from schema.json content', async () => {
       const schema = {
-        name: 'openlogi_local',
-        desc: 'OpenLogi Local Database',
+        name: 'dataflow_local',
+        desc: 'DataFlow Local Database',
         tables: [
           {
             name: 'users',
             type: 'TABLE',
             comment: 'User accounts',
-            columns: [{ name: 'id', type: 'int(11)', nullable: false, comment: 'User ID' }],
+            columns: [
+              {
+                name: 'id',
+                type: 'int(11)',
+                nullable: false,
+                comment: 'User ID',
+              },
+            ],
           },
         ],
       };
@@ -904,9 +944,9 @@ describe('Schema Resource Handler', () => {
       if (result.isOk()) {
         const schemaInfo = result.value;
         expect(schemaInfo).toEqual({
-          name: 'openlogi_local', // Should use name from schema.json, not passed parameter
+          name: 'dataflow_local', // Should use name from schema.json, not passed parameter
           tableCount: 1,
-          description: 'OpenLogi Local Database',
+          description: 'DataFlow Local Database',
         });
       }
     });
@@ -923,13 +963,27 @@ describe('Schema Resource Handler', () => {
             name: 'products',
             type: 'TABLE',
             comment: 'Products table',
-            columns: [{ name: 'id', type: 'int(11)', nullable: false, comment: 'Product ID' }],
+            columns: [
+              {
+                name: 'id',
+                type: 'int(11)',
+                nullable: false,
+                comment: 'Product ID',
+              },
+            ],
           },
           {
             name: 'locations',
             type: 'TABLE',
             comment: 'Location table',
-            columns: [{ name: 'id', type: 'int(11)', nullable: false, comment: 'Location ID' }],
+            columns: [
+              {
+                name: 'id',
+                type: 'int(11)',
+                nullable: false,
+                comment: 'Location ID',
+              },
+            ],
           },
         ],
       };
@@ -959,7 +1013,14 @@ describe('Schema Resource Handler', () => {
             name: 'test_table',
             type: 'TABLE',
             comment: 'Test table',
-            columns: [{ name: 'id', type: 'int(11)', nullable: false, comment: 'Test ID' }],
+            columns: [
+              {
+                name: 'id',
+                type: 'int(11)',
+                nullable: false,
+                comment: 'Test ID',
+              },
+            ],
           },
         ],
       };

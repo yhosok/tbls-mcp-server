@@ -9,7 +9,8 @@ import {
   parseSchemaWithFallback,
   resolveSchemaSource,
 } from '../parsers/schema-adapter';
-import { safeExecuteAsync, fromPromise } from '../utils/result';
+import { parseJsonSchemaList } from '../parsers/json-parser';
+import { safeExecuteAsync, fromPromise, createError } from '../utils/result';
 import { ResourceCache } from '../cache/resource-cache';
 
 /**
@@ -58,8 +59,15 @@ export const handleSchemaListResource = async (
     }
   }
 
-  // For single file sources, handle as default schema
+  // For single file sources, check if it contains multiple schemas
   if (sourceType === 'file') {
+    // Try to parse as multi-schema format first
+    const multiSchemaResult = await parseMultiSchemaInfo(schemaPath, cache);
+    if (multiSchemaResult.isOk()) {
+      return ok({ schemas: multiSchemaResult.value });
+    }
+
+    // Fall back to single schema parsing
     const singleSchemaResult = await parseSingleSchemaInfo(
       schemaDir,
       'default',
@@ -264,5 +272,75 @@ const parseSingleSchemaInfo = async (
   });
 };
 
+/**
+ * Parses multi-schema information from a JSON file with 'schemas' array
+ *
+ * @param schemaPath - Path to the schema file
+ * @param cache - Optional cache instance for performance optimization
+ * @returns Result containing array of schema info or error
+ */
+const parseMultiSchemaInfo = async (
+  schemaPath: string,
+  cache?: ResourceCache
+): Promise<
+  Result<
+    Array<{ name: string; tableCount?: number; description?: string | null }>,
+    Error
+  >
+> => {
+  try {
+    const content = await fs.readFile(schemaPath, 'utf-8');
+    const metadataListResult = parseJsonSchemaList(content);
+
+    if (metadataListResult.isOk()) {
+      const metadataList = metadataListResult.value;
+
+      // If there's only one schema and no explicit name, handle as single schema with "default"
+      if (metadataList.length === 1 && metadataList[0].name === 'database_schema') {
+        return ok([{
+          name: 'default',
+          tableCount: metadataList[0].tableCount ?? undefined,
+          description: metadataList[0].description || 'Default schema',
+        }]);
+      }
+
+      // Convert metadata to schema info format
+      const schemas = metadataList.map(metadata => ({
+        name: metadata.name || 'database_schema',
+        tableCount: metadata.tableCount ?? undefined,
+        description: metadata.description,
+      }));
+
+      // Cache the results if cache is available
+      if (cache && schemas.length > 0) {
+        // For multi-schema setups, we can cache the schema list for faster subsequent calls
+        // Cache each schema's metadata separately
+        for (const schema of schemas) {
+          const cacheSchema = {
+            metadata: {
+              name: schema.name,
+              tableCount: schema.tableCount ?? null,
+              generated: null,
+              version: null,
+              description: schema.description,
+            },
+            tables: [],
+            tableReferences: [],
+            indexes: [],
+            relations: [],
+          };
+          await cache.setSchema(`${schemaPath}:${schema.name}`, cacheSchema);
+        }
+      }
+
+      return ok(schemas);
+    }
+
+    return createError('Failed to parse multi-schema format');
+  } catch (error) {
+    return createError(`Failed to parse multi-schema file: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+};
+
 // Export parseSingleSchemaInfo for testing
-export { parseSingleSchemaInfo };
+export { parseSingleSchemaInfo, parseMultiSchemaInfo };

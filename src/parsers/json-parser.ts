@@ -64,6 +64,164 @@ export const parseJsonContent = (
 };
 
 /**
+ * Parses JSON content and extracts schema metadata list (for multi-schema support)
+ * @param content - JSON content string
+ * @returns Result containing array of schema metadata or error
+ */
+export const parseJsonSchemaList = (
+  content: string
+): Result<SchemaMetadata[], Error> => {
+  // Validate content is not empty
+  const trimmedContent = content.trim();
+  if (trimmedContent.length === 0) {
+    return createError('JSON content is empty');
+  }
+
+  // Parse JSON safely
+  return safeExecute(
+    () => JSON.parse(trimmedContent),
+    'Failed to parse JSON'
+  ).andThen((data) => {
+    if (data === null) {
+      return createError('Parsed JSON is null');
+    }
+    return parseJsonSchemaMetadataList(data);
+  });
+};
+
+/**
+ * Parses JSON data and extracts schema metadata list
+ * @param schemaData - Parsed JSON schema data
+ * @returns Result containing array of schema metadata or error
+ */
+export const parseJsonSchemaMetadataList = (
+  schemaData: unknown
+): Result<SchemaMetadata[], Error> => {
+  if (!schemaData || typeof schemaData !== 'object') {
+    return createError('Schema data must be an object');
+  }
+
+  const schemaObj = schemaData as UnknownJsonObject;
+  const metadataList: SchemaMetadata[] = [];
+
+  // Check if this is a multi-schema format with 'schemas' array
+  if (Array.isArray(schemaObj.schemas)) {
+    // Multi-schema format: extract metadata from each schema
+    for (const schema of schemaObj.schemas) {
+      if (!schema || typeof schema !== 'object') {
+        return createError('Each schema in schemas array must be an object');
+      }
+
+      const schemaItem = schema as UnknownJsonObject;
+
+      // Validate tables array exists
+      if (!Array.isArray(schemaItem.tables)) {
+        return createError('Schema must contain a tables array');
+      }
+
+      const metadata: SchemaMetadata = {
+        name: (typeof schemaItem.name === 'string' ? schemaItem.name : null) || 'database_schema',
+        description: (typeof schemaItem.desc === 'string' ? schemaItem.desc : null) ||
+                     (typeof schemaItem.comment === 'string' ? schemaItem.comment : null) || null,
+        tableCount: schemaItem.tables.length,
+        generated: null,
+      };
+
+      metadataList.push(metadata);
+    }
+
+    return ok(metadataList);
+  }
+
+  // Single schema format: create a single metadata entry
+  if (!Array.isArray(schemaObj.tables)) {
+    return createError('Schema must contain a tables array');
+  }
+
+  const metadata: SchemaMetadata = {
+    name: (typeof schemaObj.name === 'string' ? schemaObj.name : null) || 'database_schema',
+    description: (typeof schemaObj.desc === 'string' ? schemaObj.desc : null) || null,
+    tableCount: schemaObj.tables.length,
+    generated: null,
+  };
+
+  return ok([metadata]);
+};
+
+/**
+ * Parses JSON content and extracts a specific schema by name (for multi-schema support)
+ * @param content - JSON content string
+ * @param schemaName - Name of the schema to extract
+ * @returns Result containing database schema or error
+ */
+export const parseJsonSchemaByName = (
+  content: string,
+  schemaName: string
+): Result<DatabaseSchema, Error> => {
+  // Validate content is not empty
+  const trimmedContent = content.trim();
+  if (trimmedContent.length === 0) {
+    return createError('JSON content is empty');
+  }
+
+  // Parse JSON safely
+  return safeExecute(
+    () => JSON.parse(trimmedContent),
+    'Failed to parse JSON'
+  ).andThen((data) => {
+    if (data === null) {
+      return createError('Parsed JSON is null');
+    }
+    return parseJsonSchemaByNameFromData(data, schemaName);
+  });
+};
+
+/**
+ * Parses JSON data and extracts a specific schema by name
+ * @param schemaData - Parsed JSON schema data
+ * @param schemaName - Name of the schema to extract
+ * @returns Result containing database schema or error
+ */
+export const parseJsonSchemaByNameFromData = (
+  schemaData: unknown,
+  schemaName: string
+): Result<DatabaseSchema, Error> => {
+  if (!schemaData || typeof schemaData !== 'object') {
+    return createError('Schema data must be an object');
+  }
+
+  const schemaObj = schemaData as UnknownJsonObject;
+
+  // Check if this is a multi-schema format with 'schemas' array
+  if (Array.isArray(schemaObj.schemas)) {
+    // Multi-schema format: find the specific schema
+    const targetSchema = schemaObj.schemas.find((schema: unknown) => {
+      if (!schema || typeof schema !== 'object') {
+        return false;
+      }
+      const schemaItem = schema as UnknownJsonObject;
+      return schemaItem.name === schemaName;
+    });
+
+    if (!targetSchema) {
+      return createError(`Schema '${schemaName}' not found in schemas array`);
+    }
+
+    // Parse the specific schema
+    return parseJsonSchema(targetSchema);
+  }
+
+  // Single schema format: check if the name matches or handle "default"
+  const singleSchemaName = (typeof schemaObj.name === 'string' ? schemaObj.name : null) || 'database_schema';
+
+  if (schemaName === 'default' || schemaName === singleSchemaName) {
+    return parseJsonSchema(schemaData);
+  }
+
+  return createError(`Schema '${schemaName}' not found. Available schema: '${singleSchemaName}'`);
+};
+
+/**
  * Parses tbls JSON schema data and returns a database schema
  * @param schemaData - Parsed JSON schema data
  * @returns Result containing parsed database schema or error
@@ -77,6 +235,19 @@ export const parseJsonSchema = (
 
   const schemaObj = schemaData as UnknownJsonObject;
 
+  // Check if this is a multi-schema format with 'schemas' array
+  if (Array.isArray(schemaObj.schemas)) {
+    // Multi-schema format: extract the first schema for compatibility
+    if (schemaObj.schemas.length === 0) {
+      return createError('Schemas array is empty');
+    }
+
+    // For multi-schema format, use the first schema
+    const firstSchema = schemaObj.schemas[0] as UnknownJsonObject;
+    return parseJsonSchema(firstSchema);
+  }
+
+  // Single schema format (original logic)
   // Validate tables array exists
   if (!Array.isArray(schemaObj.tables)) {
     return createError('Schema must contain a tables array');

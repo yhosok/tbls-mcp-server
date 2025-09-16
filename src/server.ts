@@ -81,7 +81,7 @@ export class TblsMcpServer {
    * Set up resource handlers for schema information using lazy loading
    */
   private setupResourceHandlers(): void {
-    // List all available resources using lazy discovery
+    // List all available resources using progressive discovery
     this.server.setRequestHandler(ListResourcesRequestSchema, async () => {
       try {
         const resourcesResult = await this.lazyRegistry.listResources();
@@ -90,7 +90,7 @@ export class TblsMcpServer {
             'Warning: Failed to list resources via lazy loading:',
             resourcesResult.error.message
           );
-          // Fallback to basic static resources
+          // Fallback to basic static resources including URI patterns
           return {
             resources: [
               {
@@ -100,6 +100,12 @@ export class TblsMcpServer {
                 description:
                   'List of all available database schemas with metadata',
               },
+              {
+                uri: 'schema://uri-patterns',
+                mimeType: 'application/json',
+                name: 'Available URI Patterns',
+                description: 'List of all available URI patterns and their descriptions for resource discovery',
+              },
             ],
           };
         }
@@ -107,7 +113,7 @@ export class TblsMcpServer {
         return { resources: resourcesResult.value };
       } catch (error) {
         console.error('Error in ListResourcesRequest handler:', error);
-        // Return minimal fallback resources
+        // Return minimal fallback resources including URI patterns
         return {
           resources: [
             {
@@ -117,28 +123,46 @@ export class TblsMcpServer {
               description:
                 'List of all available database schemas with metadata',
             },
+            {
+              uri: 'schema://uri-patterns',
+              mimeType: 'application/json',
+              name: 'Available URI Patterns',
+              description: 'List of all available URI patterns and their descriptions for resource discovery',
+            },
           ],
         };
       }
     });
 
-    // Handle resource reading with lazy discovery
+    // Handle resource reading with progressive discovery and enhanced error handling
     this.server.setRequestHandler(
       ReadResourceRequestSchema,
       async (request) => {
         const { uri } = request.params;
 
         try {
+          // Handle URI patterns resource
+          if (uri === 'schema://uri-patterns') {
+            return await this.handleUriPatternsResource();
+          }
+
           // First, check if the URI matches any known pattern
           const match = this.lazyRegistry.matchUri(uri);
           if (!match) {
+            // Import error message generator
+            const { ErrorMessageGenerator } = await import('./server/error-message-generator');
+            const errorGenerator = new ErrorMessageGenerator();
+            const errorData = errorGenerator.generateMcpErrorData(uri);
+
             throw new McpError(
               ErrorCode.InvalidRequest,
-              `Unknown resource URI: ${uri}`
+              errorData.message,
+              errorData.data
             );
           }
 
           // For resources that aren't in the initial list, discover them on-demand
+          // This also triggers progressive discovery
           const discoveredResource =
             await this.lazyRegistry.discoverResource(uri);
           if (discoveredResource.isErr()) {
@@ -148,11 +172,22 @@ export class TblsMcpServer {
             );
           }
 
-          // If resource doesn't exist, return appropriate error
+          // If resource doesn't exist, provide enhanced error message
           if (!discoveredResource.value) {
+            // Import error message generator for pattern match failures
+            const { ErrorMessageGenerator } = await import('./server/error-message-generator');
+            const errorGenerator = new ErrorMessageGenerator();
+            const detailedMessage = errorGenerator.generatePatternMatchFailureMessage(uri);
+
             throw new McpError(
               ErrorCode.InvalidRequest,
-              `Resource not found: ${uri}`
+              detailedMessage,
+              {
+                uri,
+                pattern: match.pattern.uriPattern,
+                params: match.params,
+                suggestion: 'The URI format is correct, but the specific resource does not exist. Check the guidance above for discovering available resources.'
+              }
             );
           }
 
@@ -173,9 +208,10 @@ export class TblsMcpServer {
             return await this.handleTableIndexesResource(uri);
           }
 
+          // This should not happen if pattern matching works correctly
           throw new McpError(
-            ErrorCode.InvalidRequest,
-            `Unknown resource URI: ${uri}`
+            ErrorCode.InternalError,
+            `Unhandled resource pattern: ${uri}`
           );
         } catch (error) {
           if (error instanceof McpError) {
@@ -409,6 +445,30 @@ export class TblsMcpServer {
       contents: [
         {
           uri,
+          mimeType: 'application/json',
+          text: JSON.stringify(result.value, null, 2),
+        },
+      ],
+    };
+  }
+
+  /**
+   * Handle schema://uri-patterns resource
+   */
+  private async handleUriPatternsResource(): Promise<ReadResourceResult> {
+    const result = await this.lazyRegistry.getUriPatterns();
+
+    if (result.isErr()) {
+      throw new McpError(
+        ErrorCode.InternalError,
+        `Failed to get URI patterns: ${result.error.message}`
+      );
+    }
+
+    return {
+      contents: [
+        {
+          uri: 'schema://uri-patterns',
           mimeType: 'application/json',
           text: JSON.stringify(result.value, null, 2),
         },

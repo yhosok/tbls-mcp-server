@@ -266,96 +266,15 @@ LIMIT 10;
 
 The server exposes tbls-generated schema information through the following MCP resources:
 
-### 1. Schema List
-- **URI**: `schema://list`
-- **Description**: Lists all available database schemas
-- **Content**: JSON array of schema names
-- **Example Response**:
-  ```json
-  [
-    "public",
-    "analytics",
-    "user_data"
-  ]
-  ```
+<!-- AUTO-GENERATED:START - Do not modify this section manually -->
+| URI Pattern | Description | Discovery Required |
+|-------------|-------------|-------------------|
+| `schema://list` | Complete list of all available database schemas with metadata including schema names, table counts, and version information. URI format: schema://list | No |
+| `schema://{schemaName}/tables` | Comprehensive list of all tables within the {schemaName} schema, including table metadata, row counts, and basic structure information. URI format: schema://[schema\_name]/tables (example: schema://default/tables, schema://public/tables) | Yes |
+| `table://{schemaName}/{tableName}` | Complete detailed information about the {tableName} table including column definitions with data types, constraints, indexes, foreign key relationships, and table statistics. URI format: table://[schema\_name]/[table\_name] (example: table://default/users, table://public/orders) | Yes |
+| `table://{schemaName}/{tableName}/indexes` | Detailed index information for the {tableName} table including index names, types (primary, unique, regular), column compositions, and performance statistics. URI format: table://[schema\_name]/[table\_name]/indexes (example: table://default/users/indexes, table://public/orders/indexes) | Yes |
+<!-- AUTO-GENERATED:END -->
 
-### 2. Schema Tables
-- **URI**: `schema://{schema_name}/tables`
-- **Description**: Lists all tables in a specific schema
-- **Content**: JSON array of table names with basic information
-- **Example Response**:
-  ```json
-  [
-    {
-      "name": "users",
-      "type": "table",
-      "comment": "User account information"
-    },
-    {
-      "name": "posts",
-      "type": "table",
-      "comment": "Blog posts and articles"
-    }
-  ]
-  ```
-
-### 3. Table Information
-- **URI**: `table://{schema_name}/{table_name}`
-- **Description**: Detailed table information including columns, types, constraints, and relationships
-- **Content**: Complete table schema with column definitions
-- **Example Response**:
-  ```json
-  {
-    "name": "users",
-    "type": "table",
-    "comment": "User account information",
-    "columns": [
-      {
-        "name": "id",
-        "type": "int(11)",
-        "nullable": false,
-        "primary": true,
-        "comment": "Primary key"
-      },
-      {
-        "name": "email",
-        "type": "varchar(255)",
-        "nullable": false,
-        "unique": true,
-        "comment": "User email address"
-      }
-    ],
-    "constraints": [
-      {
-        "name": "PRIMARY",
-        "type": "PRIMARY KEY",
-        "columns": ["id"]
-      }
-    ]
-  }
-  ```
-
-### 4. Table Indexes
-- **URI**: `table://{schema_name}/{table_name}/indexes`
-- **Description**: Index information for a specific table
-- **Content**: Array of indexes with their properties
-- **Example Response**:
-  ```json
-  [
-    {
-      "name": "PRIMARY",
-      "type": "PRIMARY KEY",
-      "columns": ["id"],
-      "unique": true
-    },
-    {
-      "name": "idx_email",
-      "type": "INDEX",
-      "columns": ["email"],
-      "unique": true
-    }
-  ]
-  ```
 
 ## MCP Tools
 

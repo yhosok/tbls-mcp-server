@@ -123,11 +123,13 @@ export const TableInfoUriSchema = z.string().regex(/^table:\/\/[^/]+\/[^/]+$/);
 export const TableIndexesUriSchema = z
   .string()
   .regex(/^table:\/\/[^/]+\/[^/]+\/indexes$/);
+export const UriPatternsUriSchema = z.literal('schema://uri-patterns');
 
 export type SchemaListUri = z.infer<typeof SchemaListUriSchema>;
 export type SchemaTablesUri = z.infer<typeof SchemaTablesUriSchema>;
 export type TableInfoUri = z.infer<typeof TableInfoUriSchema>;
 export type TableIndexesUri = z.infer<typeof TableIndexesUriSchema>;
+export type UriPatternsUri = z.infer<typeof UriPatternsUriSchema>;
 
 /**
  * MCP Resource content schemas
@@ -161,6 +163,28 @@ export const TableIndexesResourceSchema = z.object({
   indexes: z.array(DatabaseIndexSchema),
 });
 export type TableIndexesResource = z.infer<typeof TableIndexesResourceSchema>;
+
+export const UriPatternInfoSchema = z.object({
+  id: z.string().min(1),
+  uri: z.string().min(1),
+  description: z.string().min(1),
+  examples: z.array(z.string()).min(1),
+  parameters: z
+    .array(
+      z.object({
+        name: z.string().min(1),
+        description: z.string().min(1),
+        required: z.boolean().default(true),
+      })
+    )
+    .default([]),
+});
+export type UriPatternInfo = z.infer<typeof UriPatternInfoSchema>;
+
+export const UriPatternsResourceSchema = z.object({
+  patterns: z.array(UriPatternInfoSchema),
+});
+export type UriPatternsResource = z.infer<typeof UriPatternsResourceSchema>;
 
 /**
  * Validates table data using neverthrow Result

@@ -1,11 +1,12 @@
 import { Result, ok, err } from 'neverthrow';
 import * as path from 'path';
 import { existsSync } from 'fs';
-import { SchemaTablesResource, TableInfoResource } from '../schemas/database';
+import { SchemaTablesResource, TableInfoResource, TableReference } from '../schemas/database';
 import {
   parseTableReferences,
   parseSingleTableFile,
   resolveSchemaName,
+  createSchemaParser,
 } from '../parsers/schema-adapter';
 import { ResourceCache } from '../cache/resource-cache';
 
@@ -24,12 +25,17 @@ export const handleSchemaTablesResource = async (
   cache?: ResourceCache
 ): Promise<Result<SchemaTablesResource, Error>> => {
   // Resolve schema name with backward compatibility support
-  const schemaResolveResult = resolveSchemaName(schemaSource, schemaName, cache);
+  const schemaResolveResult = resolveSchemaName(
+    schemaSource,
+    schemaName,
+    cache
+  );
   if (schemaResolveResult.isErr()) {
     return err(schemaResolveResult.error);
   }
 
-  const { resolvedSchemaName, schemaPath, sourceType } = schemaResolveResult.value;
+  const { resolvedSchemaName, schemaPath, sourceType } =
+    schemaResolveResult.value;
 
   // Determine the target path for parsing table references
   let targetPath: string;
@@ -38,7 +44,10 @@ export const handleSchemaTablesResource = async (
     targetPath = schemaPath;
   } else {
     // Directory - use the appropriate subdirectory or root
-    if (schemaName === 'default' && existsSync(path.join(path.dirname(schemaPath), 'schema.json'))) {
+    if (
+      schemaName === 'default' &&
+      existsSync(path.join(path.dirname(schemaPath), 'schema.json'))
+    ) {
       // Single schema setup in directory root
       targetPath = path.dirname(schemaPath);
     } else {
@@ -59,7 +68,35 @@ export const handleSchemaTablesResource = async (
   }
 
   // Parse table references using the schema adapter
-  const tableRefsResult = parseTableReferences(targetPath);
+  let tableRefsResult: Result<TableReference[], Error>;
+
+  // Check if we need to parse a specific schema from a multi-schema file
+  if (sourceType === 'file') {
+    // For file sources, we might need to extract a specific schema
+    try {
+      const parser = createSchemaParser(schemaPath);
+      if (parser.isOk() && resolvedSchemaName !== 'default') {
+        // Try to parse the specific schema by name
+        const schemaResult = parser.value.parseSchemaByName(schemaPath, resolvedSchemaName);
+        if (schemaResult.isOk()) {
+          tableRefsResult = ok(schemaResult.value.tableReferences);
+        } else {
+          // Fall back to parsing all and filtering (for backward compatibility)
+          tableRefsResult = parseTableReferences(targetPath);
+        }
+      } else {
+        // Use default parsing for 'default' schema or fallback
+        tableRefsResult = parseTableReferences(targetPath);
+      }
+    } catch {
+      // Fall back to regular parsing
+      tableRefsResult = parseTableReferences(targetPath);
+    }
+  } else {
+    // Directory source - use regular parsing
+    tableRefsResult = parseTableReferences(targetPath);
+  }
+
   if (tableRefsResult.isErr()) {
     return err(tableRefsResult.error);
   }
@@ -94,12 +131,17 @@ export const handleTableInfoResource = async (
   cache?: ResourceCache
 ): Promise<Result<TableInfoResource, Error>> => {
   // Resolve schema name with backward compatibility support
-  const schemaResolveResult = resolveSchemaName(schemaSource, schemaName, cache);
+  const schemaResolveResult = resolveSchemaName(
+    schemaSource,
+    schemaName,
+    cache
+  );
   if (schemaResolveResult.isErr()) {
     return err(schemaResolveResult.error);
   }
 
-  const { resolvedSchemaName, schemaPath, sourceType } = schemaResolveResult.value;
+  const { resolvedSchemaName, schemaPath, sourceType } =
+    schemaResolveResult.value;
 
   // Determine the path to the schema.json file
   let schemaJsonPath: string;

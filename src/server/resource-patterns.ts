@@ -70,40 +70,49 @@ export interface ResourceMetadata {
  * Predefined resource patterns for the tbls MCP server
  */
 export class ResourcePatterns {
-  private static patterns: ResourcePattern[] = [
+  private static patterns: ResourcePattern[] = [];
+
+  /**
+   * Initialize patterns with proper references
+   */
+  private static initializePatterns(): void {
+    if (this.patterns.length > 0) {
+      return; // Already initialized
+    }
+
     // Schema list pattern
-    {
+    const schemaListPattern: ResourcePattern = {
       id: 'schema-list',
       uriPattern: 'schema://list',
       mimeType: 'application/json',
       namePattern: 'Database Schemas',
       descriptionPattern:
-        'List of all available database schemas with metadata',
+        'Complete list of all available database schemas with metadata including schema names, table counts, and version information. URI format: schema://list',
       requiresDiscovery: false,
       matcher: (uri: string): ResourcePatternMatch | null => {
         if (uri === 'schema://list') {
           return {
-            pattern: ResourcePatterns.patterns[0],
+            pattern: schemaListPattern,
             params: {},
           };
         }
         return null;
       },
-    },
+    };
 
     // Schema tables pattern
-    {
+    const schemaTablesPattern: ResourcePattern = {
       id: 'schema-tables',
       uriPattern: 'schema://{schemaName}/tables',
       mimeType: 'application/json',
       namePattern: '{schemaName} Schema Tables',
-      descriptionPattern: 'List of tables in the {schemaName} schema',
+      descriptionPattern: 'Comprehensive list of all tables within the {schemaName} schema, including table metadata, row counts, and basic structure information. URI format: schema://[schema_name]/tables (example: schema://default/tables, schema://public/tables)',
       requiresDiscovery: true,
       matcher: (uri: string): ResourcePatternMatch | null => {
         const match = uri.match(/^schema:\/\/([^/]+)\/tables$/);
         if (match) {
           return {
-            pattern: ResourcePatterns.patterns[1],
+            pattern: schemaTablesPattern,
             params: { schemaName: match[1] },
           };
         }
@@ -127,14 +136,18 @@ export class ResourcePatterns {
 
           const resources: ResourceMetadata[] = [];
           for (const schema of schemaListResult.value.schemas) {
-            // For backward compatibility, use "default" in URIs for single-schema setups
-            const uriSchemaName = schemaListResult.value.schemas.length === 1 ? 'default' : schema.name;
+            // For backward compatibility, use "default" in URIs only for single-schema setups
+            // when no specific schema name is provided in context
+            const uriSchemaName =
+              schemaListResult.value.schemas.length === 1 && !context.scope?.schemaName
+                ? 'default'
+                : schema.name;
 
             resources.push({
               uri: `schema://${uriSchemaName}/tables`,
               mimeType: 'application/json',
               name: `${schema.name} Schema Tables`,
-              description: `List of tables in the ${schema.name} schema`,
+              description: `Comprehensive list of all tables within the ${schema.name} schema, including table metadata, row counts, and basic structure information. URI format: schema://[schema_name]/tables (example: schema://default/tables, schema://public/tables)`,
             });
           }
 
@@ -147,22 +160,22 @@ export class ResourcePatterns {
           );
         }
       },
-    },
+    };
 
     // Individual table pattern
-    {
+    const tableInfoPattern: ResourcePattern = {
       id: 'table-info',
       uriPattern: 'table://{schemaName}/{tableName}',
       mimeType: 'application/json',
       namePattern: '{tableName} table ({schemaName} schema)',
       descriptionPattern:
-        'Detailed information about the {tableName} table including columns, indexes, and relationships',
+        'Complete detailed information about the {tableName} table including column definitions with data types, constraints, indexes, foreign key relationships, and table statistics. URI format: table://[schema_name]/[table_name] (example: table://default/users, table://public/orders)',
       requiresDiscovery: true,
       matcher: (uri: string): ResourcePatternMatch | null => {
         const match = uri.match(/^table:\/\/([^/]+)\/([^/]+)$/);
         if (match) {
           return {
-            pattern: ResourcePatterns.patterns[2],
+            pattern: tableInfoPattern,
             params: { schemaName: match[1], tableName: match[2] },
           };
         }
@@ -193,7 +206,10 @@ export class ResourcePatterns {
           let targetSchemas = schemaListResult.value.schemas;
           if (context.scope?.schemaName) {
             // Handle "default" schema name resolution for single-schema setups
-            if (context.scope.schemaName === 'default' && schemaListResult.value.schemas.length === 1) {
+            if (
+              context.scope.schemaName === 'default' &&
+              schemaListResult.value.schemas.length === 1
+            ) {
               // For single-schema setup, "default" should resolve to the only schema
               targetSchemas = schemaListResult.value.schemas;
             } else {
@@ -206,22 +222,28 @@ export class ResourcePatterns {
 
           for (const schema of targetSchemas) {
             // Use the requested schema name for resolution (important for "default" handling)
-            const requestedSchemaName = context.scope?.schemaName || schema.name;
+            const requestedSchemaName =
+              context.scope?.schemaName || schema.name;
 
             const tablesResult = await handleSchemaTablesResource(
               context.schemaSource,
               requestedSchemaName
             );
             if (tablesResult.isOk()) {
-              // For backward compatibility, use "default" in URIs for single-schema setups
-              const uriSchemaName = schemaListResult.value.schemas.length === 1 ? 'default' : schema.name;
+              // Determine URI schema name based on request context
+              // For backward compatibility, use "default" only when specifically requested
+              // or when it's a single-schema setup accessed via "default"
+              const uriSchemaName =
+                context.scope?.schemaName === 'default' && schemaListResult.value.schemas.length === 1
+                  ? 'default'
+                  : requestedSchemaName;
 
               for (const table of tablesResult.value.tables) {
                 resources.push({
                   uri: `table://${uriSchemaName}/${table.name}`,
                   mimeType: 'application/json',
                   name: `${table.name} table (${schema.name} schema)`,
-                  description: `Detailed information about the ${table.name} table including columns, indexes, and relationships`,
+                  description: `Complete detailed information about the ${table.name} table including column definitions with data types, constraints, indexes, foreign key relationships, and table statistics. URI format: table://[schema_name]/[table_name] (example: table://default/users, table://public/orders)`,
                 });
               }
             }
@@ -236,21 +258,21 @@ export class ResourcePatterns {
           );
         }
       },
-    },
+    };
 
     // Table indexes pattern
-    {
+    const tableIndexesPattern: ResourcePattern = {
       id: 'table-indexes',
       uriPattern: 'table://{schemaName}/{tableName}/indexes',
       mimeType: 'application/json',
       namePattern: '{tableName} table indexes ({schemaName} schema)',
-      descriptionPattern: 'Index information for the {tableName} table',
+      descriptionPattern: 'Detailed index information for the {tableName} table including index names, types (primary, unique, regular), column compositions, and performance statistics. URI format: table://[schema_name]/[table_name]/indexes (example: table://default/users/indexes, table://public/orders/indexes)',
       requiresDiscovery: true,
       matcher: (uri: string): ResourcePatternMatch | null => {
         const match = uri.match(/^table:\/\/([^/]+)\/([^/]+)\/indexes$/);
         if (match) {
           return {
-            pattern: ResourcePatterns.patterns[3],
+            pattern: tableIndexesPattern,
             params: { schemaName: match[1], tableName: match[2] },
           };
         }
@@ -281,7 +303,10 @@ export class ResourcePatterns {
           let targetSchemas = schemaListResult.value.schemas;
           if (context.scope?.schemaName) {
             // Handle "default" schema name resolution for single-schema setups
-            if (context.scope.schemaName === 'default' && schemaListResult.value.schemas.length === 1) {
+            if (
+              context.scope.schemaName === 'default' &&
+              schemaListResult.value.schemas.length === 1
+            ) {
               // For single-schema setup, "default" should resolve to the only schema
               targetSchemas = schemaListResult.value.schemas;
             } else {
@@ -294,22 +319,28 @@ export class ResourcePatterns {
 
           for (const schema of targetSchemas) {
             // Use the requested schema name for resolution (important for "default" handling)
-            const requestedSchemaName = context.scope?.schemaName || schema.name;
+            const requestedSchemaName =
+              context.scope?.schemaName || schema.name;
 
             const tablesResult = await handleSchemaTablesResource(
               context.schemaSource,
               requestedSchemaName
             );
             if (tablesResult.isOk()) {
-              // For backward compatibility, use "default" in URIs for single-schema setups
-              const uriSchemaName = schemaListResult.value.schemas.length === 1 ? 'default' : schema.name;
+              // Determine URI schema name based on request context
+              // For backward compatibility, use "default" only when specifically requested
+              // or when it's a single-schema setup accessed via "default"
+              const uriSchemaName =
+                context.scope?.schemaName === 'default' && schemaListResult.value.schemas.length === 1
+                  ? 'default'
+                  : requestedSchemaName;
 
               for (const table of tablesResult.value.tables) {
                 resources.push({
                   uri: `table://${uriSchemaName}/${table.name}/indexes`,
                   mimeType: 'application/json',
                   name: `${table.name} table indexes (${schema.name} schema)`,
-                  description: `Index information for the ${table.name} table`,
+                  description: `Detailed index information for the ${table.name} table including index names, types (primary, unique, regular), column compositions, and performance statistics. URI format: table://[schema_name]/[table_name]/indexes (example: table://default/users/indexes, table://public/orders/indexes)`,
                 });
               }
             }
@@ -324,13 +355,22 @@ export class ResourcePatterns {
           );
         }
       },
-    },
-  ];
+    };
+
+    // Add all patterns to the array
+    this.patterns = [
+      schemaListPattern,
+      schemaTablesPattern,
+      tableInfoPattern,
+      tableIndexesPattern,
+    ];
+  }
 
   /**
    * Find a pattern that matches the given URI
    */
   static matchUri(uri: string): ResourcePatternMatch | null {
+    this.initializePatterns();
     for (const pattern of this.patterns) {
       const match = pattern.matcher(uri);
       if (match) {
@@ -344,6 +384,7 @@ export class ResourcePatterns {
    * Get all registered patterns
    */
   static getAllPatterns(): ResourcePattern[] {
+    this.initializePatterns();
     return [...this.patterns];
   }
 
@@ -351,6 +392,7 @@ export class ResourcePatterns {
    * Get patterns that require discovery for list operations
    */
   static getDiscoveryPatterns(): ResourcePattern[] {
+    this.initializePatterns();
     return this.patterns.filter((p) => p.requiresDiscovery && p.generator);
   }
 
@@ -358,6 +400,7 @@ export class ResourcePatterns {
    * Get static patterns that don't require discovery
    */
   static getStaticPatterns(): ResourcePattern[] {
+    this.initializePatterns();
     return this.patterns.filter((p) => !p.requiresDiscovery);
   }
 

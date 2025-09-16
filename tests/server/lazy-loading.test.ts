@@ -193,7 +193,7 @@ describe('Server Resource Registration Performance Analysis', () => {
 
       // With true lazy loading, we only return static patterns during listResources
       // Dynamic resources are discovered on-demand during readResource calls
-      const expectedStaticResources = 1; // Only the schema://list static pattern
+      const expectedStaticResources = 2; // schema://list and schema://uri-patterns static patterns
 
       // Verify we're only returning static patterns (the key improvement of lazy loading)
       expect(result.resources.length).toBe(expectedStaticResources);

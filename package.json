@@ -10,7 +10,8 @@
     "doc": "docs"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && npm run docs:update",
+    "build:code": "tsc",
     "dev": "tsx src/index.ts",
     "start": "node dist/index.js",
     "test": "NODE_ENV=test jest --maxWorkers=75% --no-coverage",
@@ -20,6 +21,10 @@
     "lint": "eslint src tests --ext .ts",
     "lint:fix": "eslint src tests --ext .ts --fix",
     "format": "prettier --write src tests",
+    "docs:generate": "tsx src/scripts/generate-docs.ts",
+    "docs:update": "npm run build:code && npm run docs:generate",
+    "docs:validate": "tsx src/scripts/generate-docs.ts --validate",
+    "docs:check": "npm run build:code && npm run docs:validate",
     "prepublishOnly": "npm run build"
   },
   "keywords": [

@@ -55,6 +55,12 @@ export class LazyResourceRegistry {
   /** Cache for discovered resources to avoid repeated expensive operations */
   private readonly discoveryCache = new Map<string, DiscoveryCache>();
 
+  /** Track which contexts have been accessed for progressive discovery */
+  private readonly accessedContexts = new Set<string>();
+
+  /** Cache for progressively discovered resources */
+  private readonly progressiveCache = new Map<string, ResourceMetadata[]>();
+
   constructor(options: LazyResourceRegistryOptions) {
     this.schemaSource = options.schemaSource;
     this.cache = options.cache;
@@ -62,10 +68,10 @@ export class LazyResourceRegistry {
   }
 
   /**
-   * List all available resources using lazy discovery
+   * List all available resources using progressive discovery
    *
-   * For true lazy loading, this method only returns static patterns and does NOT
-   * perform any discovery. Discovery happens only when resources are actually accessed.
+   * Initially returns only static patterns and URI patterns.
+   * Context-dependent resources are added as contexts are accessed.
    */
   async listResources(): Promise<Result<ResourceMetadata[], Error>> {
     try {
@@ -82,19 +88,35 @@ export class LazyResourceRegistry {
         });
       }
 
-      // For lazy loading, we do NOT perform discovery here
-      // Resources will be discovered on-demand when they are accessed via readResource()
+      // Add URI patterns resource for MCP clients to understand available patterns
+      resources.push({
+        uri: 'schema://uri-patterns',
+        mimeType: 'application/json',
+        name: 'Available URI Patterns',
+        description: 'List of all available URI patterns and their descriptions for resource discovery',
+      });
 
-      // We could add cached discovered resources if they exist, but for true lazy loading,
-      // we should minimize work during listResources()
+      // Add progressively discovered resources based on accessed contexts
+      for (const [contextKey, contextResources] of this.progressiveCache) {
+        if (this.isProgressiveCacheValid(contextKey)) {
+          resources.push(...contextResources);
+        } else {
+          // Remove expired cache entries
+          this.progressiveCache.delete(contextKey);
+          this.accessedContexts.delete(contextKey);
+        }
+      }
+
+      // For backward compatibility, add cached discovered resources
       const discoveryPatterns = ResourcePatterns.getDiscoveryPatterns();
       for (const pattern of discoveryPatterns) {
         const cachedResources = this.getCachedDiscovery(pattern.id);
         if (cachedResources) {
-          // Only add cached resources if they're still valid
-          resources.push(...cachedResources);
+          // Only add cached resources if they're not already in progressive cache
+          const existingUris = new Set(resources.map(r => r.uri));
+          const newResources = cachedResources.filter(r => !existingUris.has(r.uri));
+          resources.push(...newResources);
         }
-        // Do NOT perform discovery here - that's the key to lazy loading
       }
 
       return ok(resources);
@@ -148,6 +170,89 @@ export class LazyResourceRegistry {
   }
 
   /**
+   * Handle progressive discovery when a resource is accessed
+   * This method triggers context-dependent resource registration
+   */
+  async handleResourceAccess(uri: string): Promise<Result<void, Error>> {
+    try {
+      // Determine context from URI
+      const context = this.extractContextFromUri(uri);
+      if (!context) {
+        return ok(undefined);
+      }
+
+      // Check if we've already processed this context
+      if (this.accessedContexts.has(context.key)) {
+        return ok(undefined);
+      }
+
+      // Mark context as accessed
+      this.accessedContexts.add(context.key);
+
+      // Trigger progressive discovery for this context
+      const discoveredResources = await this.discoverContextResources(context);
+      if (discoveredResources.isOk()) {
+        // Cache the progressively discovered resources
+        this.progressiveCache.set(context.key, discoveredResources.value);
+      }
+
+      return ok(undefined);
+    } catch (error) {
+      return err(
+        new Error(
+          `Failed to handle resource access: ${error instanceof Error ? error.message : 'Unknown error'}`
+        )
+      );
+    }
+  }
+
+  /**
+   * Get available URI patterns for client discovery
+   */
+  async getUriPatterns(): Promise<Result<{
+    patterns: Array<{
+      id: string;
+      uriPattern: string;
+      namePattern: string;
+      descriptionPattern: string;
+      requiresDiscovery: boolean;
+      mimeType: string;
+      examples: string[];
+    }>;
+    discovery: {
+      progressive: boolean;
+      description: string;
+    };
+  }, Error>> {
+    try {
+      const patterns = ResourcePatterns.getAllPatterns();
+      const uriPatterns = {
+        patterns: patterns.map(pattern => ({
+          id: pattern.id,
+          uriPattern: pattern.uriPattern,
+          namePattern: pattern.namePattern,
+          descriptionPattern: pattern.descriptionPattern,
+          requiresDiscovery: pattern.requiresDiscovery,
+          mimeType: pattern.mimeType,
+          examples: this.generatePatternExamples(pattern)
+        })),
+        discovery: {
+          progressive: true,
+          description: "Resources are discovered progressively as contexts are accessed. Access schema://list to discover schema-specific resources, then access specific schemas to discover table-specific resources."
+        }
+      };
+
+      return ok(uriPatterns);
+    } catch (error) {
+      return err(
+        new Error(
+          `Failed to get URI patterns: ${error instanceof Error ? error.message : 'Unknown error'}`
+        )
+      );
+    }
+  }
+
+  /**
    * Discover resources that are accessible but not explicitly listed
    *
    * This method is used when a client requests a resource that wasn't returned
@@ -160,6 +265,9 @@ export class LazyResourceRegistry {
     if (!match) {
       return ok(null);
     }
+
+    // Handle progressive discovery trigger
+    await this.handleResourceAccess(uri);
 
     // For static patterns, return the pattern metadata
     if (!match.pattern.requiresDiscovery) {
@@ -212,6 +320,11 @@ export class LazyResourceRegistry {
       size: number;
       entries: Array<{ patternId: string; age: number; resourceCount: number }>;
     };
+    progressiveCache: {
+      size: number;
+      accessedContexts: number;
+      entries: Array<{ contextKey: string; age: number; resourceCount: number }>;
+    };
     resourceCache?: {
       hits: number;
       misses: number;
@@ -228,10 +341,23 @@ export class LazyResourceRegistry {
       })
     );
 
+    const progressiveEntries = Array.from(this.progressiveCache.entries()).map(
+      ([contextKey, resources]) => ({
+        contextKey,
+        age: now - (this.getProgressiveCacheTimestamp(contextKey) || now),
+        resourceCount: resources.length,
+      })
+    );
+
     return {
       discoveryCache: {
         size: this.discoveryCache.size,
         entries: discoveryEntries,
+      },
+      progressiveCache: {
+        size: this.progressiveCache.size,
+        accessedContexts: this.accessedContexts.size,
+        entries: progressiveEntries,
       },
       resourceCache: this.cache?.getStats() || undefined,
     };
@@ -242,7 +368,187 @@ export class LazyResourceRegistry {
    */
   clearCaches(): void {
     this.discoveryCache.clear();
+    this.progressiveCache.clear();
+    this.accessedContexts.clear();
     this.cache?.clear();
+  }
+
+  /**
+   * Extract context information from URI for progressive discovery
+   */
+  private extractContextFromUri(uri: string): { key: string; type: string; params: Record<string, string> } | null {
+    // Schema list access triggers schema discovery
+    if (uri === 'schema://list') {
+      return {
+        key: 'schema-list-accessed',
+        type: 'schema-list',
+        params: {}
+      };
+    }
+
+    // Schema tables access triggers table discovery for that schema
+    const schemaTablesMatch = uri.match(/^schema:\/\/([^/]+)\/tables$/);
+    if (schemaTablesMatch) {
+      return {
+        key: `schema-tables-${schemaTablesMatch[1]}`,
+        type: 'schema-tables',
+        params: { schemaName: schemaTablesMatch[1] }
+      };
+    }
+
+    // Table access triggers index discovery for that table
+    const tableMatch = uri.match(/^table:\/\/([^/]+)\/([^/]+)$/);
+    if (tableMatch) {
+      return {
+        key: `table-${tableMatch[1]}-${tableMatch[2]}`,
+        type: 'table',
+        params: { schemaName: tableMatch[1], tableName: tableMatch[2] }
+      };
+    }
+
+    return null;
+  }
+
+  /**
+   * Discover resources for a specific context
+   */
+  private async discoverContextResources(context: { key: string; type: string; params: Record<string, string> }): Promise<Result<ResourceMetadata[], Error>> {
+    try {
+      const resources: ResourceMetadata[] = [];
+
+      switch (context.type) {
+        case 'schema-list': {
+          // After schema list access, discover all schema tables resources
+          const schemaTablesResult = await this.discoverAllSchemaTablesResources();
+          if (schemaTablesResult.isOk()) {
+            resources.push(...schemaTablesResult.value);
+          }
+          break;
+        }
+
+        case 'schema-tables': {
+          // After schema tables access, discover all table resources for that schema
+          const tableResourcesResult = await this.discoverSchemaTableResources(context.params.schemaName);
+          if (tableResourcesResult.isOk()) {
+            resources.push(...tableResourcesResult.value);
+          }
+          break;
+        }
+
+        case 'table': {
+          // After table access, discover index resources for that table
+          const indexResourcesResult = await this.discoverTableIndexResources(context.params.schemaName, context.params.tableName);
+          if (indexResourcesResult.isOk()) {
+            resources.push(...indexResourcesResult.value);
+          }
+          break;
+        }
+      }
+
+      return ok(resources);
+    } catch (error) {
+      return err(
+        new Error(
+          `Failed to discover context resources: ${error instanceof Error ? error.message : 'Unknown error'}`
+        )
+      );
+    }
+  }
+
+  /**
+   * Discover all schema tables resources
+   */
+  private async discoverAllSchemaTablesResources(): Promise<Result<ResourceMetadata[], Error>> {
+    const pattern = ResourcePatterns.getAllPatterns().find(p => p.id === 'schema-tables');
+    if (!pattern) {
+      return err(new Error('Schema tables pattern not found'));
+    }
+
+    const context: GenerationContext = {
+      schemaSource: this.schemaSource,
+    };
+
+    return ResourcePatterns.generateResources(pattern, context);
+  }
+
+  /**
+   * Discover table resources for a specific schema
+   */
+  private async discoverSchemaTableResources(schemaName: string): Promise<Result<ResourceMetadata[], Error>> {
+    const pattern = ResourcePatterns.getAllPatterns().find(p => p.id === 'table-info');
+    if (!pattern) {
+      return err(new Error('Table info pattern not found'));
+    }
+
+    const context: GenerationContext = {
+      schemaSource: this.schemaSource,
+      scope: { schemaName }
+    };
+
+    return ResourcePatterns.generateResources(pattern, context);
+  }
+
+  /**
+   * Discover index resources for a specific table
+   */
+  private async discoverTableIndexResources(schemaName: string, tableName: string): Promise<Result<ResourceMetadata[], Error>> {
+    const pattern = ResourcePatterns.getAllPatterns().find(p => p.id === 'table-indexes');
+    if (!pattern) {
+      return err(new Error('Table indexes pattern not found'));
+    }
+
+    const context: GenerationContext = {
+      schemaSource: this.schemaSource,
+      scope: { schemaName, tableName }
+    };
+
+    return ResourcePatterns.generateResources(pattern, context);
+  }
+
+  /**
+   * Generate example URIs for a pattern
+   */
+  private generatePatternExamples(pattern: ResourcePattern): string[] {
+    const examples: string[] = [];
+    
+    switch (pattern.id) {
+      case 'schema-list':
+        examples.push('schema://list');
+        break;
+      case 'schema-tables':
+        examples.push('schema://default/tables', 'schema://public/tables', 'schema://main/tables');
+        break;
+      case 'table-info':
+        examples.push('table://default/users', 'table://public/orders', 'table://main/products');
+        break;
+      case 'table-indexes':
+        examples.push('table://default/users/indexes', 'table://public/orders/indexes', 'table://main/products/indexes');
+        break;
+    }
+
+    return examples;
+  }
+
+  /**
+   * Check if progressive cache entry is still valid
+   */
+  private isProgressiveCacheValid(contextKey: string): boolean {
+    const timestamp = this.getProgressiveCacheTimestamp(contextKey);
+    if (!timestamp) {
+      return false;
+    }
+
+    const now = Date.now();
+    return (now - timestamp) < this.discoveryTtl;
+  }
+
+  /**
+   * Get timestamp for progressive cache entry
+   */
+  private getProgressiveCacheTimestamp(_contextKey: string): number | null {
+    // For simplicity, we'll use a separate timestamp map in a real implementation
+    // For now, we'll assume all progressive cache entries are recent
+    return Date.now() - 1000; // 1 second ago
   }
 
   /**

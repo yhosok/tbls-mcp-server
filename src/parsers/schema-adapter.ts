@@ -8,7 +8,7 @@ import {
   validateSchemaData,
 } from '../schemas/database';
 import { createError, safeExecuteAsync } from '../utils/result';
-import { parseJsonFile } from './json-parser';
+import { parseJsonFile, parseJsonSchemaList, parseJsonSchemaByName } from './json-parser';
 import { ResourceCache } from '../cache/resource-cache';
 
 /**
@@ -31,6 +31,7 @@ export interface SchemaParser {
   ): Result<DatabaseSchema, Error>;
   parseSchemaOverview(filePath: string): Result<SchemaMetadata, Error>;
   parseTableReferences(filePath: string): Result<TableReference[], Error>;
+  parseSchemaByName(filePath: string, schemaName: string): Result<DatabaseSchema, Error>;
 }
 
 /**
@@ -66,13 +67,40 @@ class JsonSchemaParser implements SchemaParser {
   }
 
   parseSchemaOverview(filePath: string): Result<SchemaMetadata, Error> {
-    return parseJsonFile(filePath).andThen((schema) => ok(schema.metadata));
+    try {
+      const content = require('fs').readFileSync(filePath, 'utf-8');
+      const metadataListResult = parseJsonSchemaList(content);
+
+      if (metadataListResult.isOk()) {
+        const metadataList = metadataListResult.value;
+        if (metadataList.length > 0) {
+          // Return the first schema's metadata for compatibility
+          return ok(metadataList[0]);
+        }
+        return createError('No schemas found in file');
+      }
+
+      // Fallback to single schema parsing
+      return parseJsonFile(filePath).andThen((schema) => ok(schema.metadata));
+    } catch {
+      // Fallback to single schema parsing
+      return parseJsonFile(filePath).andThen((schema) => ok(schema.metadata));
+    }
   }
 
   parseTableReferences(filePath: string): Result<TableReference[], Error> {
     return parseJsonFile(filePath).andThen((schema) =>
       ok(schema.tableReferences)
     );
+  }
+
+  parseSchemaByName(filePath: string, schemaName: string): Result<DatabaseSchema, Error> {
+    try {
+      const content = require('fs').readFileSync(filePath, 'utf-8');
+      return parseJsonSchemaByName(content, schemaName);
+    } catch (error) {
+      return createError(`Failed to read file: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 }
 
@@ -396,23 +424,92 @@ export const resolveSchemaName = (
   schemaSource: string,
   requestedSchemaName: string,
   cache?: ResourceCache
-): Result<{ resolvedSchemaName: string; schemaPath: string; sourceType: 'file' | 'directory' }, Error> => {
+): Result<
+  {
+    resolvedSchemaName: string;
+    schemaPath: string;
+    sourceType: 'file' | 'directory';
+  },
+  Error
+> => {
   // First resolve the schema source
   const resolveResult = resolveSchemaSource(schemaSource);
   if (resolveResult.isErr()) {
-    return createError(`Failed to resolve schema source: ${resolveResult.error.message}`);
+    return createError(
+      `Failed to resolve schema source: ${resolveResult.error.message}`
+    );
   }
 
   const { type: sourceType, path: sourcePath } = resolveResult.value;
 
   if (sourceType === 'file') {
-    // Single file setup
+    // Single file setup - check if it's multi-schema or single schema
+    try {
+      const content = require('fs').readFileSync(sourcePath, 'utf-8');
+      const metadataListResult = parseJsonSchemaList(content);
+
+      if (metadataListResult.isOk()) {
+        const metadataList = metadataListResult.value;
+
+        // Multi-schema file
+        if (metadataList.length > 1) {
+          // Check if the requested schema exists
+          const schemaExists = metadataList.some(metadata => metadata.name === requestedSchemaName);
+
+          if (schemaExists) {
+            return ok({
+              resolvedSchemaName: requestedSchemaName,
+              schemaPath: sourcePath,
+              sourceType: 'file',
+            });
+          }
+
+          // Handle "default" for multi-schema - should fail unless there's actually a schema named "default"
+          if (requestedSchemaName === 'default') {
+            const schemaNames = metadataList.map(m => m.name).join(', ');
+            return createError(
+              `Schema 'default' not found in multi-schema file. Available schemas: ${schemaNames}`
+            );
+          }
+
+          const schemaNames = metadataList.map(m => m.name).join(', ');
+          return createError(
+            `Schema '${requestedSchemaName}' not found. Available schemas: ${schemaNames}`
+          );
+        }
+
+        // Single schema in schemas array - handle backward compatibility
+        const singleSchema = metadataList[0];
+        if (requestedSchemaName === 'default') {
+          return ok({
+            resolvedSchemaName: 'default',
+            schemaPath: sourcePath,
+            sourceType: 'file',
+          });
+        }
+
+        if (singleSchema.name === requestedSchemaName) {
+          return ok({
+            resolvedSchemaName: requestedSchemaName,
+            schemaPath: sourcePath,
+            sourceType: 'file',
+          });
+        }
+
+        return createError(
+          `Schema name mismatch: requested '${requestedSchemaName}' but schema file contains '${singleSchema.name}'. Use '${singleSchema.name}' or 'default' instead.`
+        );
+      }
+    } catch {
+      // Fall back to old logic for single-schema format
+    }
+
+    // Legacy single schema format
     if (requestedSchemaName === 'default') {
-      // For backward compatibility, always return "default" when requested for single file setups
       return ok({
         resolvedSchemaName: 'default',
         schemaPath: sourcePath,
-        sourceType: 'file'
+        sourceType: 'file',
       });
     }
 
@@ -429,7 +526,7 @@ export const resolveSchemaName = (
     return ok({
       resolvedSchemaName: requestedSchemaName,
       schemaPath: sourcePath,
-      sourceType: 'file'
+      sourceType: 'file',
     });
   }
 
@@ -442,23 +539,27 @@ export const resolveSchemaName = (
       return ok({
         resolvedSchemaName: 'default',
         schemaPath: rootSchemaPath,
-        sourceType: 'directory'
+        sourceType: 'directory',
       });
     }
     // No root schema.json, use "default" as-is (multi-schema setup with default schema)
     return ok({
       resolvedSchemaName: 'default',
       schemaPath: path.join(sourcePath, 'default'),
-      sourceType: 'directory'
+      sourceType: 'directory',
     });
   }
 
   // Named schema in directory - use as-is
-  const namedSchemaPath = path.join(sourcePath, requestedSchemaName, 'schema.json');
+  const namedSchemaPath = path.join(
+    sourcePath,
+    requestedSchemaName,
+    'schema.json'
+  );
   return ok({
     resolvedSchemaName: requestedSchemaName,
     schemaPath: namedSchemaPath,
-    sourceType: 'directory'
+    sourceType: 'directory',
   });
 };
 
