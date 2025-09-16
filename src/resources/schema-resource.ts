@@ -14,7 +14,7 @@ import { safeExecuteAsync, fromPromise, createError } from '../utils/result';
 import { ResourceCache } from '../cache/resource-cache';
 
 /**
- * Handles the schema://list MCP resource
+ * Handles the db://schemas MCP resource
  * Returns a list of all available database schemas with metadata
  *
  * @param schemaSource - Path to schema file or directory containing tbls schema files

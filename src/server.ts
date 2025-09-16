@@ -94,14 +94,14 @@ export class TblsMcpServer {
           return {
             resources: [
               {
-                uri: 'schema://list',
+                uri: 'db://schemas',
                 mimeType: 'application/json',
                 name: 'Database Schemas',
                 description:
-                  'List of all available database schemas with metadata',
+                  'Complete list of all available database schemas with metadata including schema names, table counts, and version information.',
               },
               {
-                uri: 'schema://uri-patterns',
+                uri: 'db://uri-patterns',
                 mimeType: 'application/json',
                 name: 'Available URI Patterns',
                 description: 'List of all available URI patterns and their descriptions for resource discovery',
@@ -117,14 +117,14 @@ export class TblsMcpServer {
         return {
           resources: [
             {
-              uri: 'schema://list',
+              uri: 'db://schemas',
               mimeType: 'application/json',
               name: 'Database Schemas',
               description:
-                'List of all available database schemas with metadata',
+                'Complete list of all available database schemas with metadata including schema names, table counts, and version information.',
             },
             {
-              uri: 'schema://uri-patterns',
+              uri: 'db://uri-patterns',
               mimeType: 'application/json',
               name: 'Available URI Patterns',
               description: 'List of all available URI patterns and their descriptions for resource discovery',
@@ -142,7 +142,7 @@ export class TblsMcpServer {
 
         try {
           // Handle URI patterns resource
-          if (uri === 'schema://uri-patterns') {
+          if (uri === 'db://uri-patterns') {
             return await this.handleUriPatternsResource();
           }
 
@@ -177,36 +177,34 @@ export class TblsMcpServer {
             // Import error message generator for pattern match failures
             const { ErrorMessageGenerator } = await import('./server/error-message-generator');
             const errorGenerator = new ErrorMessageGenerator();
-            const detailedMessage = errorGenerator.generatePatternMatchFailureMessage(uri);
+            const errorData = await errorGenerator.generateResourceNotFoundErrorData(uri, this.config.schemaSource);
 
             throw new McpError(
               ErrorCode.InvalidRequest,
-              detailedMessage,
-              {
-                uri,
-                pattern: match.pattern.uriPattern,
-                params: match.params,
-                suggestion: 'The URI format is correct, but the specific resource does not exist. Check the guidance above for discovering available resources.'
-              }
+              errorData.message,
+              errorData.data
             );
           }
 
           // Now handle the actual resource content retrieval
-          if (uri === 'schema://list') {
+
+          // New db:// hierarchical patterns
+          if (uri === 'db://schemas') {
             return await this.handleSchemaListResource();
           }
 
-          if (uri.startsWith('schema://') && uri.endsWith('/tables')) {
+          if (uri.startsWith('db://schemas/') && uri.endsWith('/tables')) {
             return await this.handleSchemaTablesResource(uri);
           }
 
-          if (uri.startsWith('table://') && !uri.endsWith('/indexes')) {
+          if (uri.match(/^db:\/\/schemas\/[^/]+\/tables\/[^/]+$/) && !uri.endsWith('/indexes')) {
             return await this.handleTableInfoResource(uri);
           }
 
-          if (uri.startsWith('table://') && uri.endsWith('/indexes')) {
+          if (uri.startsWith('db://schemas/') && uri.endsWith('/indexes')) {
             return await this.handleTableIndexesResource(uri);
           }
+
 
           // This should not happen if pattern matching works correctly
           throw new McpError(
@@ -304,7 +302,7 @@ export class TblsMcpServer {
   }
 
   /**
-   * Handle schema://list resource
+   * Handle db://schemas resource
    */
   private async handleSchemaListResource(): Promise<ReadResourceResult> {
     const result = await handleSchemaListResource(
@@ -322,7 +320,7 @@ export class TblsMcpServer {
     return {
       contents: [
         {
-          uri: 'schema://list',
+          uri: 'db://schemas',
           mimeType: 'application/json',
           text: JSON.stringify(result.value, null, 2),
         },
@@ -331,13 +329,14 @@ export class TblsMcpServer {
   }
 
   /**
-   * Handle schema://{schema_name}/tables resource
+   * Handle db://schemas/{schema_name}/tables resource
    */
   private async handleSchemaTablesResource(
     uri: string
   ): Promise<ReadResourceResult> {
-    // Parse schema name from URI: schema://schema_name/tables
-    const match = uri.match(/^schema:\/\/([^/]+)\/tables$/);
+    // Parse schema name from URI: db://schemas/schema_name/tables
+    const match = uri.match(/^db:\/\/schemas\/([^/]+)\/tables$/);
+
     if (!match) {
       throw new McpError(
         ErrorCode.InvalidRequest,
@@ -371,13 +370,14 @@ export class TblsMcpServer {
   }
 
   /**
-   * Handle table://{schema}/{table} resource
+   * Handle db://schemas/{schema}/{table} resource
    */
   private async handleTableInfoResource(
     uri: string
   ): Promise<ReadResourceResult> {
-    // Parse schema and table name from URI: table://schema_name/table_name
-    const match = uri.match(/^table:\/\/([^/]+)\/([^/]+)$/);
+    // Parse schema and table name from URI: db://schemas/schema_name/tables/table_name
+    const match = uri.match(/^db:\/\/schemas\/([^/]+)\/tables\/([^/]+)$/);
+
     if (!match) {
       throw new McpError(
         ErrorCode.InvalidRequest,
@@ -412,13 +412,14 @@ export class TblsMcpServer {
   }
 
   /**
-   * Handle table://{schema}/{table}/indexes resource
+   * Handle db://schemas/{schema}/tables/{table}/indexes resource
    */
   private async handleTableIndexesResource(
     uri: string
   ): Promise<ReadResourceResult> {
-    // Parse schema and table name from URI: table://schema_name/table_name/indexes
-    const match = uri.match(/^table:\/\/([^/]+)\/([^/]+)\/indexes$/);
+    // Parse schema and table name from URI: db://schemas/schema_name/tables/table_name/indexes
+    const match = uri.match(/^db:\/\/schemas\/([^/]+)\/tables\/([^/]+)\/indexes$/);
+
     if (!match) {
       throw new McpError(
         ErrorCode.InvalidRequest,
@@ -453,7 +454,7 @@ export class TblsMcpServer {
   }
 
   /**
-   * Handle schema://uri-patterns resource
+   * Handle db://uri-patterns resource
    */
   private async handleUriPatternsResource(): Promise<ReadResourceResult> {
     const result = await this.lazyRegistry.getUriPatterns();
@@ -468,7 +469,7 @@ export class TblsMcpServer {
     return {
       contents: [
         {
-          uri: 'schema://uri-patterns',
+          uri: 'db://uri-patterns',
           mimeType: 'application/json',
           text: JSON.stringify(result.value, null, 2),
         },

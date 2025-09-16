@@ -30,16 +30,16 @@ function convertResourcePatternToUriPatternInfo(
 function createUriPatternsResourceEntry(): UriPatternInfo {
   return {
     id: PATTERN_IDS.URI_PATTERNS,
-    uri: 'schema://uri-patterns',
+    uri: 'db://uri-patterns',
     description:
       'List of all available URI patterns supported by the MCP server',
-    examples: ['schema://uri-patterns'],
+    examples: ['db://uri-patterns'],
     parameters: [],
   };
 }
 
 /**
- * Handles the schema://uri-patterns MCP resource
+ * Handles the db://uri-patterns MCP resource
  * Returns a list of all available URI patterns supported by the server
  *
  * @returns Result containing URI patterns resource or error
@@ -67,10 +67,11 @@ export const handleUriPatternsResource = async (): Promise<
  * Pattern ID constants for type safety and maintainability
  */
 const PATTERN_IDS = {
-  SCHEMA_LIST: 'schema-list',
-  SCHEMA_TABLES: 'schema-tables',
-  TABLE_INFO: 'table-info',
-  TABLE_INDEXES: 'table-indexes',
+  SCHEMA_LIST: 'db-schemas',
+  SCHEMA_TABLES: 'db-schema-tables',
+  SCHEMA_INFO: 'db-schema',
+  TABLE_INFO: 'db-table-info',
+  TABLE_INDEXES: 'db-table-indexes',
   URI_PATTERNS: 'uri-patterns',
 } as const;
 
@@ -79,14 +80,16 @@ const PATTERN_IDS = {
  */
 const DESCRIPTION_OVERRIDES: Record<string, string> = {
   [PATTERN_IDS.SCHEMA_LIST]:
-    'Complete list of all available database schemas with metadata including schema names, table counts, and version information. URI format: schema://list',
+    'Complete list of all available database schemas with metadata including schema names, table counts, and version information.',
   [PATTERN_IDS.SCHEMA_TABLES]:
-    'Comprehensive list of all tables within a specific schema, including table metadata, row counts, and basic structure information. URI format: schema://[schema_name]/tables (example: schema://default/tables, schema://public/tables)',
+    'Comprehensive list of all tables within the {schema_name} schema, including table metadata, row counts, and basic structure information.',
+  [PATTERN_IDS.SCHEMA_INFO]:
+    'Information about the {schema_name} schema. This URI redirects to db://schemas/{schema_name}/tables.',
   [PATTERN_IDS.TABLE_INFO]:
-    'Complete detailed information about a specific table including column definitions with data types, constraints, indexes, foreign key relationships, and table statistics. URI format: table://[schema_name]/[table_name] (example: table://default/users, table://public/orders)',
+    'Complete detailed information about the {table_name} table including column definitions with data types, constraints, indexes, foreign key relationships, and table statistics.',
   [PATTERN_IDS.TABLE_INDEXES]:
-    'Detailed index information for a specific table including index names, types (primary, unique, regular), column compositions, and performance statistics. URI format: table://[schema_name]/[table_name]/indexes (example: table://default/users/indexes, table://public/orders/indexes)',
-};;
+    'Detailed index information for the {table_name} table including index names, types (primary, unique, regular), column compositions, and performance statistics.',
+};
 
 /**
  * Convert description to match test expectations
@@ -163,18 +166,22 @@ function extractParametersFromUriPattern(uriPattern: string): Array<{
  * Example mappings for each pattern type
  */
 const PATTERN_EXAMPLES: Record<string, string[]> = {
-  [PATTERN_IDS.SCHEMA_LIST]: ['schema://list'],
+  [PATTERN_IDS.SCHEMA_LIST]: ['db://schemas'],
   [PATTERN_IDS.SCHEMA_TABLES]: [
-    'schema://public/tables',
-    'schema://default/tables',
+    'db://schemas/public/tables',
+    'db://schemas/default/tables',
+  ],
+  [PATTERN_IDS.SCHEMA_INFO]: [
+    'db://schemas/public',
+    'db://schemas/default',
   ],
   [PATTERN_IDS.TABLE_INFO]: [
-    'table://public/users',
-    'table://default/products',
+    'db://schemas/public/tables/users',
+    'db://schemas/default/tables/products',
   ],
   [PATTERN_IDS.TABLE_INDEXES]: [
-    'table://public/users/indexes',
-    'table://default/products/indexes',
+    'db://schemas/public/tables/users/indexes',
+    'db://schemas/default/tables/products/indexes',
   ],
 };
 

@@ -193,7 +193,7 @@ describe('Server Resource Registration Performance Analysis', () => {
 
       // With true lazy loading, we only return static patterns during listResources
       // Dynamic resources are discovered on-demand during readResource calls
-      const expectedStaticResources = 2; // schema://list and schema://uri-patterns static patterns
+      const expectedStaticResources = 2; // db://schemas and db://uri-patterns static patterns
 
       // Verify we're only returning static patterns (the key improvement of lazy loading)
       expect(result.resources.length).toBe(expectedStaticResources);
@@ -327,7 +327,7 @@ describe('Server Resource Registration Performance Analysis', () => {
 
       const mockLightweightResources = [
         {
-          uri: 'schema://list',
+          uri: 'db://schemas',
           mimeType: 'application/json',
           name: 'Database Schemas',
           description: 'List of all available database schemas with metadata',
@@ -339,7 +339,7 @@ describe('Server Resource Registration Performance Analysis', () => {
           },
         },
         {
-          uri: 'schema://discovery/*',
+          uri: 'db://schemasdiscovery/*',
           mimeType: 'application/json',
           name: 'Dynamic Schema Resources',
           description: 'Dynamically discovered schema-specific resources',
@@ -347,7 +347,7 @@ describe('Server Resource Registration Performance Analysis', () => {
           lazyLoadConfig: {
             discoveryRequired: true,
             resourceType: 'schema-dynamic',
-            pattern: 'schema://{schema}/tables',
+            pattern: 'db://schemas{schema}/tables',
             cacheable: true,
           },
         },
@@ -382,13 +382,13 @@ describe('Server Resource Registration Performance Analysis', () => {
 
       const mockLazyDiscovery: LazyResourceDiscovery = {
         async discoverSchemas(basePath: string) {
-          // This would only be called when schema://list is actually accessed
+          // This would only be called when db://schemas is actually accessed
           expect(basePath).toBeDefined();
           return ['schema1', 'schema2', 'schema3'];
         },
 
         async discoverTables(schemaPath: string, schemaName: string) {
-          // This would only be called when schema://{name}/tables is accessed
+          // This would only be called when db://schemas{name}/tables is accessed
           expect(schemaPath).toBeDefined();
           expect(schemaName).toBeDefined();
           return ['table1', 'table2', 'table3'];
@@ -416,10 +416,10 @@ describe('Server Resource Registration Performance Analysis', () => {
       expect(tables).toHaveLength(3);
 
       const resource = await mockLazyDiscovery.createDynamicResource(
-        'table://schema1/table1',
+        'db://schemas/schema1/tables/table1',
         'table-info'
       );
-      expect(resource.uri).toBe('table://schema1/table1');
+      expect(resource.uri).toBe('db://schemas/schema1/tables/table1');
     });
 
     it('should design caching strategy for lazy loading', async () => {
@@ -572,7 +572,7 @@ Generated at: 2024-01-15T10:30:00Z
 
       const readResult = await readHandler({
         method: 'resources/read',
-        params: { uri: 'schema://list' },
+        params: { uri: 'db://schemas' },
       });
 
       expect(readResult.contents).toBeDefined();
@@ -596,13 +596,13 @@ Generated at: 2024-01-15T10:30:00Z
           const start = Date.now();
           // Lazy loading: Only return lightweight resource metadata
           const resources = [
-            { uri: 'schema://list', name: 'Schema List', lazy: true },
+            { uri: 'db://schemas', name: 'Schema List', lazy: true },
             {
-              uri: 'schema://*/tables',
+              uri: 'db://schemas/*/tables',
               name: 'Schema Tables Pattern',
               lazy: true,
             },
-            { uri: 'table://*/*', name: 'Table Info Pattern', lazy: true },
+            { uri: 'db://schemas/*/tables/*', name: 'Table Info Pattern', lazy: true },
           ];
           const cost = Date.now() - start;
           lazyAccessLog.push({
@@ -617,7 +617,7 @@ Generated at: 2024-01-15T10:30:00Z
           const start = Date.now();
           let cost = 0;
 
-          if (uri === 'schema://list') {
+          if (uri === 'db://schemas') {
             // This is where discovery and parsing would happen
             await new Promise((resolve) => setTimeout(resolve, 100)); // Simulate parsing
             cost = Date.now() - start;
@@ -666,11 +666,11 @@ Generated at: 2024-01-15T10:30:00Z
       expect(listResult.resources).toHaveLength(3);
 
       const schemaListResult =
-        await mockLazyServer.readResource('schema://list');
+        await mockLazyServer.readResource('db://schemas');
       expect(schemaListResult.contents).toBeDefined();
 
       const schemaTablesResult = await mockLazyServer.readResource(
-        'schema://test/tables'
+        'db://schemas/test/tables'
       );
       expect(schemaTablesResult.contents).toBeDefined();
 
@@ -716,9 +716,8 @@ Generated at: 2024-01-15T10:30:00Z
 
           // Simulate parsing time based on resource type
           let parseTime = 10;
-          if (uri.includes('list')) parseTime = 100;
-          if (uri.includes('tables')) parseTime = 50;
-          if (uri.includes('table://')) parseTime = 25;
+          if (uri === 'db://schemas') parseTime = 100;
+          if (uri.includes('/tables/') && !uri.endsWith('/tables')) parseTime = 25;
 
           await new Promise((resolve) => setTimeout(resolve, parseTime));
 
@@ -733,32 +732,32 @@ Generated at: 2024-01-15T10:30:00Z
 
       // Test caching behavior
       // First access - should be cache miss
-      await mockCachingLazyServer.readResourceWithCaching('schema://list');
+      await mockCachingLazyServer.readResourceWithCaching('db://schemas');
       expect(cacheMisses).toBe(1);
       expect(cacheHits).toBe(0);
 
       // Second access - should be cache hit
-      await mockCachingLazyServer.readResourceWithCaching('schema://list');
+      await mockCachingLazyServer.readResourceWithCaching('db://schemas');
       expect(cacheHits).toBe(1);
       expect(cacheMisses).toBe(1);
 
       // Multiple different resources
       await mockCachingLazyServer.readResourceWithCaching(
-        'schema://test/tables'
+        'db://schemas/test/tables'
       );
-      await mockCachingLazyServer.readResourceWithCaching('table://test/users');
+      await mockCachingLazyServer.readResourceWithCaching('db://schemas/test/tables/users');
       await mockCachingLazyServer.readResourceWithCaching(
-        'table://test/orders'
+        'db://schemas/test/tables/orders'
       );
 
       // Access same resources again
       await mockCachingLazyServer.readResourceWithCaching(
-        'schema://test/tables'
+        'db://schemas/test/tables'
       );
-      await mockCachingLazyServer.readResourceWithCaching('table://test/users');
+      await mockCachingLazyServer.readResourceWithCaching('db://schemas/test/tables/users');
 
       // Verify caching effectiveness
-      expect(cacheHits).toBe(3); // schema://list, schema://test/tables, table://test/users
+      expect(cacheHits).toBe(3); // db://schemas, db://schemas/test/tables, db://schemas/test/tables/users
       expect(cacheMisses).toBe(4); // All unique resources
 
       console.log(`Cache Statistics:
@@ -882,9 +881,9 @@ Generated at: 2024-01-15T10:30:00Z
         },
       };
 
-      mockRegistry.registerResourcePattern('schema://*', schemaPattern);
+      mockRegistry.registerResourcePattern('db://schemas/*', schemaPattern);
       expect(mockRegistry.registerResourcePattern).toHaveBeenCalledWith(
-        'schema://*',
+        'db://schemas/*',
         schemaPattern
       );
     });
@@ -912,22 +911,22 @@ Generated at: 2024-01-15T10:30:00Z
         // Setup lightweight resource registration
         setupLazyResourceHandlers(): void {
           // Register patterns instead of discovering all resources
-          this.registerResourcePattern('schema://list', {
+          this.registerResourcePattern('db://schemas', {
             discoveryHandler: 'discoverSchemaList',
             cacheStrategy: { ttlMs: 300000 },
           });
 
-          this.registerResourcePattern('schema://*/tables', {
+          this.registerResourcePattern('db://schemas/*/tables', {
             discoveryHandler: 'discoverSchemaTables',
             cacheStrategy: { ttlMs: 300000 },
           });
 
-          this.registerResourcePattern('table://*/*', {
+          this.registerResourcePattern('db://schemas/*/tables/*', {
             discoveryHandler: 'discoverTableInfo',
             cacheStrategy: { ttlMs: 300000 },
           });
 
-          this.registerResourcePattern('table://*/*/indexes', {
+          this.registerResourcePattern('db://schemas/*/tables/*/indexes', {
             discoveryHandler: 'discoverTableIndexes',
             cacheStrategy: { ttlMs: 300000 },
           });
@@ -963,9 +962,9 @@ Generated at: 2024-01-15T10:30:00Z
 
           // Return lightweight resource metadata without discovery
           for (const [pattern] of this.resourceRegistry) {
-            if (pattern === 'schema://list') {
+            if (pattern === 'db://schemas') {
               resources.push({
-                uri: 'schema://list',
+                uri: 'db://schemas',
                 mimeType: 'application/json',
                 name: 'Database Schemas',
                 description:

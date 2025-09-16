@@ -20,7 +20,7 @@ async function discoverAllResources(schemaDir: string): Promise<{
 }> {
   const resources = [
     {
-      uri: 'schema://list',
+      uri: 'db://schemas',
       mimeType: 'application/json',
       name: 'Database Schemas',
       description: 'List of all available database schemas with metadata',
@@ -35,7 +35,7 @@ async function discoverAllResources(schemaDir: string): Promise<{
       for (const schema of schemas) {
         // Add tables resource for each schema
         resources.push({
-          uri: `schema://${schema.name}/tables`,
+          uri: `db://schemas${schema.name}/tables`,
           mimeType: 'application/json',
           name: `${schema.name} Schema Tables`,
           description: `List of tables in the ${schema.name} schema`,
@@ -51,13 +51,13 @@ async function discoverAllResources(schemaDir: string): Promise<{
             const tables = tablesResult.value.tables;
             for (const table of tables) {
               resources.push({
-                uri: `table://${schema.name}/${table.name}`,
+                uri: `db://schemas/${schema.name}/tables/${table.name}`,
                 mimeType: 'application/json',
                 name: `${table.name} table (${schema.name} schema)`,
                 description: `Detailed information about the ${table.name} table including columns, indexes, and relationships`,
               });
               resources.push({
-                uri: `table://${schema.name}/${table.name}/indexes`,
+                uri: `db://schemas/${schema.name}/tables/${table.name}/indexes`,
                 mimeType: 'application/json',
                 name: `${table.name} table indexes (${schema.name} schema)`,
                 description: `Index information for the ${table.name} table`,
@@ -110,23 +110,23 @@ describe('Enhanced Resource Discovery (TDD - RED Phase)', () => {
 
       const expectedResources = [
         // Base schema list resource
-        'schema://list',
+        'db://schemas',
 
         // Schema table list resources
-        'schema://reporting/tables',
-        'schema://public/tables',
+        'db://schemasreporting/tables',
+        'db://schemaspublic/tables',
 
         // Individual table resources (these should fail with current implementation)
-        'table://reporting/events',
-        'table://reporting/sessions',
-        'table://public/products',
-        'table://public/users',
+        'db://schemas/reporting/tables/events',
+        'db://schemas/reporting/tables/sessions',
+        'db://schemas/public/tables/products',
+        'db://schemas/public/tables/users',
 
         // Individual table index resources (these should fail with current implementation)
-        'table://reporting/events/indexes',
-        'table://reporting/sessions/indexes',
-        'table://public/products/indexes',
-        'table://public/users/indexes',
+        'db://schemas/reporting/tables/events/indexes',
+        'db://schemas/reporting/tables/sessions/indexes',
+        'db://schemas/public/tables/products/indexes',
+        'db://schemas/public/tables/users/indexes',
       ].sort();
 
       // This assertion should FAIL in the RED phase because current implementation
@@ -135,10 +135,10 @@ describe('Enhanced Resource Discovery (TDD - RED Phase)', () => {
 
       // Verify resource metadata for individual table resources
       const usersTableResource = resources.find(
-        (r) => r.uri === 'table://public/users'
+        (r) => r.uri === 'db://schemas/public/tables/users'
       );
       expect(usersTableResource).toEqual({
-        uri: 'table://public/users',
+        uri: 'db://schemas/public/tables/users',
         mimeType: 'application/json',
         name: 'users table (public schema)',
         description:
@@ -146,10 +146,10 @@ describe('Enhanced Resource Discovery (TDD - RED Phase)', () => {
       });
 
       const eventsTableResource = resources.find(
-        (r) => r.uri === 'table://reporting/events'
+        (r) => r.uri === 'db://schemas/reporting/tables/events'
       );
       expect(eventsTableResource).toEqual({
-        uri: 'table://reporting/events',
+        uri: 'db://schemas/reporting/tables/events',
         mimeType: 'application/json',
         name: 'events table (reporting schema)',
         description:
@@ -158,20 +158,20 @@ describe('Enhanced Resource Discovery (TDD - RED Phase)', () => {
 
       // Verify resource metadata for table index resources
       const usersIndexesResource = resources.find(
-        (r) => r.uri === 'table://public/users/indexes'
+        (r) => r.uri === 'db://schemas/public/tables/users/indexes'
       );
       expect(usersIndexesResource).toEqual({
-        uri: 'table://public/users/indexes',
+        uri: 'db://schemas/public/tables/users/indexes',
         mimeType: 'application/json',
         name: 'users table indexes (public schema)',
         description: 'Index information for the users table',
       });
 
       const eventsIndexesResource = resources.find(
-        (r) => r.uri === 'table://reporting/events/indexes'
+        (r) => r.uri === 'db://schemas/reporting/tables/events/indexes'
       );
       expect(eventsIndexesResource).toEqual({
-        uri: 'table://reporting/events/indexes',
+        uri: 'db://schemas/reporting/tables/events/indexes',
         mimeType: 'application/json',
         name: 'events table indexes (reporting schema)',
         description: 'Index information for the events table',
@@ -187,14 +187,14 @@ describe('Enhanced Resource Discovery (TDD - RED Phase)', () => {
       const resourceUris = resources.map((r) => r.uri).sort();
 
       const expectedResources = [
-        'schema://list',
-        'schema://default/tables',
-        'table://default/comments',
-        'table://default/comments/indexes',
-        'table://default/posts',
-        'table://default/posts/indexes',
-        'table://default/users',
-        'table://default/users/indexes',
+        'db://schemas',
+        'db://schemasdefault/tables',
+        'db://schemas/default/tables/comments',
+        'db://schemas/default/tables/comments/indexes',
+        'db://schemas/default/tables/posts',
+        'db://schemas/default/tables/posts/indexes',
+        'db://schemas/default/tables/users',
+        'db://schemas/default/tables/users/indexes',
       ].sort();
 
       // This should FAIL in the RED phase
@@ -207,7 +207,7 @@ describe('Enhanced Resource Discovery (TDD - RED Phase)', () => {
       const resources = result.resources;
       const resourceUris = resources.map((r) => r.uri);
 
-      expect(resourceUris).toEqual(['schema://list']);
+      expect(resourceUris).toEqual(['db://schemas']);
     });
 
     it('should handle schemas with no tables gracefully', async () => {
@@ -219,9 +219,9 @@ describe('Enhanced Resource Discovery (TDD - RED Phase)', () => {
       const resourceUris = resources.map((r) => r.uri).sort();
 
       const expectedResources = [
-        'schema://list',
-        'schema://empty1/tables',
-        'schema://empty2/tables',
+        'db://schemas',
+        'db://schemasempty1/tables',
+        'db://schemasempty2/tables',
       ].sort();
 
       expect(resourceUris).toEqual(expectedResources);

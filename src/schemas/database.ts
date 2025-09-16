@@ -115,18 +115,22 @@ export type SqlQueryRequest = z.infer<typeof SqlQueryRequestSchema>;
 /**
  * Resource URI schemas for MCP resources
  */
-export const SchemaListUriSchema = z.literal('schema://list');
+export const SchemaListUriSchema = z.literal('db://schemas');
 export const SchemaTablesUriSchema = z
   .string()
-  .regex(/^schema:\/\/[^/]+\/tables$/);
-export const TableInfoUriSchema = z.string().regex(/^table:\/\/[^/]+\/[^/]+$/);
+  .regex(/^db:\/\/schemas\/[^/]+\/tables$/);
+export const SchemaInfoUriSchema = z
+  .string()
+  .regex(/^db:\/\/schemas\/[^/]+$/);
+export const TableInfoUriSchema = z.string().regex(/^db:\/\/schemas\/[^/]+\/tables\/[^/]+$/);
 export const TableIndexesUriSchema = z
   .string()
-  .regex(/^table:\/\/[^/]+\/[^/]+\/indexes$/);
-export const UriPatternsUriSchema = z.literal('schema://uri-patterns');
+  .regex(/^db:\/\/schemas\/[^/]+\/tables\/[^/]+\/indexes$/);
+export const UriPatternsUriSchema = z.literal('db://uri-patterns');
 
 export type SchemaListUri = z.infer<typeof SchemaListUriSchema>;
 export type SchemaTablesUri = z.infer<typeof SchemaTablesUriSchema>;
+export type SchemaInfoUri = z.infer<typeof SchemaInfoUriSchema>;
 export type TableInfoUri = z.infer<typeof TableInfoUriSchema>;
 export type TableIndexesUri = z.infer<typeof TableIndexesUriSchema>;
 export type UriPatternsUri = z.infer<typeof UriPatternsUriSchema>;

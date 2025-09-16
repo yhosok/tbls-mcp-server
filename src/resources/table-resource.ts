@@ -11,7 +11,7 @@ import {
 import { ResourceCache } from '../cache/resource-cache';
 
 /**
- * Handles the schema://{schema_name}/tables MCP resource
+ * Handles the db://schemas/{schema_name}/tables MCP resource
  * Returns a list of all tables in a specific schema
  *
  * @param schemaSource - Path to schema file or directory containing tbls schema files
@@ -24,7 +24,7 @@ export const handleSchemaTablesResource = async (
   schemaName: string,
   cache?: ResourceCache
 ): Promise<Result<SchemaTablesResource, Error>> => {
-  // Resolve schema name with backward compatibility support
+  // Resolve schema name
   const schemaResolveResult = resolveSchemaName(
     schemaSource,
     schemaName,
@@ -81,7 +81,7 @@ export const handleSchemaTablesResource = async (
         if (schemaResult.isOk()) {
           tableRefsResult = ok(schemaResult.value.tableReferences);
         } else {
-          // Fall back to parsing all and filtering (for backward compatibility)
+          // Fall back to parsing all and filtering
           tableRefsResult = parseTableReferences(targetPath);
         }
       } else {
@@ -115,7 +115,7 @@ export const handleSchemaTablesResource = async (
 };
 
 /**
- * Handles the table://{schema_name}/{table_name} MCP resource
+ * Handles the db://schemas/{schema_name}/tables/{table_name} MCP resource
  * Returns detailed information about a specific table
  *
  * @param schemaSource - Path to schema file or directory containing tbls schema files
@@ -130,7 +130,7 @@ export const handleTableInfoResource = async (
   tableName: string,
   cache?: ResourceCache
 ): Promise<Result<TableInfoResource, Error>> => {
-  // Resolve schema name with backward compatibility support
+  // Resolve schema name
   const schemaResolveResult = resolveSchemaName(
     schemaSource,
     schemaName,

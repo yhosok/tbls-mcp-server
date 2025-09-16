@@ -17,20 +17,20 @@ describe('ErrorMessageGenerator', () => {
 
       expect(message).toContain('Unknown resource URI: unknown://invalid/path');
       expect(message).toContain('Available URI patterns:');
-      expect(message).toContain('schema://list');
-      expect(message).toContain('schema://[schema_name]/tables');
-      expect(message).toContain('table://[schema_name]/[table_name]');
-      expect(message).toContain('table://[schema_name]/[table_name]/indexes');
+      expect(message).toContain('db://schemas');
+      expect(message).toContain('db://schemas/[schema_name]/tables');
+      expect(message).toContain('db://schemas/[schema_name]/tables/[table_name]');
+      expect(message).toContain('db://schemas/[schema_name]/tables/[table_name]/indexes');
     });
 
     it('should include pattern examples in error message', () => {
-      const uri = 'schema://invalid';
+      const uri = 'db://schemas/invalid';
       const message = errorGenerator.generateInvalidUriMessage(uri);
 
       expect(message).toContain('Examples:');
-      expect(message).toContain('schema://default/tables');
-      expect(message).toContain('table://default/users');
-      expect(message).toContain('table://public/orders/indexes');
+      expect(message).toContain('db://schemas/default/tables');
+      expect(message).toContain('db://schemas/default/tables/users');
+      expect(message).toContain('db://schemas/public/tables/orders/indexes');
     });
 
     it('should include format descriptions for each pattern', () => {
@@ -46,49 +46,49 @@ describe('ErrorMessageGenerator', () => {
 
   describe('generatePatternMatchFailureMessage', () => {
     it('should provide guidance when URI pattern matches but resource not found', () => {
-      const uri = 'schema://nonexistent/tables';
+      const uri = 'db://schemas/nonexistent/tables';
       const message = errorGenerator.generatePatternMatchFailureMessage(uri);
 
-      expect(message).toContain('Resource not found: schema://nonexistent/tables');
+      expect(message).toContain('Resource not found: db://schemas/nonexistent/tables');
       expect(message).toContain('The URI format is correct');
-      expect(message).toContain('schema://list');
+      expect(message).toContain('db://schemas');
       expect(message).toContain('available schemas');
     });
 
     it('should handle table resource not found', () => {
-      const uri = 'table://default/nonexistent';
+      const uri = 'db://schemas/default/tables/nonexistent';
       const message = errorGenerator.generatePatternMatchFailureMessage(uri);
 
-      expect(message).toContain('Resource not found: table://default/nonexistent');
-      expect(message).toContain('schema://default/tables');
+      expect(message).toContain('Resource not found: db://schemas/default/tables/nonexistent');
+      expect(message).toContain('db://schemas/default/tables');
       expect(message).toContain('available tables in the default schema');
     });
 
     it('should handle table indexes resource not found', () => {
-      const uri = 'table://default/nonexistent/indexes';
+      const uri = 'db://schemas/default/tables/nonexistent/indexes';
       const message = errorGenerator.generatePatternMatchFailureMessage(uri);
 
-      expect(message).toContain('Resource not found: table://default/nonexistent/indexes');
-      expect(message).toContain('table://default/nonexistent');
+      expect(message).toContain('Resource not found: db://schemas/default/tables/nonexistent/indexes');
+      expect(message).toContain('db://schemas/default/tables/nonexistent');
       expect(message).toContain('table exists');
     });
   });
 
   describe('generateSimilarPatternsMessage', () => {
     it('should suggest similar patterns for typos', () => {
-      const uri = 'schema://ist'; // typo of 'list'
+      const uri = 'db://schemas_ist'; // typo of 'list'
       const suggestions = errorGenerator.generateSimilarPatternsMessage(uri);
 
       expect(suggestions).toContain('Did you mean:');
-      expect(suggestions).toContain('schema://list');
+      expect(suggestions).toContain('db://schemas');
     });
 
     it('should suggest similar patterns for partial matches', () => {
-      const uri = 'table://user'; // incomplete URI
+      const uri = 'db://schemas/user'; // incomplete URI
       const suggestions = errorGenerator.generateSimilarPatternsMessage(uri);
 
       expect(suggestions).toContain('Did you mean:');
-      expect(suggestions).toContain('table://default/users');
+      expect(suggestions).toContain('db://schemas/default/tables/users');
     });
 
     it('should return empty string when no similar patterns found', () => {
@@ -101,13 +101,13 @@ describe('ErrorMessageGenerator', () => {
 
   describe('generateDetailedErrorMessage', () => {
     it('should combine invalid URI message with suggestions', () => {
-      const uri = 'schema://ist';
+      const uri = 'db://schemas_ist';
       const message = errorGenerator.generateDetailedErrorMessage(uri);
 
-      expect(message).toContain('Unknown resource URI: schema://ist');
+      expect(message).toContain('Unknown resource URI: db://schemas_ist');
       expect(message).toContain('Available URI patterns:');
       expect(message).toContain('Did you mean:');
-      expect(message).toContain('schema://list');
+      expect(message).toContain('db://schemas');
     });
 
     it('should only show suggestions when available', () => {
@@ -130,31 +130,31 @@ describe('UriPatternSuggester', () => {
 
   describe('findSimilarPatterns', () => {
     it('should find exact matches with high score', () => {
-      const suggestions = suggester.findSimilarPatterns('schema://list', 5, 0.99);
+      const suggestions = suggester.findSimilarPatterns('db://schemas', 5, 0.99);
 
       expect(suggestions).toHaveLength(1);
-      expect(suggestions[0].pattern).toBe('schema://list');
+      expect(suggestions[0].pattern).toBe('db://schemas');
       expect(suggestions[0].similarity).toBe(1.0);
     });
 
     it('should find similar patterns for typos', () => {
-      const suggestions = suggester.findSimilarPatterns('schema://ist'); // missing 'l'
+      const suggestions = suggester.findSimilarPatterns('db://schemas_ist'); // missing 'l'
 
       expect(suggestions.length).toBeGreaterThan(0);
-      expect(suggestions[0].pattern).toBe('schema://list');
+      expect(suggestions[0].pattern).toBe('db://schemas');
       expect(suggestions[0].similarity).toBeGreaterThan(0.8);
     });
 
     it('should handle partial URI patterns', () => {
-      const suggestions = suggester.findSimilarPatterns('table://default');
+      const suggestions = suggester.findSimilarPatterns('db://schemas/default');
 
       expect(suggestions.length).toBeGreaterThan(0);
-      const tablePatterns = suggestions.filter(s => s.pattern.startsWith('table://default/'));
+      const tablePatterns = suggestions.filter(s => s.pattern.startsWith('db://schemas/default/'));
       expect(tablePatterns.length).toBeGreaterThan(0);
     });
 
     it('should return suggestions sorted by similarity', () => {
-      const suggestions = suggester.findSimilarPatterns('table://');
+      const suggestions = suggester.findSimilarPatterns('db://schemas/');
 
       expect(suggestions.length).toBeGreaterThan(1);
       for (let i = 1; i < suggestions.length; i++) {
@@ -177,7 +177,7 @@ describe('UriPatternSuggester', () => {
 
   describe('calculateSimilarity', () => {
     it('should return 1.0 for identical strings', () => {
-      const similarity = suggester.calculateSimilarity('schema://list', 'schema://list');
+      const similarity = suggester.calculateSimilarity('db://schemas', 'db://schemas');
       expect(similarity).toBe(1.0);
     });
 
@@ -187,7 +187,7 @@ describe('UriPatternSuggester', () => {
     });
 
     it('should handle single character differences', () => {
-      const similarity = suggester.calculateSimilarity('schema://list', 'schema://ist');
+      const similarity = suggester.calculateSimilarity('db://schemas', 'db://schemas_ist');
       expect(similarity).toBeGreaterThan(0.8);
       expect(similarity).toBeLessThan(1.0);
     });
@@ -207,17 +207,17 @@ describe('UriPatternSuggester', () => {
     it('should generate example URIs for schema patterns', () => {
       const examples = suggester.generateExampleUris();
 
-      expect(examples).toContain('schema://list');
-      expect(examples).toContain('schema://default/tables');
-      expect(examples).toContain('schema://public/tables');
+      expect(examples).toContain('db://schemas');
+      expect(examples).toContain('db://schemas/default/tables');
+      expect(examples).toContain('db://schemas/public/tables');
     });
 
     it('should generate example URIs for table patterns', () => {
       const examples = suggester.generateExampleUris();
 
-      expect(examples).toContain('table://default/users');
-      expect(examples).toContain('table://public/orders');
-      expect(examples).toContain('table://default/users/indexes');
+      expect(examples).toContain('db://schemas/default/tables/users');
+      expect(examples).toContain('db://schemas/public/tables/orders');
+      expect(examples).toContain('db://schemas/default/tables/users/indexes');
     });
 
     it('should not generate duplicate examples', () => {
@@ -242,18 +242,18 @@ describe('Integration: Error Message Generation with Pattern Suggestions', () =>
 
     expect(message).toContain('Unknown resource URI: chema://list');
     expect(message).toContain('Did you mean:');
-    expect(message).toContain('schema://list');
+    expect(message).toContain('db://schemas');
     expect(message).toContain('Available URI patterns:');
   });
 
   it('should provide specific guidance for incomplete table URI', () => {
-    const uri = 'table://default';
+    const uri = 'db://schemas/default';
     const message = errorGenerator.generateDetailedErrorMessage(uri);
 
-    expect(message).toContain('Unknown resource URI: table://default');
+    expect(message).toContain('Unknown resource URI: db://schemas/default');
     expect(message).toContain('Did you mean:');
-    expect(message).toContain('table://default/');
-    expect(message).toContain('table://[schema_name]/[table_name]');
+    expect(message).toContain('db://schemas/default/');
+    expect(message).toContain('db://schemas/[schema_name]/tables/[table_name]');
   });
 
   it('should handle case-sensitive URI patterns', () => {
@@ -262,7 +262,7 @@ describe('Integration: Error Message Generation with Pattern Suggestions', () =>
 
     expect(message).toContain('Unknown resource URI: SCHEMA://LIST');
     expect(message).toContain('Did you mean:');
-    expect(message).toContain('schema://list');
+    expect(message).toContain('db://schemas');
   });
 
   it('should provide helpful error for wrong protocol', () => {
@@ -271,7 +271,7 @@ describe('Integration: Error Message Generation with Pattern Suggestions', () =>
 
     expect(message).toContain('Unknown resource URI: http://schema/list');
     expect(message).toContain('Available URI patterns:');
-    expect(message).toContain('schema://');
-    expect(message).toContain('table://');
+    expect(message).toContain('db://schemas');
+    expect(message).toContain('db://schemas/');
   });
 });

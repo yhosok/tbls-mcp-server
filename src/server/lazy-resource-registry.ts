@@ -90,7 +90,7 @@ export class LazyResourceRegistry {
 
       // Add URI patterns resource for MCP clients to understand available patterns
       resources.push({
-        uri: 'schema://uri-patterns',
+        uri: 'db://uri-patterns',
         mimeType: 'application/json',
         name: 'Available URI Patterns',
         description: 'List of all available URI patterns and their descriptions for resource discovery',
@@ -104,18 +104,6 @@ export class LazyResourceRegistry {
           // Remove expired cache entries
           this.progressiveCache.delete(contextKey);
           this.accessedContexts.delete(contextKey);
-        }
-      }
-
-      // For backward compatibility, add cached discovered resources
-      const discoveryPatterns = ResourcePatterns.getDiscoveryPatterns();
-      for (const pattern of discoveryPatterns) {
-        const cachedResources = this.getCachedDiscovery(pattern.id);
-        if (cachedResources) {
-          // Only add cached resources if they're not already in progressive cache
-          const existingUris = new Set(resources.map(r => r.uri));
-          const newResources = cachedResources.filter(r => !existingUris.has(r.uri));
-          resources.push(...newResources);
         }
       }
 
@@ -238,7 +226,7 @@ export class LazyResourceRegistry {
         })),
         discovery: {
           progressive: true,
-          description: "Resources are discovered progressively as contexts are accessed. Access schema://list to discover schema-specific resources, then access specific schemas to discover table-specific resources."
+          description: "Resources are discovered progressively as contexts are accessed. Access db://schemas to discover schema-specific resources, then access specific schemas to discover table-specific resources."
         }
       };
 
@@ -377,34 +365,47 @@ export class LazyResourceRegistry {
    * Extract context information from URI for progressive discovery
    */
   private extractContextFromUri(uri: string): { key: string; type: string; params: Record<string, string> } | null {
-    // Schema list access triggers schema discovery
-    if (uri === 'schema://list') {
+    // New db:// hierarchical patterns
+
+    // db://schemas access triggers schema discovery
+    if (uri === 'db://schemas') {
       return {
-        key: 'schema-list-accessed',
-        type: 'schema-list',
+        key: 'db-schemas-accessed',
+        type: 'db-schemas',
         params: {}
       };
     }
 
-    // Schema tables access triggers table discovery for that schema
-    const schemaTablesMatch = uri.match(/^schema:\/\/([^/]+)\/tables$/);
-    if (schemaTablesMatch) {
+    // db://schemas/{schemaName}/tables access triggers table discovery for that schema
+    const dbSchemaTablesMatch = uri.match(/^db:\/\/schemas\/([^/]+)\/tables$/);
+    if (dbSchemaTablesMatch) {
       return {
-        key: `schema-tables-${schemaTablesMatch[1]}`,
-        type: 'schema-tables',
-        params: { schemaName: schemaTablesMatch[1] }
+        key: `db-schema-tables-${dbSchemaTablesMatch[1]}`,
+        type: 'db-schema-tables',
+        params: { schemaName: dbSchemaTablesMatch[1] }
       };
     }
 
-    // Table access triggers index discovery for that table
-    const tableMatch = uri.match(/^table:\/\/([^/]+)\/([^/]+)$/);
-    if (tableMatch) {
+    // db://schemas/{schemaName}/tables/{tableName} access triggers index discovery for that table
+    const dbTableMatch = uri.match(/^db:\/\/schemas\/([^/]+)\/tables\/([^/]+)$/);
+    if (dbTableMatch) {
       return {
-        key: `table-${tableMatch[1]}-${tableMatch[2]}`,
-        type: 'table',
-        params: { schemaName: tableMatch[1], tableName: tableMatch[2] }
+        key: `db-table-${dbTableMatch[1]}-${dbTableMatch[2]}`,
+        type: 'db-table',
+        params: { schemaName: dbTableMatch[1], tableName: dbTableMatch[2] }
       };
     }
+
+    // db://schemas/{schemaName}/tables/{tableName}/indexes access
+    const dbTableIndexesMatch = uri.match(/^db:\/\/schemas\/([^/]+)\/tables\/([^/]+)\/indexes$/);
+    if (dbTableIndexesMatch) {
+      return {
+        key: `db-table-indexes-${dbTableIndexesMatch[1]}-${dbTableIndexesMatch[2]}`,
+        type: 'db-table-indexes',
+        params: { schemaName: dbTableIndexesMatch[1], tableName: dbTableIndexesMatch[2] }
+      };
+    }
+
 
     return null;
   }
@@ -417,34 +418,40 @@ export class LazyResourceRegistry {
       const resources: ResourceMetadata[] = [];
 
       switch (context.type) {
-        case 'schema-list': {
-          // After schema list access, discover all schema tables resources
-          const schemaTablesResult = await this.discoverAllSchemaTablesResources();
+        // New db:// hierarchical patterns
+        case 'db-schemas': {
+          // After db://schemas access, discover all schema tables resources
+          const schemaTablesResult = await this.discoverAllDbSchemaTablesResources();
           if (schemaTablesResult.isOk()) {
             resources.push(...schemaTablesResult.value);
           }
           break;
         }
 
-        case 'schema-tables': {
-          // After schema tables access, discover all table resources for that schema
-          const tableResourcesResult = await this.discoverSchemaTableResources(context.params.schemaName);
+        case 'db-schema-tables': {
+          // After db://schemas/{schemaName}/tables access, discover all table resources for that schema
+          const tableResourcesResult = await this.discoverDbSchemaTableResources(context.params.schemaName);
           if (tableResourcesResult.isOk()) {
             resources.push(...tableResourcesResult.value);
           }
           break;
         }
 
-        case 'table': {
-          // After table access, discover index resources for that table
-          const indexResourcesResult = await this.discoverTableIndexResources(context.params.schemaName, context.params.tableName);
+        case 'db-table': {
+          // After db://schemas/{schemaName}/tables/{tableName} access, discover index resources for that table
+          const indexResourcesResult = await this.discoverDbTableIndexResources(context.params.schemaName, context.params.tableName);
           if (indexResourcesResult.isOk()) {
             resources.push(...indexResourcesResult.value);
           }
           break;
         }
-      }
 
+        case 'db-table-indexes': {
+          // db://schemas/{schemaName}/tables/{tableName}/indexes access - no further discovery needed
+          break;
+        }
+
+      }
       return ok(resources);
     } catch (error) {
       return err(
@@ -455,13 +462,16 @@ export class LazyResourceRegistry {
     }
   }
 
+
+
+
   /**
-   * Discover all schema tables resources
+   * Discover all schema tables resources for db:// patterns
    */
-  private async discoverAllSchemaTablesResources(): Promise<Result<ResourceMetadata[], Error>> {
-    const pattern = ResourcePatterns.getAllPatterns().find(p => p.id === 'schema-tables');
+  private async discoverAllDbSchemaTablesResources(): Promise<Result<ResourceMetadata[], Error>> {
+    const pattern = ResourcePatterns.getAllPatterns().find(p => p.id === 'db-schema-tables');
     if (!pattern) {
-      return err(new Error('Schema tables pattern not found'));
+      return err(new Error('DB schema tables pattern not found'));
     }
 
     const context: GenerationContext = {
@@ -472,12 +482,12 @@ export class LazyResourceRegistry {
   }
 
   /**
-   * Discover table resources for a specific schema
+   * Discover table resources for a specific schema for db:// patterns
    */
-  private async discoverSchemaTableResources(schemaName: string): Promise<Result<ResourceMetadata[], Error>> {
-    const pattern = ResourcePatterns.getAllPatterns().find(p => p.id === 'table-info');
+  private async discoverDbSchemaTableResources(schemaName: string): Promise<Result<ResourceMetadata[], Error>> {
+    const pattern = ResourcePatterns.getAllPatterns().find(p => p.id === 'db-table-info');
     if (!pattern) {
-      return err(new Error('Table info pattern not found'));
+      return err(new Error('DB table info pattern not found'));
     }
 
     const context: GenerationContext = {
@@ -489,12 +499,12 @@ export class LazyResourceRegistry {
   }
 
   /**
-   * Discover index resources for a specific table
+   * Discover index resources for a specific table for db:// patterns
    */
-  private async discoverTableIndexResources(schemaName: string, tableName: string): Promise<Result<ResourceMetadata[], Error>> {
-    const pattern = ResourcePatterns.getAllPatterns().find(p => p.id === 'table-indexes');
+  private async discoverDbTableIndexResources(schemaName: string, tableName: string): Promise<Result<ResourceMetadata[], Error>> {
+    const pattern = ResourcePatterns.getAllPatterns().find(p => p.id === 'db-table-indexes');
     if (!pattern) {
-      return err(new Error('Table indexes pattern not found'));
+      return err(new Error('DB table indexes pattern not found'));
     }
 
     const context: GenerationContext = {
@@ -512,17 +522,17 @@ export class LazyResourceRegistry {
     const examples: string[] = [];
     
     switch (pattern.id) {
-      case 'schema-list':
-        examples.push('schema://list');
+      case 'db-schemas':
+        examples.push('db://schemas');
         break;
-      case 'schema-tables':
-        examples.push('schema://default/tables', 'schema://public/tables', 'schema://main/tables');
+      case 'db-schema-tables':
+        examples.push('db://schemas/default/tables', 'db://schemas/public/tables', 'db://schemas/main/tables');
         break;
-      case 'table-info':
-        examples.push('table://default/users', 'table://public/orders', 'table://main/products');
+      case 'db-table-info':
+        examples.push('db://schemas/default/tables/users', 'db://schemas/public/tables/orders', 'db://schemas/main/tables/products');
         break;
-      case 'table-indexes':
-        examples.push('table://default/users/indexes', 'table://public/orders/indexes', 'table://main/products/indexes');
+      case 'db-table-indexes':
+        examples.push('db://schemas/default/tables/users/indexes', 'db://schemas/public/tables/orders/indexes', 'db://schemas/main/tables/products/indexes');
         break;
     }
 

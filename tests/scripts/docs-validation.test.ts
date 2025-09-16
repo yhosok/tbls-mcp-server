@@ -27,10 +27,11 @@ describe('Documentation Validation (Integration)', () => {
 <!-- AUTO-GENERATED:START - Do not modify this section manually -->
 | URI Pattern | Description | Discovery Required |
 |-------------|-------------|-------------------|
-| \`schema://list\` | Complete list of all available database schemas with metadata including schema names, table counts, and version information. URI format: schema://list | No |
-| \`schema://{schemaName}/tables\` | Comprehensive list of all tables within the {schemaName} schema, including table metadata, row counts, and basic structure information. URI format: schema://[schema_name]/tables (example: schema://default/tables, schema://public/tables) | Yes |
-| \`table://{schemaName}/{tableName}\` | Complete detailed information about the {tableName} table including column definitions with data types, constraints, indexes, foreign key relationships, and table statistics. URI format: table://[schema_name]/[table_name] (example: table://default/users, table://public/orders) | Yes |
-| \`table://{schemaName}/{tableName}/indexes\` | Detailed index information for the {tableName} table including index names, types (primary, unique, regular), column compositions, and performance statistics. URI format: table://[schema_name]/[table_name]/indexes (example: table://default/users/indexes, table://public/orders/indexes) | Yes |
+| \`db://schemas\` | Complete list of all available database schemas with metadata including schema names, table counts, and version information. URI format: db://schemas | No |
+| \`db://schemas/{schemaName}/tables\` | Comprehensive list of all tables within the {schemaName} schema, including table metadata, row counts, and basic structure information. URI format: db://schemas[schema_name]/tables (example: db://schemas/default/tables, db://schemas/public/tables) | Yes |
+| \`db://schemas/{schemaName}\` | Information about the {schemaName} schema. This URI redirects to db://schemas/{schemaName}/tables. URI format: db://schemas/[schema_name] (example: db://schemas/default, db://schemas/public) | Yes |
+| \`db://schemas/{schemaName}/tables/{tableName}\` | Complete detailed information about the {tableName} table including column definitions with data types, constraints, indexes, foreign key relationships, and table statistics. URI format: db://schemas/[schema_name]/tables/[table_name] (example: db://schemas/default/tables/users, db://schemas/public/tables/orders) | Yes |
+| \`db://schemas/{schemaName}/tables/{tableName}/indexes\` | Detailed index information for the {tableName} table including index names, types (primary, unique, regular), column compositions, and performance statistics. URI format: db://schemas/[schema_name]/tables/[table_name]/indexes (example: db://schemas/default/tables/users/indexes, db://schemas/public/tables/orders/indexes) | Yes |
 <!-- AUTO-GENERATED:END -->
 `;
 
@@ -44,7 +45,7 @@ describe('Documentation Validation (Integration)', () => {
 
       expect(stderr).toBe('');
       expect(stdout).toContain('✅ Documentation is consistent with resource patterns');
-      expect(stdout).toContain('Patterns documented: 4/4');
+      expect(stdout).toContain('Patterns documented: 5/5');
     } catch (error: unknown) {
       // CLI should exit with code 0 on success
       expect(error).toBeNull();
@@ -60,7 +61,7 @@ describe('Documentation Validation (Integration)', () => {
 <!-- AUTO-GENERATED:START - Do not modify this section manually -->
 | URI Pattern | Description | Discovery Required |
 |-------------|-------------|-------------------|
-| \`schema://list\` | Complete list of all available database schemas | No |
+| \`db://schemas\` | Complete list of all available database schemas | No |
 <!-- AUTO-GENERATED:END -->
 `;
 
@@ -78,7 +79,7 @@ describe('Documentation Validation (Integration)', () => {
       // CLI should exit with non-zero code on validation failure
       expect(error.code).toBe(1);
       expect(error.stderr).toContain('❌ Documentation is inconsistent with resource patterns');
-      expect(error.stderr).toContain('Patterns documented: 1/4');
+      expect(error.stderr).toContain('Patterns documented: 1/5');
       expect(error.stderr).toContain('Missing patterns:');
     }
   }, 15000); // 15 second timeout for CLI execution
@@ -122,7 +123,7 @@ Some existing content about resources.
       // Verify the file was updated
       const updatedContent = await fs.readFile(tempReadmePath, 'utf-8');
       expect(updatedContent).toContain('<!-- AUTO-GENERATED:START - Do not modify this section manually -->');
-      expect(updatedContent).toContain('schema://list');
+      expect(updatedContent).toContain('db://schemas');
       expect(updatedContent).toContain('<!-- AUTO-GENERATED:END -->');
     } catch (error: unknown) {
       // Generation should succeed

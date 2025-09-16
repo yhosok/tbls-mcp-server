@@ -25,7 +25,22 @@ export class UriPatternSuggester {
     const suggestions: PatternSuggestion[] = [];
 
     for (const pattern of allPatterns) {
-      const similarity = this.calculateSimilarity(uri.toLowerCase(), pattern.toLowerCase());
+      let similarity = this.calculateSimilarity(uri.toLowerCase(), pattern.toLowerCase());
+
+      // Boost similarity for semantic matches and prefix matches
+      similarity = this.boostSimilarityForSemanticMatches(uri.toLowerCase(), pattern.toLowerCase(), similarity);
+
+      // Boost valid db:// patterns to ensure they're prioritized (but not for exact matches)
+      // Only boost if there's already some baseline similarity
+      if (pattern.startsWith('db://') && similarity < 1.0 && similarity >= 0.3) {
+        // Extra boost for basic patterns that users should discover first
+        if (pattern === 'db://schemas' || pattern === 'db://uri-patterns') {
+          similarity = Math.min(0.98, similarity + 0.3);
+        } else {
+          similarity = Math.min(0.95, similarity + 0.15);
+        }
+      }
+
 
       if (similarity >= minSimilarity) {
         suggestions.push({
@@ -61,8 +76,15 @@ export class UriPatternSuggester {
     const maxLength = Math.max(str1.length, str2.length);
     const distance = this.calculateLevenshteinDistance(str1, str2);
 
-    // Convert distance to similarity score
-    return (maxLength - distance) / maxLength;
+    // Convert distance to similarity score with adjustment for typos
+    let similarity = (maxLength - distance) / maxLength;
+
+    // Boost similarity for common typo patterns, but don't make non-exact matches equal to 1.0
+    if (this.isLikelyTypo(str1, str2, distance)) {
+      similarity = Math.min(0.95, similarity + 0.1);
+    }
+
+    return similarity;
   }
 
   /**
@@ -71,19 +93,22 @@ export class UriPatternSuggester {
   generateExampleUris(): string[] {
     const examples: Set<string> = new Set();
 
-    // Add static examples for each pattern
-    examples.add('schema://list');
-    examples.add('schema://default/tables');
-    examples.add('schema://public/tables');
-    examples.add('schema://main/tables');
+    // Add static examples for each pattern using new db:// scheme
+    examples.add('db://schemas');
+    examples.add('db://schemas/default/tables');
+    examples.add('db://schemas/public/tables');
+    examples.add('db://schemas/main/tables');
 
-    examples.add('table://default/users');
-    examples.add('table://public/orders');
-    examples.add('table://main/products');
+    examples.add('db://schemas/default/tables/users');
+    examples.add('db://schemas/public/tables/orders');
+    examples.add('db://schemas/main/tables/products');
 
-    examples.add('table://default/users/indexes');
-    examples.add('table://public/orders/indexes');
-    examples.add('table://main/products/indexes');
+    examples.add('db://schemas/default/tables/users/indexes');
+    examples.add('db://schemas/public/tables/orders/indexes');
+    examples.add('db://schemas/main/tables/products/indexes');
+
+    // Also include URI patterns resource
+    examples.add('db://uri-patterns');
 
     return Array.from(examples);
   }
@@ -93,29 +118,41 @@ export class UriPatternSuggester {
    */
   generateExamplesForPattern(patternId: string): string[] {
     switch (patternId) {
-      case 'schema-list':
-        return ['schema://list'];
+      // New db:// patterns
+      case 'db-schemas':
+        return ['db://schemas'];
 
-      case 'schema-tables':
+      case 'db-schema-tables':
         return [
-          'schema://default/tables',
-          'schema://public/tables',
-          'schema://main/tables',
+          'db://schemas/default/tables',
+          'db://schemas/public/tables',
+          'db://schemas/main/tables',
         ];
 
-      case 'table-info':
+      case 'db-schema':
         return [
-          'table://default/users',
-          'table://public/orders',
-          'table://main/products',
+          'db://schemas/default',
+          'db://schemas/public',
+          'db://schemas/main',
         ];
 
-      case 'table-indexes':
+      case 'db-table-info':
         return [
-          'table://default/users/indexes',
-          'table://public/orders/indexes',
-          'table://main/products/indexes',
+          'db://schemas/default/tables/users',
+          'db://schemas/public/tables/orders',
+          'db://schemas/main/tables/products',
         ];
+
+      case 'db-table-indexes':
+        return [
+          'db://schemas/default/tables/users/indexes',
+          'db://schemas/public/tables/orders/indexes',
+          'db://schemas/main/tables/products/indexes',
+        ];
+
+      case 'uri-patterns':
+        return ['db://uri-patterns'];
+
 
       default:
         return [];
@@ -178,12 +215,133 @@ export class UriPatternSuggester {
     }
 
     // Add variations that users might try
-    patterns.add('schema://uri-patterns');
+    patterns.add('db://uri-patterns');
     patterns.add('schemas://list');          // common typo
-    patterns.add('table://list');            // incorrect pattern
     patterns.add('tables://list');           // common typo
+    patterns.add('db://schema');             // incomplete pattern
+    patterns.add('db://tables');             // incomplete pattern
 
     return Array.from(patterns);
+  }
+
+  /**
+   * Boost similarity scores for semantic and structural matches
+   */
+  private boostSimilarityForSemanticMatches(inputUri: string, candidatePattern: string, baseSimilarity: number): number {
+    // Don't boost if we already have an exact match
+    if (baseSimilarity >= 1.0) {
+      return baseSimilarity;
+    }
+
+    let boostedSimilarity = baseSimilarity;
+
+    // Boost for prefix matches (candidate contains input as prefix)
+    // Only boost if it's a meaningful prefix (not just different by a few characters)
+    if (candidatePattern.startsWith(inputUri) && candidatePattern.length > inputUri.length + 3) {
+      boostedSimilarity = Math.min(0.95, boostedSimilarity + 0.3); // Cap below 1.0 for non-exact matches
+    }
+
+    // Boost for partial path matches (input looks like it could extend to candidate)
+    if (this.isPartialPathMatch(inputUri, candidatePattern)) {
+      boostedSimilarity = Math.min(0.95, boostedSimilarity + 0.2); // Cap below 1.0 for non-exact matches
+    }
+
+    // Boost for semantic similarity (user -> users, etc.)
+    if (this.hasSemanticSimilarity(inputUri, candidatePattern)) {
+      boostedSimilarity = Math.min(0.95, boostedSimilarity + 0.15); // Cap below 1.0 for non-exact matches
+    }
+
+    return boostedSimilarity;
+  }
+
+  /**
+   * Check if input URI is a partial path that could extend to candidate
+   */
+  private isPartialPathMatch(inputUri: string, candidatePattern: string): boolean {
+    const inputParts = inputUri.split('/');
+    const candidateParts = candidatePattern.split('/');
+
+    // Check if input path components are a prefix of candidate path components
+    if (inputParts.length >= candidateParts.length) {
+      return false;
+    }
+
+    for (let i = 0; i < inputParts.length; i++) {
+      if (inputParts[i] !== candidateParts[i]) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  /**
+   * Check for semantic similarity between words
+   */
+  private hasSemanticSimilarity(inputUri: string, candidatePattern: string): boolean {
+    // Extract the last component for comparison
+    const inputLastPart = inputUri.split('/').pop() || '';
+    const candidateLastPart = candidatePattern.split('/').pop() || '';
+
+    // Check for plural/singular matches
+    if (inputLastPart === 'user' && candidateLastPart === 'users') return true;
+    if (inputLastPart === 'users' && candidateLastPart === 'user') return true;
+    if (inputLastPart === 'table' && candidateLastPart === 'tables') return true;
+    if (inputLastPart === 'tables' && candidateLastPart === 'table') return true;
+    if (inputLastPart === 'schema' && candidateLastPart === 'schemas') return true;
+    if (inputLastPart === 'schemas' && candidateLastPart === 'schema') return true;
+
+    return false;
+  }
+
+  /**
+   * Check if the difference between two strings looks like a typo
+   */
+  private isLikelyTypo(str1: string, str2: string, distance: number): boolean {
+    // If distance is small relative to string length, it's likely a typo
+    const maxLength = Math.max(str1.length, str2.length);
+    const minLength = Math.min(str1.length, str2.length);
+
+    // Small distance relative to string length
+    if (distance <= Math.max(2, maxLength * 0.25)) {
+      return true;
+    }
+
+    // Length difference is small (insertion/deletion of a few characters)
+    if (Math.abs(str1.length - str2.length) <= 3 && minLength >= 5) {
+      return true;
+    }
+
+    // Check for specific patterns like substitution of similar characters
+    if (distance <= 4 && this.hasSimilarPattern(str1, str2)) {
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * Check if two strings have similar patterns (suggesting typos)
+   */
+  private hasSimilarPattern(str1: string, str2: string): boolean {
+    // Convert to lowercase for comparison
+    const s1 = str1.toLowerCase();
+    const s2 = str2.toLowerCase();
+
+    // Common character substitutions
+    const substitutions = [
+      ['l', '1'], ['i', '1'], ['o', '0'], ['s', '$'],
+      ['a', '@'], ['e', '3'], ['l', '_'], ['_', '-']
+    ];
+
+    for (const [char1, char2] of substitutions) {
+      if ((s1.includes(char1) && s2.includes(char2)) ||
+          (s1.includes(char2) && s2.includes(char1))) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   /**

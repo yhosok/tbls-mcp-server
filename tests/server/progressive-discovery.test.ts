@@ -78,18 +78,18 @@ describe('Progressive Discovery Implementation', () => {
       expect(resources).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
-            uri: 'schema://list',
+            uri: 'db://schemas',
             name: 'Database Schemas',
           }),
           expect.objectContaining({
-            uri: 'schema://uri-patterns',
+            uri: 'db://uri-patterns',
             name: 'Available URI Patterns',
           }),
         ])
       );
 
       // Should not include dynamically discovered resources initially
-      const tableResources = resources.filter(r => r.uri.startsWith('table://'));
+      const tableResources = resources.filter(r => r.uri.includes('/tables/'));
       expect(tableResources).toHaveLength(0);
     });
 
@@ -106,23 +106,23 @@ describe('Progressive Discovery Implementation', () => {
       expect(patterns.patterns).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
-            id: 'schema-list',
-            uriPattern: 'schema://list',
+            id: 'db-schemas',
+            uriPattern: 'db://schemas',
             requiresDiscovery: false,
           }),
           expect.objectContaining({
-            id: 'schema-tables',
-            uriPattern: 'schema://{schemaName}/tables',
+            id: 'db-schema-tables',
+            uriPattern: 'db://schemas/{schemaName}/tables',
             requiresDiscovery: true,
           }),
           expect.objectContaining({
-            id: 'table-info',
-            uriPattern: 'table://{schemaName}/{tableName}',
+            id: 'db-table-info',
+            uriPattern: 'db://schemas/{schemaName}/tables/{tableName}',
             requiresDiscovery: true,
           }),
           expect.objectContaining({
-            id: 'table-indexes',
-            uriPattern: 'table://{schemaName}/{tableName}/indexes',
+            id: 'db-table-indexes',
+            uriPattern: 'db://schemas/{schemaName}/tables/{tableName}/indexes',
             requiresDiscovery: true,
           }),
         ])
@@ -150,12 +150,12 @@ describe('Progressive Discovery Implementation', () => {
       let resources = result._unsafeUnwrap();
 
       const schemaTablesResources = resources.filter(r =>
-        r.uri.startsWith('schema://') && r.uri.endsWith('/tables')
+        r.uri.startsWith('db://schemas/') && r.uri.endsWith('/tables')
       );
       expect(schemaTablesResources).toHaveLength(0);
 
       // Access schema list - this should trigger progressive discovery
-      const accessResult = await registry.handleResourceAccess('schema://list');
+      const accessResult = await registry.handleResourceAccess('db://schemas');
       expect(accessResult.isOk()).toBe(true);
 
       // Now schema tables resources should be discovered
@@ -164,16 +164,16 @@ describe('Progressive Discovery Implementation', () => {
       resources = result._unsafeUnwrap();
 
       const discoveredSchemaTablesResources = resources.filter(r =>
-        r.uri.startsWith('schema://') && r.uri.endsWith('/tables')
+        r.uri.startsWith('db://schemas/') && r.uri.endsWith('/tables')
       );
       expect(discoveredSchemaTablesResources).toHaveLength(2);
       expect(discoveredSchemaTablesResources).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
-            uri: 'schema://schema1/tables',
+            uri: 'db://schemas/schema1/tables',
           }),
           expect.objectContaining({
-            uri: 'schema://schema2/tables',
+            uri: 'db://schemas/schema2/tables',
           }),
         ])
       );
@@ -206,7 +206,7 @@ describe('Progressive Discovery Implementation', () => {
       );
 
       // Access schema tables - this should trigger table resource discovery
-      const accessResult = await registry.handleResourceAccess('schema://testschema/tables');
+      const accessResult = await registry.handleResourceAccess('db://schemas/testschema/tables');
       expect(accessResult.isOk()).toBe(true);
 
       // Now table resources should be discovered
@@ -215,16 +215,16 @@ describe('Progressive Discovery Implementation', () => {
       const resources = result._unsafeUnwrap();
 
       const tableResources = resources.filter(r =>
-        r.uri.startsWith('table://') && !r.uri.endsWith('/indexes')
+        r.uri.includes('/tables/') && !r.uri.endsWith('/indexes')
       );
       expect(tableResources).toHaveLength(2);
       expect(tableResources).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
-            uri: 'table://testschema/users',
+            uri: 'db://schemas/testschema/tables/users',
           }),
           expect.objectContaining({
-            uri: 'table://testschema/orders',
+            uri: 'db://schemas/testschema/tables/orders',
           }),
         ])
       );
@@ -256,7 +256,7 @@ describe('Progressive Discovery Implementation', () => {
       );
 
       // Access table - this should trigger index resource discovery
-      const accessResult = await registry.handleResourceAccess('table://testschema/users');
+      const accessResult = await registry.handleResourceAccess('db://schemas/testschema/tables/users');
       expect(accessResult.isOk()).toBe(true);
 
       // Now index resources should be discovered
@@ -265,13 +265,13 @@ describe('Progressive Discovery Implementation', () => {
       const resources = result._unsafeUnwrap();
 
       const indexResources = resources.filter(r =>
-        r.uri.startsWith('table://') && r.uri.endsWith('/indexes')
+        r.uri.includes('/tables/') && r.uri.endsWith('/indexes')
       );
       expect(indexResources).toHaveLength(1);
       expect(indexResources).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
-            uri: 'table://testschema/users/indexes',
+            uri: 'db://schemas/testschema/tables/users/indexes',
           }),
         ])
       );
@@ -279,15 +279,15 @@ describe('Progressive Discovery Implementation', () => {
 
     it('should handle context extraction correctly', async () => {
       // Test schema list context
-      const schemaListResult = await registry.handleResourceAccess('schema://list');
+      const schemaListResult = await registry.handleResourceAccess('db://schemas');
       expect(schemaListResult.isOk()).toBe(true);
 
       // Test schema tables context
-      const schemaTablesResult = await registry.handleResourceAccess('schema://test/tables');
+      const schemaTablesResult = await registry.handleResourceAccess('db://schemas/test/tables');
       expect(schemaTablesResult.isOk()).toBe(true);
 
       // Test table context
-      const tableResult = await registry.handleResourceAccess('table://test/users');
+      const tableResult = await registry.handleResourceAccess('db://schemas/test/tables/users');
       expect(tableResult.isOk()).toBe(true);
 
       // Test invalid URI
@@ -313,10 +313,10 @@ describe('Progressive Discovery Implementation', () => {
       );
 
       // First access
-      await registry.handleResourceAccess('schema://list');
+      await registry.handleResourceAccess('db://schemas');
 
       // Second access - should use cache
-      await registry.handleResourceAccess('schema://list');
+      await registry.handleResourceAccess('db://schemas');
 
       // Schema list handler should only be called once for generation
       expect(handleSchemaListResourceSpy).toHaveBeenCalledTimes(1);
@@ -358,7 +358,7 @@ describe('Progressive Discovery Implementation', () => {
       expect(result.resources).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
-            uri: 'schema://uri-patterns',
+            uri: 'db://uri-patterns',
             name: 'Available URI Patterns',
           }),
         ])
@@ -373,11 +373,11 @@ describe('Progressive Discovery Implementation', () => {
 
       const result = await readHandler({
         method: 'resources/read',
-        params: { uri: 'schema://uri-patterns' },
+        params: { uri: 'db://uri-patterns' },
       });
 
       expect(result.contents).toBeDefined();
-      expect(result.contents[0].uri).toBe('schema://uri-patterns');
+      expect(result.contents[0].uri).toBe('db://uri-patterns');
       expect(result.contents[0].mimeType).toBe('application/json');
 
       // Parse content to verify structure
@@ -403,7 +403,7 @@ describe('Progressive Discovery Implementation', () => {
       // Access schema list - should trigger progressive discovery
       await readHandler({
         method: 'resources/read',
-        params: { uri: 'schema://list' },
+        params: { uri: 'db://schemas' },
       });
 
       // Verify the server's lazy registry has been updated
@@ -431,10 +431,10 @@ describe('Progressive Discovery Implementation', () => {
       expect(result.resources).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
-            uri: 'schema://list',
+            uri: 'db://schemas',
           }),
           expect.objectContaining({
-            uri: 'schema://uri-patterns',
+            uri: 'db://uri-patterns',
           }),
         ])
       );
@@ -524,7 +524,7 @@ describe('Progressive Discovery Implementation', () => {
 
       // Measure progressive discovery trigger
       const start = Date.now();
-      await registry.handleResourceAccess('schema://list');
+      await registry.handleResourceAccess('db://schemas');
       const discoveryTime = Date.now() - start;
 
       // Verify discovery happened
@@ -558,7 +558,7 @@ describe('Progressive Discovery Implementation', () => {
       );
 
       // Progressive discovery should handle errors
-      const result = await registry.handleResourceAccess('schema://list');
+      const result = await registry.handleResourceAccess('db://schemas');
       expect(result.isOk()).toBe(true); // Should not fail the access
 
       // List resources should still work
@@ -576,7 +576,7 @@ describe('Progressive Discovery Implementation', () => {
       );
 
       // Progressive discovery should handle errors
-      const result = await registry.handleResourceAccess('schema://test/tables');
+      const result = await registry.handleResourceAccess('db://schemas/test/tables');
       expect(result.isOk()).toBe(true); // Should not fail the access
 
       // List resources should still work

@@ -235,10 +235,11 @@ The server exposes tbls-generated schema information through the following MCP r
 <!-- AUTO-GENERATED:START - Do not modify this section manually -->
 | URI Pattern | Description | Discovery Required |
 |-------------|-------------|-------------------|
-| `schema://list` | Complete list of all available database schemas with metadata including schema names, table counts, and version information. URI format: schema://list | No |
-| `schema://{schemaName}/tables` | Comprehensive list of all tables within the {schemaName} schema, including table metadata, row counts, and basic structure information. URI format: schema://[schema\_name]/tables (example: schema://default/tables, schema://public/tables) | Yes |
-| `table://{schemaName}/{tableName}` | Complete detailed information about the {tableName} table including column definitions with data types, constraints, indexes, foreign key relationships, and table statistics. URI format: table://[schema\_name]/[table\_name] (example: table://default/users, table://public/orders) | Yes |
-| `table://{schemaName}/{tableName}/indexes` | Detailed index information for the {tableName} table including index names, types (primary, unique, regular), column compositions, and performance statistics. URI format: table://[schema\_name]/[table\_name]/indexes (example: table://default/users/indexes, table://public/orders/indexes) | Yes |
+| `db://schemas` | Complete list of all available database schemas with metadata including schema names, table counts, and version information. | No |
+| `db://schemas/{schemaName}` | Information about the {schemaName} schema. This URI redirects to db://schemas/{schemaName}/tables. | Yes |
+| `db://schemas/{schemaName}/tables` | Comprehensive list of all tables within the {schemaName} schema, including table metadata, row counts, and basic structure information. | Yes |
+| `db://schemas/{schemaName}/tables/{tableName}` | Complete detailed information about the {tableName} table including column definitions with data types, constraints, indexes, foreign key relationships, and table statistics. | Yes |
+| `db://schemas/{schemaName}/tables/{tableName}/indexes` | Detailed index information for the {tableName} table including index names, types (primary, unique, regular), column compositions, and performance statistics. | Yes |
 <!-- AUTO-GENERATED:END -->
 
 

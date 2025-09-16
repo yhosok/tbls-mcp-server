@@ -9,7 +9,7 @@ import {
 import { ResourceCache } from '../cache/resource-cache';
 
 /**
- * Handles the table://{schema_name}/{table_name}/indexes MCP resource
+ * Handles the db://schemas/{schema_name}/tables/{table_name}/indexes MCP resource
  * Returns index information for a specific table
  *
  * @param schemaSource - Path to schema file or directory containing tbls schema files

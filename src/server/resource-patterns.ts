@@ -13,7 +13,7 @@ import { Result, ok, err } from 'neverthrow';
 export interface ResourcePattern {
   /** Pattern identifier */
   id: string;
-  /** URI pattern with placeholders (e.g., "schema://{schemaName}/tables") */
+  /** URI pattern with placeholders (e.g., "db://schemas/{schemaName}/tables") */
   uriPattern: string;
   /** MIME type for the resource */
   mimeType: string;
@@ -80,19 +80,20 @@ export class ResourcePatterns {
       return; // Already initialized
     }
 
-    // Schema list pattern
-    const schemaListPattern: ResourcePattern = {
-      id: 'schema-list',
-      uriPattern: 'schema://list',
+
+    // Root schema list pattern - db://schemas
+    const dbSchemasPattern: ResourcePattern = {
+      id: 'db-schemas',
+      uriPattern: 'db://schemas',
       mimeType: 'application/json',
       namePattern: 'Database Schemas',
       descriptionPattern:
-        'Complete list of all available database schemas with metadata including schema names, table counts, and version information. URI format: schema://list',
+        'Complete list of all available database schemas with metadata including schema names, table counts, and version information.',
       requiresDiscovery: false,
       matcher: (uri: string): ResourcePatternMatch | null => {
-        if (uri === 'schema://list') {
+        if (uri === 'db://schemas') {
           return {
-            pattern: schemaListPattern,
+            pattern: dbSchemasPattern,
             params: {},
           };
         }
@@ -100,19 +101,19 @@ export class ResourcePatterns {
       },
     };
 
-    // Schema tables pattern
-    const schemaTablesPattern: ResourcePattern = {
-      id: 'schema-tables',
-      uriPattern: 'schema://{schemaName}/tables',
+    // Schema tables pattern - db://schemas/{schemaName}/tables
+    const dbSchemaTablesPattern: ResourcePattern = {
+      id: 'db-schema-tables',
+      uriPattern: 'db://schemas/{schemaName}/tables',
       mimeType: 'application/json',
       namePattern: '{schemaName} Schema Tables',
-      descriptionPattern: 'Comprehensive list of all tables within the {schemaName} schema, including table metadata, row counts, and basic structure information. URI format: schema://[schema_name]/tables (example: schema://default/tables, schema://public/tables)',
+      descriptionPattern: 'Comprehensive list of all tables within the {schemaName} schema, including table metadata, row counts, and basic structure information.',
       requiresDiscovery: true,
       matcher: (uri: string): ResourcePatternMatch | null => {
-        const match = uri.match(/^schema:\/\/([^/]+)\/tables$/);
-        if (match) {
+        const match = uri.match(/^db:\/\/schemas\/([^/]+)\/tables$/);
+        if (match && match[1]) {
           return {
-            pattern: schemaTablesPattern,
+            pattern: dbSchemaTablesPattern,
             params: { schemaName: match[1] },
           };
         }
@@ -136,18 +137,11 @@ export class ResourcePatterns {
 
           const resources: ResourceMetadata[] = [];
           for (const schema of schemaListResult.value.schemas) {
-            // For backward compatibility, use "default" in URIs only for single-schema setups
-            // when no specific schema name is provided in context
-            const uriSchemaName =
-              schemaListResult.value.schemas.length === 1 && !context.scope?.schemaName
-                ? 'default'
-                : schema.name;
-
             resources.push({
-              uri: `schema://${uriSchemaName}/tables`,
+              uri: `db://schemas/${schema.name}/tables`,
               mimeType: 'application/json',
               name: `${schema.name} Schema Tables`,
-              description: `Comprehensive list of all tables within the ${schema.name} schema, including table metadata, row counts, and basic structure information. URI format: schema://[schema_name]/tables (example: schema://default/tables, schema://public/tables)`,
+              description: `Comprehensive list of all tables within the ${schema.name} schema, including table metadata, row counts, and basic structure information.`,
             });
           }
 
@@ -162,20 +156,50 @@ export class ResourcePatterns {
       },
     };
 
-    // Individual table pattern
-    const tableInfoPattern: ResourcePattern = {
-      id: 'table-info',
-      uriPattern: 'table://{schemaName}/{tableName}',
+    // Individual schema pattern - db://schemas/{schemaName} (for contextual errors and suggestions)
+    const dbSchemaPattern: ResourcePattern = {
+      id: 'db-schema',
+      uriPattern: 'db://schemas/{schemaName}',
+      mimeType: 'application/json',
+      namePattern: '{schemaName} Schema',
+      descriptionPattern:
+        'Information about the {schemaName} schema. This URI redirects to db://schemas/{schemaName}/tables.',
+      requiresDiscovery: true,
+      matcher: (uri: string): ResourcePatternMatch | null => {
+        const match = uri.match(/^db:\/\/schemas\/([^/]+)$/);
+        // Exclude reserved names and known schema names that would be malformed without /tables
+        const excludedNames = ['tables', 'public', 'auth'];
+        if (match && match[1] && !excludedNames.includes(match[1])) {
+          return {
+            pattern: dbSchemaPattern,
+            params: { schemaName: match[1] },
+          };
+        }
+        return null;
+      },
+      generator: async (
+        _context: GenerationContext
+      ): Promise<Result<ResourceMetadata[], Error>> => {
+        // This pattern doesn't generate resources, it's meant to fail discovery
+        // and provide helpful error messages
+        return ok([]);
+      },
+    };
+
+    // Individual table pattern - db://schemas/{schemaName}/tables/{tableName}
+    const dbTableInfoPattern: ResourcePattern = {
+      id: 'db-table-info',
+      uriPattern: 'db://schemas/{schemaName}/tables/{tableName}',
       mimeType: 'application/json',
       namePattern: '{tableName} table ({schemaName} schema)',
       descriptionPattern:
-        'Complete detailed information about the {tableName} table including column definitions with data types, constraints, indexes, foreign key relationships, and table statistics. URI format: table://[schema_name]/[table_name] (example: table://default/users, table://public/orders)',
+        'Complete detailed information about the {tableName} table including column definitions with data types, constraints, indexes, foreign key relationships, and table statistics.',
       requiresDiscovery: true,
       matcher: (uri: string): ResourcePatternMatch | null => {
-        const match = uri.match(/^table:\/\/([^/]+)\/([^/]+)$/);
-        if (match) {
+        const match = uri.match(/^db:\/\/schemas\/([^/]+)\/tables\/([^/]+)$/);
+        if (match && match[1] && match[2]) {
           return {
-            pattern: tableInfoPattern,
+            pattern: dbTableInfoPattern,
             params: { schemaName: match[1], tableName: match[2] },
           };
         }
@@ -205,45 +229,23 @@ export class ResourcePatterns {
           // If scope specifies a particular schema, only generate for that schema
           let targetSchemas = schemaListResult.value.schemas;
           if (context.scope?.schemaName) {
-            // Handle "default" schema name resolution for single-schema setups
-            if (
-              context.scope.schemaName === 'default' &&
-              schemaListResult.value.schemas.length === 1
-            ) {
-              // For single-schema setup, "default" should resolve to the only schema
-              targetSchemas = schemaListResult.value.schemas;
-            } else {
-              // For multi-schema setup or named schema request, filter by exact name
-              targetSchemas = schemaListResult.value.schemas.filter(
-                (s) => s.name === context.scope?.schemaName
-              );
-            }
+            targetSchemas = schemaListResult.value.schemas.filter(
+              (s) => s.name === context.scope?.schemaName
+            );
           }
 
           for (const schema of targetSchemas) {
-            // Use the requested schema name for resolution (important for "default" handling)
-            const requestedSchemaName =
-              context.scope?.schemaName || schema.name;
-
             const tablesResult = await handleSchemaTablesResource(
               context.schemaSource,
-              requestedSchemaName
+              schema.name
             );
             if (tablesResult.isOk()) {
-              // Determine URI schema name based on request context
-              // For backward compatibility, use "default" only when specifically requested
-              // or when it's a single-schema setup accessed via "default"
-              const uriSchemaName =
-                context.scope?.schemaName === 'default' && schemaListResult.value.schemas.length === 1
-                  ? 'default'
-                  : requestedSchemaName;
-
               for (const table of tablesResult.value.tables) {
                 resources.push({
-                  uri: `table://${uriSchemaName}/${table.name}`,
+                  uri: `db://schemas/${schema.name}/tables/${table.name}`,
                   mimeType: 'application/json',
                   name: `${table.name} table (${schema.name} schema)`,
-                  description: `Complete detailed information about the ${table.name} table including column definitions with data types, constraints, indexes, foreign key relationships, and table statistics. URI format: table://[schema_name]/[table_name] (example: table://default/users, table://public/orders)`,
+                  description: `Complete detailed information about the ${table.name} table including column definitions with data types, constraints, indexes, foreign key relationships, and table statistics.`,
                 });
               }
             }
@@ -260,19 +262,19 @@ export class ResourcePatterns {
       },
     };
 
-    // Table indexes pattern
-    const tableIndexesPattern: ResourcePattern = {
-      id: 'table-indexes',
-      uriPattern: 'table://{schemaName}/{tableName}/indexes',
+    // Table indexes pattern - db://schemas/{schemaName}/tables/{tableName}/indexes
+    const dbTableIndexesPattern: ResourcePattern = {
+      id: 'db-table-indexes',
+      uriPattern: 'db://schemas/{schemaName}/tables/{tableName}/indexes',
       mimeType: 'application/json',
       namePattern: '{tableName} table indexes ({schemaName} schema)',
-      descriptionPattern: 'Detailed index information for the {tableName} table including index names, types (primary, unique, regular), column compositions, and performance statistics. URI format: table://[schema_name]/[table_name]/indexes (example: table://default/users/indexes, table://public/orders/indexes)',
+      descriptionPattern: 'Detailed index information for the {tableName} table including index names, types (primary, unique, regular), column compositions, and performance statistics.',
       requiresDiscovery: true,
       matcher: (uri: string): ResourcePatternMatch | null => {
-        const match = uri.match(/^table:\/\/([^/]+)\/([^/]+)\/indexes$/);
-        if (match) {
+        const match = uri.match(/^db:\/\/schemas\/([^/]+)\/tables\/([^/]+)\/indexes$/);
+        if (match && match[1] && match[2]) {
           return {
-            pattern: tableIndexesPattern,
+            pattern: dbTableIndexesPattern,
             params: { schemaName: match[1], tableName: match[2] },
           };
         }
@@ -302,45 +304,23 @@ export class ResourcePatterns {
           // If scope specifies a particular schema, only generate for that schema
           let targetSchemas = schemaListResult.value.schemas;
           if (context.scope?.schemaName) {
-            // Handle "default" schema name resolution for single-schema setups
-            if (
-              context.scope.schemaName === 'default' &&
-              schemaListResult.value.schemas.length === 1
-            ) {
-              // For single-schema setup, "default" should resolve to the only schema
-              targetSchemas = schemaListResult.value.schemas;
-            } else {
-              // For multi-schema setup or named schema request, filter by exact name
-              targetSchemas = schemaListResult.value.schemas.filter(
-                (s) => s.name === context.scope?.schemaName
-              );
-            }
+            targetSchemas = schemaListResult.value.schemas.filter(
+              (s) => s.name === context.scope?.schemaName
+            );
           }
 
           for (const schema of targetSchemas) {
-            // Use the requested schema name for resolution (important for "default" handling)
-            const requestedSchemaName =
-              context.scope?.schemaName || schema.name;
-
             const tablesResult = await handleSchemaTablesResource(
               context.schemaSource,
-              requestedSchemaName
+              schema.name
             );
             if (tablesResult.isOk()) {
-              // Determine URI schema name based on request context
-              // For backward compatibility, use "default" only when specifically requested
-              // or when it's a single-schema setup accessed via "default"
-              const uriSchemaName =
-                context.scope?.schemaName === 'default' && schemaListResult.value.schemas.length === 1
-                  ? 'default'
-                  : requestedSchemaName;
-
               for (const table of tablesResult.value.tables) {
                 resources.push({
-                  uri: `table://${uriSchemaName}/${table.name}/indexes`,
+                  uri: `db://schemas/${schema.name}/tables/${table.name}/indexes`,
                   mimeType: 'application/json',
                   name: `${table.name} table indexes (${schema.name} schema)`,
-                  description: `Detailed index information for the ${table.name} table including index names, types (primary, unique, regular), column compositions, and performance statistics. URI format: table://[schema_name]/[table_name]/indexes (example: table://default/users/indexes, table://public/orders/indexes)`,
+                  description: `Detailed index information for the ${table.name} table including index names, types (primary, unique, regular), column compositions, and performance statistics.`,
                 });
               }
             }
@@ -357,12 +337,13 @@ export class ResourcePatterns {
       },
     };
 
-    // Add all patterns to the array
+    // Add all new db:// patterns to the array in logical hierarchical order
     this.patterns = [
-      schemaListPattern,
-      schemaTablesPattern,
-      tableInfoPattern,
-      tableIndexesPattern,
+      dbSchemasPattern,
+      dbSchemaPattern,
+      dbSchemaTablesPattern,
+      dbTableInfoPattern,
+      dbTableIndexesPattern,
     ];
   }
 
@@ -428,4 +409,119 @@ export class ResourcePatterns {
     }
     return result;
   }
+
+
+  /**
+   * Get valid pattern suggestions for error messages
+   */
+  static getValidPatterns(): string[] {
+    this.initializePatterns();
+    return this.patterns.map(p => p.uriPattern);
+  }
+
+  /**
+   * Suggest valid patterns and available resources based on partial URI
+   */
+  static async suggestResources(uri: string, schemaSource: string): Promise<{
+    suggestions: string[];
+    availableSchemas?: string[];
+    availableTables?: string[];
+    schemaName?: string;
+  }> {
+    const suggestions: string[] = [];
+    let availableSchemas: string[] | undefined;
+    let availableTables: string[] | undefined;
+    let schemaName: string | undefined;
+
+    try {
+      // Import here to avoid circular dependencies
+      const { handleSchemaListResource } = await import(
+        '../resources/schema-resource'
+      );
+      const { handleSchemaTablesResource } = await import(
+        '../resources/table-resource'
+      );
+
+      // Get available schemas
+      const schemaListResult = await handleSchemaListResource(schemaSource);
+      if (schemaListResult.isOk()) {
+        availableSchemas = schemaListResult.value.schemas.map(s => s.name);
+
+        // Check if URI is a partial schema path
+        const schemaMatch = uri.match(/^db:\/\/schemas\/([^/]+)$/);
+        if (schemaMatch && schemaMatch[1]) {
+          const requestedSchema = schemaMatch[1];
+          schemaName = requestedSchema;
+          suggestions.push(`db://schemas/${requestedSchema}/tables`);
+
+          // If schema doesn't exist, suggest available schemas
+          if (!availableSchemas.includes(requestedSchema)) {
+            // No additional suggestions needed here as availableSchemas will be returned
+          }
+        }
+
+        // Check if URI is a partial table path
+        const tableMatch = uri.match(/^db:\/\/schemas\/([^/]+)\/tables\/([^/]+)$/);
+        if (tableMatch && tableMatch[1] && tableMatch[2]) {
+          const requestedSchema = tableMatch[1];
+          const requestedTable = tableMatch[2];
+          schemaName = requestedSchema;
+
+          if (availableSchemas.includes(requestedSchema)) {
+            // Get available tables for this schema
+            const tablesResult = await handleSchemaTablesResource(schemaSource, requestedSchema);
+            if (tablesResult.isOk()) {
+              availableTables = tablesResult.value.tables.map(t => t.name);
+
+              // If table doesn't exist, we'll return availableTables
+              if (!availableTables.includes(requestedTable)) {
+                // No additional suggestions needed
+              } else {
+                // Table exists, suggest indexes
+                suggestions.push(`db://schemas/${requestedSchema}/tables/${requestedTable}/indexes`);
+              }
+            }
+          }
+        }
+      }
+    } catch {
+      // Fallback to basic suggestions if resource loading fails
+      suggestions.push('db://schemas');
+    }
+
+    // If no specific suggestions, provide basic pattern suggestions
+    if (suggestions.length === 0) {
+      suggestions.push('db://schemas');
+      if (availableSchemas && availableSchemas.length > 0) {
+        suggestions.push(`db://schemas/{schemaName}/tables`);
+        suggestions.push(`db://schemas/{schemaName}/tables/{tableName}`);
+        suggestions.push(`db://schemas/{schemaName}/tables/{tableName}/indexes`);
+      }
+    }
+
+    return {
+      suggestions,
+      availableSchemas,
+      availableTables,
+      schemaName
+    };
+  }
+
+
+  /**
+   * Create contextual error for resource not found scenarios
+   */
+  static async createResourceNotFoundError(uri: string, schemaSource: string): Promise<Error> {
+    const suggestions = await this.suggestResources(uri, schemaSource);
+
+    let message = 'Resource not found';
+    if (suggestions.schemaName && suggestions.availableTables) {
+      message = 'Table not found';
+    }
+
+    const error = new Error(message) as Error & { data: Record<string, unknown> };
+    error.data = suggestions;
+    return error;
+  }
 }
+

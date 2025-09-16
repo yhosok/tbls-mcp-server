@@ -22,13 +22,13 @@ describe('URI Patterns Resource Handler', () => {
       if (result.isOk()) {
         const resource: UriPatternsResource = result.value;
         const schemaListPattern = resource.patterns.find(
-          (pattern) => pattern.id === 'schema-list'
+          (pattern) => pattern.id === 'db-schemas'
         );
 
         expect(schemaListPattern).toBeDefined();
-        expect(schemaListPattern?.uri).toBe('schema://list');
+        expect(schemaListPattern?.uri).toBe('db://schemas');
         expect(schemaListPattern?.description).toContain('schemas');
-        expect(schemaListPattern?.examples).toContain('schema://list');
+        expect(schemaListPattern?.examples).toContain('db://schemas');
         expect(schemaListPattern?.parameters).toEqual([]);
       }
     });
@@ -40,14 +40,14 @@ describe('URI Patterns Resource Handler', () => {
       if (result.isOk()) {
         const resource: UriPatternsResource = result.value;
         const schemaTablesPattern = resource.patterns.find(
-          (pattern) => pattern.id === 'schema-tables'
+          (pattern) => pattern.id === 'db-schema-tables'
         );
 
         expect(schemaTablesPattern).toBeDefined();
-        expect(schemaTablesPattern?.uri).toBe('schema://{schema_name}/tables');
+        expect(schemaTablesPattern?.uri).toBe('db://schemas/{schema_name}/tables');
         expect(schemaTablesPattern?.description).toContain('tables');
         expect(schemaTablesPattern?.examples).toContain(
-          'schema://public/tables'
+          'db://schemas/public/tables'
         );
         expect(schemaTablesPattern?.parameters).toHaveLength(1);
         expect(schemaTablesPattern?.parameters[0]).toEqual({
@@ -65,15 +65,15 @@ describe('URI Patterns Resource Handler', () => {
       if (result.isOk()) {
         const resource: UriPatternsResource = result.value;
         const tableInfoPattern = resource.patterns.find(
-          (pattern) => pattern.id === 'table-info'
+          (pattern) => pattern.id === 'db-table-info'
         );
 
         expect(tableInfoPattern).toBeDefined();
         expect(tableInfoPattern?.uri).toBe(
-          'table://{schema_name}/{table_name}'
+          'db://schemas/{schema_name}/tables/{table_name}'
         );
         expect(tableInfoPattern?.description).toContain('detailed information');
-        expect(tableInfoPattern?.examples).toContain('table://public/users');
+        expect(tableInfoPattern?.examples).toContain('db://schemas/public/tables/users');
         expect(tableInfoPattern?.parameters).toHaveLength(2);
         expect(tableInfoPattern?.parameters).toContainEqual({
           name: 'schema_name',
@@ -95,16 +95,16 @@ describe('URI Patterns Resource Handler', () => {
       if (result.isOk()) {
         const resource: UriPatternsResource = result.value;
         const tableIndexesPattern = resource.patterns.find(
-          (pattern) => pattern.id === 'table-indexes'
+          (pattern) => pattern.id === 'db-table-indexes'
         );
 
         expect(tableIndexesPattern).toBeDefined();
         expect(tableIndexesPattern?.uri).toBe(
-          'table://{schema_name}/{table_name}/indexes'
+          'db://schemas/{schema_name}/tables/{table_name}/indexes'
         );
-        expect(tableIndexesPattern?.description).toContain('indexes');
+        expect(tableIndexesPattern?.description).toContain('index');
         expect(tableIndexesPattern?.examples).toContain(
-          'table://public/users/indexes'
+          'db://schemas/public/tables/users/indexes'
         );
         expect(tableIndexesPattern?.parameters).toHaveLength(2);
         expect(tableIndexesPattern?.parameters).toContainEqual({
@@ -131,9 +131,9 @@ describe('URI Patterns Resource Handler', () => {
         );
 
         expect(uriPatternsPattern).toBeDefined();
-        expect(uriPatternsPattern?.uri).toBe('schema://uri-patterns');
+        expect(uriPatternsPattern?.uri).toBe('db://uri-patterns');
         expect(uriPatternsPattern?.description).toContain('URI patterns');
-        expect(uriPatternsPattern?.examples).toContain('schema://uri-patterns');
+        expect(uriPatternsPattern?.examples).toContain('db://uri-patterns');
         expect(uriPatternsPattern?.parameters).toEqual([]);
       }
     });
@@ -207,7 +207,7 @@ describe('URI Patterns Resource Handler', () => {
 
           // Examples should be valid URIs
           pattern.examples.forEach((example) => {
-            expect(example).toMatch(/^(schema|table):\/\//);
+            expect(example).toMatch(/^db:\/\//);
           });
         });
       }
@@ -265,7 +265,7 @@ describe('URI Patterns Resource Handler', () => {
       if (result.isOk()) {
         const resource: UriPatternsResource = result.value;
         const tableInfoPattern = resource.patterns.find(
-          (p) => p.id === 'table-info'
+          (p) => p.id === 'db-table-info'
         );
 
         expect(tableInfoPattern?.parameters).toHaveLength(2);
@@ -291,8 +291,8 @@ describe('URI Patterns Resource Handler', () => {
         const resource: UriPatternsResource = result.value;
 
         resource.patterns.forEach((pattern) => {
-          // All URIs should start with a protocol
-          expect(pattern.uri).toMatch(/^(schema|table):\/\//);
+          // All URIs should start with db:// protocol
+          expect(pattern.uri).toMatch(/^db:\/\//);
 
           // Parameter placeholders should use snake_case
           const paramMatches = pattern.uri.match(/\{([^}]+)\}/g) || [];
@@ -362,7 +362,7 @@ describe('URI Patterns Resource Handler', () => {
       if (result.isOk()) {
         const resource: UriPatternsResource = result.value;
         const schemaListPattern = resource.patterns.find(
-          (p) => p.id === 'schema-list'
+          (p) => p.id === 'db-schemas'
         );
 
         expect(schemaListPattern?.parameters).toEqual([]);
@@ -379,14 +379,14 @@ describe('URI Patterns Resource Handler', () => {
 
         // Check specific description overrides
         const tableInfoPattern = resource.patterns.find(
-          (p) => p.id === 'table-info'
+          (p) => p.id === 'db-table-info'
         );
         expect(tableInfoPattern?.description).toContain(
           'detailed information'
         );
 
         const tableIndexesPattern = resource.patterns.find(
-          (p) => p.id === 'table-indexes'
+          (p) => p.id === 'db-table-indexes'
         );
         expect(tableIndexesPattern?.description).toContain('index information');
       }

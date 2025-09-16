@@ -37,33 +37,33 @@ describe('Document Generation Scripts', () => {
 
       if (result.isOk()) {
         const patterns = result.value;
-        expect(patterns).toHaveLength(4); // We know there are 4 patterns from ResourcePatterns class
+        expect(patterns).toHaveLength(5); // We know there are 5 patterns from ResourcePatterns class
 
         // Verify schema list pattern
-        const schemaListPattern = patterns.find(p => p.id === 'schema-list');
+        const schemaListPattern = patterns.find(p => p.id === 'db-schemas');
         expect(schemaListPattern).toBeDefined();
-        expect(schemaListPattern?.uriPattern).toBe('schema://list');
+        expect(schemaListPattern?.uriPattern).toBe('db://schemas');
         expect(schemaListPattern?.namePattern).toBe('Database Schemas');
         expect(schemaListPattern?.requiresDiscovery).toBe(false);
 
         // Verify schema tables pattern
-        const schemaTablesPattern = patterns.find(p => p.id === 'schema-tables');
+        const schemaTablesPattern = patterns.find(p => p.id === 'db-schema-tables');
         expect(schemaTablesPattern).toBeDefined();
-        expect(schemaTablesPattern?.uriPattern).toBe('schema://{schemaName}/tables');
+        expect(schemaTablesPattern?.uriPattern).toBe('db://schemas/{schemaName}/tables');
         expect(schemaTablesPattern?.namePattern).toBe('{schemaName} Schema Tables');
         expect(schemaTablesPattern?.requiresDiscovery).toBe(true);
 
         // Verify table info pattern
-        const tableInfoPattern = patterns.find(p => p.id === 'table-info');
+        const tableInfoPattern = patterns.find(p => p.id === 'db-table-info');
         expect(tableInfoPattern).toBeDefined();
-        expect(tableInfoPattern?.uriPattern).toBe('table://{schemaName}/{tableName}');
+        expect(tableInfoPattern?.uriPattern).toBe('db://schemas/{schemaName}/tables/{tableName}');
         expect(tableInfoPattern?.namePattern).toBe('{tableName} table ({schemaName} schema)');
         expect(tableInfoPattern?.requiresDiscovery).toBe(true);
 
         // Verify table indexes pattern
-        const tableIndexesPattern = patterns.find(p => p.id === 'table-indexes');
+        const tableIndexesPattern = patterns.find(p => p.id === 'db-table-indexes');
         expect(tableIndexesPattern).toBeDefined();
-        expect(tableIndexesPattern?.uriPattern).toBe('table://{schemaName}/{tableName}/indexes');
+        expect(tableIndexesPattern?.uriPattern).toBe('db://schemas/{schemaName}/tables/{tableName}/indexes');
         expect(tableIndexesPattern?.namePattern).toBe('{tableName} table indexes ({schemaName} schema)');
         expect(tableIndexesPattern?.requiresDiscovery).toBe(true);
       }
@@ -232,10 +232,11 @@ More content.
 <!-- AUTO-GENERATED:START - Do not modify this section manually -->
 | URI Pattern | Description | Discovery Required |
 |-------------|-------------|-------------------|
-| \`schema://list\` | Complete list of all available database schemas | No |
-| \`schema://{schemaName}/tables\` | Comprehensive list of all tables within the {schemaName} schema | Yes |
-| \`table://{schemaName}/{tableName}\` | Complete detailed information about the {tableName} table | Yes |
-| \`table://{schemaName}/{tableName}/indexes\` | Detailed index information for the {tableName} table | Yes |
+| \`db://schemas\` | Complete list of all available database schemas | No |
+| \`db://schemas/{schemaName}/tables\` | Comprehensive list of all tables within the {schemaName} schema | Yes |
+| \`db://schemas/{schemaName}\` | Information about the {schemaName} schema | Yes |
+| \`db://schemas/{schemaName}/tables/{tableName}\` | Complete detailed information about the {tableName} table | Yes |
+| \`db://schemas/{schemaName}/tables/{tableName}/indexes\` | Detailed index information for the {tableName} table | Yes |
 <!-- AUTO-GENERATED:END -->
 `;
 
@@ -259,7 +260,7 @@ More content.
 <!-- AUTO-GENERATED:START - Do not modify this section manually -->
 | URI Pattern | Description | Discovery Required |
 |-------------|-------------|-------------------|
-| \`schema://list\` | Complete list of all available database schemas | No |
+| \`db://schemas\` | Complete list of all available database schemas | No |
 <!-- AUTO-GENERATED:END -->
 `;
 
@@ -270,9 +271,10 @@ More content.
 
       if (result.isOk()) {
         expect(result.value.isConsistent).toBe(false);
-        expect(result.value.missingPatterns).toContain('schema://{schemaName}/tables');
-        expect(result.value.missingPatterns).toContain('table://{schemaName}/{tableName}');
-        expect(result.value.missingPatterns).toContain('table://{schemaName}/{tableName}/indexes');
+        expect(result.value.missingPatterns).toContain('db://schemas/{schemaName}/tables');
+        expect(result.value.missingPatterns).toContain('db://schemas/{schemaName}');
+        expect(result.value.missingPatterns).toContain('db://schemas/{schemaName}/tables/{tableName}');
+        expect(result.value.missingPatterns).toContain('db://schemas/{schemaName}/tables/{tableName}/indexes');
       }
     });
 
