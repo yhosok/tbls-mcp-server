@@ -1,6 +1,7 @@
 import { Result, ok } from 'neverthrow';
 import { UriPatternsResource, UriPatternInfo } from '../schemas/database';
 import { ResourcePatterns, ResourcePattern } from '../server/resource-patterns';
+import { PATTERN_IDS } from '../constants/uri-patterns';
 
 /**
  * Convert a ResourcePattern to UriPatternInfo format
@@ -62,18 +63,6 @@ export const handleUriPatternsResource = async (): Promise<
 
   return ok({ patterns });
 };
-
-/**
- * Pattern ID constants for type safety and maintainability
- */
-const PATTERN_IDS = {
-  SCHEMA_LIST: 'db-schemas',
-  SCHEMA_TABLES: 'db-schema-tables',
-  SCHEMA_INFO: 'db-schema',
-  TABLE_INFO: 'db-table-info',
-  TABLE_INDEXES: 'db-table-indexes',
-  URI_PATTERNS: 'uri-patterns',
-} as const;
 
 /**
  * Description mappings for consistent display text

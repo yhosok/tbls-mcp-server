@@ -1,5 +1,6 @@
 import { ResourcePatterns } from './resource-patterns';
 import { UriPatternSuggester } from './uri-pattern-suggester';
+import { URI_PATTERNS } from '../constants/uri-patterns';
 
 /**
  * Generates detailed error messages for invalid URIs with helpful guidance
@@ -74,18 +75,18 @@ export class ErrorMessageGenerator {
    * Generate error message for when URI pattern matches but resource not found
    */
   generatePatternMatchFailureMessage(uri: string): string {
-    let message = `Resource not found: ${uri}·\n`;
+    let message = `Resource not found: ${uri}\n`;
     message += 'The URI format is correct, but the specific resource does not exist.';
 
     // Add specific guidance based on URI pattern
-    if (uri.match(/^db:\/\/schemas\/[^/]+\/tables$/)) {
+    if (uri.match(URI_PATTERNS.SCHEMA_TABLES)) {
       const schemaName = uri.split('/')[3];
       message += ` Check available schemas via db://schemas or available tables in the ${schemaName} schema.`;
-    } else if (uri.match(/^db:\/\/schemas\/[^/]+\/tables\/[^/]+$/)) {
+    } else if (uri.match(URI_PATTERNS.TABLE_INFO)) {
       const parts = uri.split('/');
       const schemaName = parts[3];
       message += ` Check if the table exists via db://schemas/${schemaName}/tables or available tables in the ${schemaName} schema.`;
-    } else if (uri.match(/^db:\/\/schemas\/[^/]+\/tables\/[^/]+\/indexes$/)) {
+    } else if (uri.match(URI_PATTERNS.TABLE_INDEXES)) {
       const parts = uri.split('/');
       const schemaName = parts[3];
       const tableName = parts[5];
@@ -205,7 +206,6 @@ export class ErrorMessageGenerator {
     if (uri.startsWith('db://')) {
       return 'Database resources follow the db:// scheme. Start with db://schemas to discover available schemas.';
     }
-
 
     if (uri.includes('://')) {
       return 'This server only supports the db:// URI scheme. For discovering available resources, start with db://schemas.';

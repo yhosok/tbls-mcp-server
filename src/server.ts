@@ -21,6 +21,7 @@ import { createSqlQueryTool, handleSqlQuery } from './tools/sql-query-tool.js';
 import { validateSqlQueryRequest } from './schemas/database.js';
 import { ResourceCache, ResourceCacheOptions } from './cache/resource-cache.js';
 import { LazyResourceRegistry } from './server/lazy-resource-registry.js';
+import { URI_PATTERNS } from './constants/uri-patterns';
 
 /**
  * Main MCP server class for tbls database schema information
@@ -197,7 +198,7 @@ export class TblsMcpServer {
             return await this.handleSchemaTablesResource(uri);
           }
 
-          if (uri.match(/^db:\/\/schemas\/[^/]+\/tables\/[^/]+$/) && !uri.endsWith('/indexes')) {
+          if (uri.match(URI_PATTERNS.TABLE_INFO) && !uri.endsWith('/indexes')) {
             return await this.handleTableInfoResource(uri);
           }
 
@@ -335,7 +336,7 @@ export class TblsMcpServer {
     uri: string
   ): Promise<ReadResourceResult> {
     // Parse schema name from URI: db://schemas/schema_name/tables
-    const match = uri.match(/^db:\/\/schemas\/([^/]+)\/tables$/);
+    const match = uri.match(URI_PATTERNS.SCHEMA_TABLES);
 
     if (!match) {
       throw new McpError(
@@ -376,7 +377,7 @@ export class TblsMcpServer {
     uri: string
   ): Promise<ReadResourceResult> {
     // Parse schema and table name from URI: db://schemas/schema_name/tables/table_name
-    const match = uri.match(/^db:\/\/schemas\/([^/]+)\/tables\/([^/]+)$/);
+    const match = uri.match(URI_PATTERNS.TABLE_INFO);
 
     if (!match) {
       throw new McpError(
@@ -418,7 +419,7 @@ export class TblsMcpServer {
     uri: string
   ): Promise<ReadResourceResult> {
     // Parse schema and table name from URI: db://schemas/schema_name/tables/table_name/indexes
-    const match = uri.match(/^db:\/\/schemas\/([^/]+)\/tables\/([^/]+)\/indexes$/);
+    const match = uri.match(URI_PATTERNS.TABLE_INDEXES);
 
     if (!match) {
       throw new McpError(

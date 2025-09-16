@@ -1,4 +1,5 @@
 import { ResourcePatterns } from './resource-patterns';
+import { PATTERN_IDS } from '../constants/uri-patterns';
 
 /**
  * Represents a URI pattern suggestion with similarity score
@@ -11,10 +12,15 @@ export interface PatternSuggestion {
 
 /**
  * Provides URI pattern suggestions using similarity calculations
+ * Uses Levenshtein distance and semantic matching for intelligent suggestions
  */
 export class UriPatternSuggester {
   /**
    * Find similar URI patterns for the given input URI
+   * @param uri - The input URI to find similar patterns for
+   * @param maxSuggestions - Maximum number of suggestions to return (default: 5)
+   * @param minSimilarity - Minimum similarity threshold (default: 0.3)
+   * @returns Array of pattern suggestions with similarity scores
    */
   findSimilarPatterns(
     uri: string,
@@ -40,7 +46,6 @@ export class UriPatternSuggester {
           similarity = Math.min(0.95, similarity + 0.15);
         }
       }
-
 
       if (similarity >= minSimilarity) {
         suggestions.push({
@@ -119,40 +124,39 @@ export class UriPatternSuggester {
   generateExamplesForPattern(patternId: string): string[] {
     switch (patternId) {
       // New db:// patterns
-      case 'db-schemas':
+      case PATTERN_IDS.SCHEMA_LIST:
         return ['db://schemas'];
 
-      case 'db-schema-tables':
+      case PATTERN_IDS.SCHEMA_TABLES:
         return [
           'db://schemas/default/tables',
           'db://schemas/public/tables',
           'db://schemas/main/tables',
         ];
 
-      case 'db-schema':
+      case PATTERN_IDS.SCHEMA_INFO:
         return [
           'db://schemas/default',
           'db://schemas/public',
           'db://schemas/main',
         ];
 
-      case 'db-table-info':
+      case PATTERN_IDS.TABLE_INFO:
         return [
           'db://schemas/default/tables/users',
           'db://schemas/public/tables/orders',
           'db://schemas/main/tables/products',
         ];
 
-      case 'db-table-indexes':
+      case PATTERN_IDS.TABLE_INDEXES:
         return [
           'db://schemas/default/tables/users/indexes',
           'db://schemas/public/tables/orders/indexes',
           'db://schemas/main/tables/products/indexes',
         ];
 
-      case 'uri-patterns':
+      case PATTERN_IDS.URI_PATTERNS:
         return ['db://uri-patterns'];
-
 
       default:
         return [];

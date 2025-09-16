@@ -6,6 +6,7 @@
  */
 
 import { Result, ok, err } from 'neverthrow';
+import { PATTERN_IDS, URI_PATTERNS } from '../constants/uri-patterns';
 
 /**
  * Represents a resource pattern with metadata
@@ -80,10 +81,9 @@ export class ResourcePatterns {
       return; // Already initialized
     }
 
-
     // Root schema list pattern - db://schemas
     const dbSchemasPattern: ResourcePattern = {
-      id: 'db-schemas',
+      id: PATTERN_IDS.SCHEMA_LIST,
       uriPattern: 'db://schemas',
       mimeType: 'application/json',
       namePattern: 'Database Schemas',
@@ -103,14 +103,14 @@ export class ResourcePatterns {
 
     // Schema tables pattern - db://schemas/{schemaName}/tables
     const dbSchemaTablesPattern: ResourcePattern = {
-      id: 'db-schema-tables',
+      id: PATTERN_IDS.SCHEMA_TABLES,
       uriPattern: 'db://schemas/{schemaName}/tables',
       mimeType: 'application/json',
       namePattern: '{schemaName} Schema Tables',
       descriptionPattern: 'Comprehensive list of all tables within the {schemaName} schema, including table metadata, row counts, and basic structure information.',
       requiresDiscovery: true,
       matcher: (uri: string): ResourcePatternMatch | null => {
-        const match = uri.match(/^db:\/\/schemas\/([^/]+)\/tables$/);
+        const match = uri.match(URI_PATTERNS.SCHEMA_TABLES);
         if (match && match[1]) {
           return {
             pattern: dbSchemaTablesPattern,
@@ -147,10 +147,9 @@ export class ResourcePatterns {
 
           return ok(resources);
         } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
           return err(
-            new Error(
-              `Failed to generate schema tables resources: ${error instanceof Error ? error.message : 'Unknown error'}`
-            )
+            new Error(`Failed to generate schema tables resources: ${errorMessage}`)
           );
         }
       },
@@ -158,7 +157,7 @@ export class ResourcePatterns {
 
     // Individual schema pattern - db://schemas/{schemaName} (for contextual errors and suggestions)
     const dbSchemaPattern: ResourcePattern = {
-      id: 'db-schema',
+      id: PATTERN_IDS.SCHEMA_INFO,
       uriPattern: 'db://schemas/{schemaName}',
       mimeType: 'application/json',
       namePattern: '{schemaName} Schema',
@@ -166,7 +165,7 @@ export class ResourcePatterns {
         'Information about the {schemaName} schema. This URI redirects to db://schemas/{schemaName}/tables.',
       requiresDiscovery: true,
       matcher: (uri: string): ResourcePatternMatch | null => {
-        const match = uri.match(/^db:\/\/schemas\/([^/]+)$/);
+        const match = uri.match(URI_PATTERNS.SCHEMA_INFO);
         // Exclude reserved names and known schema names that would be malformed without /tables
         const excludedNames = ['tables', 'public', 'auth'];
         if (match && match[1] && !excludedNames.includes(match[1])) {
@@ -188,7 +187,7 @@ export class ResourcePatterns {
 
     // Individual table pattern - db://schemas/{schemaName}/tables/{tableName}
     const dbTableInfoPattern: ResourcePattern = {
-      id: 'db-table-info',
+      id: PATTERN_IDS.TABLE_INFO,
       uriPattern: 'db://schemas/{schemaName}/tables/{tableName}',
       mimeType: 'application/json',
       namePattern: '{tableName} table ({schemaName} schema)',
@@ -196,7 +195,7 @@ export class ResourcePatterns {
         'Complete detailed information about the {tableName} table including column definitions with data types, constraints, indexes, foreign key relationships, and table statistics.',
       requiresDiscovery: true,
       matcher: (uri: string): ResourcePatternMatch | null => {
-        const match = uri.match(/^db:\/\/schemas\/([^/]+)\/tables\/([^/]+)$/);
+        const match = uri.match(URI_PATTERNS.TABLE_INFO);
         if (match && match[1] && match[2]) {
           return {
             pattern: dbTableInfoPattern,
@@ -253,10 +252,9 @@ export class ResourcePatterns {
 
           return ok(resources);
         } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
           return err(
-            new Error(
-              `Failed to generate table info resources: ${error instanceof Error ? error.message : 'Unknown error'}`
-            )
+            new Error(`Failed to generate table info resources: ${errorMessage}`)
           );
         }
       },
@@ -264,14 +262,14 @@ export class ResourcePatterns {
 
     // Table indexes pattern - db://schemas/{schemaName}/tables/{tableName}/indexes
     const dbTableIndexesPattern: ResourcePattern = {
-      id: 'db-table-indexes',
+      id: PATTERN_IDS.TABLE_INDEXES,
       uriPattern: 'db://schemas/{schemaName}/tables/{tableName}/indexes',
       mimeType: 'application/json',
       namePattern: '{tableName} table indexes ({schemaName} schema)',
       descriptionPattern: 'Detailed index information for the {tableName} table including index names, types (primary, unique, regular), column compositions, and performance statistics.',
       requiresDiscovery: true,
       matcher: (uri: string): ResourcePatternMatch | null => {
-        const match = uri.match(/^db:\/\/schemas\/([^/]+)\/tables\/([^/]+)\/indexes$/);
+        const match = uri.match(URI_PATTERNS.TABLE_INDEXES);
         if (match && match[1] && match[2]) {
           return {
             pattern: dbTableIndexesPattern,
@@ -328,10 +326,9 @@ export class ResourcePatterns {
 
           return ok(resources);
         } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
           return err(
-            new Error(
-              `Failed to generate table indexes resources: ${error instanceof Error ? error.message : 'Unknown error'}`
-            )
+            new Error(`Failed to generate table indexes resources: ${errorMessage}`)
           );
         }
       },
@@ -349,9 +346,13 @@ export class ResourcePatterns {
 
   /**
    * Find a pattern that matches the given URI
+   * @param uri - The URI to match against registered patterns
+   * @returns The matching pattern and extracted parameters, or null if no match
    */
   static matchUri(uri: string): ResourcePatternMatch | null {
     this.initializePatterns();
+
+    // Optimize by checking most common patterns first
     for (const pattern of this.patterns) {
       const match = pattern.matcher(uri);
       if (match) {
@@ -363,6 +364,7 @@ export class ResourcePatterns {
 
   /**
    * Get all registered patterns
+   * @returns Array of all registered resource patterns
    */
   static getAllPatterns(): ResourcePattern[] {
     this.initializePatterns();
@@ -401,6 +403,9 @@ export class ResourcePatterns {
 
   /**
    * Interpolate placeholders in a pattern string with actual values
+   * @param pattern - The pattern string containing placeholders
+   * @param params - The parameters to substitute
+   * @returns The interpolated string with placeholders replaced
    */
   static interpolate(pattern: string, params: Record<string, string>): string {
     let result = pattern;
@@ -448,7 +453,7 @@ export class ResourcePatterns {
         availableSchemas = schemaListResult.value.schemas.map(s => s.name);
 
         // Check if URI is a partial schema path
-        const schemaMatch = uri.match(/^db:\/\/schemas\/([^/]+)$/);
+        const schemaMatch = uri.match(URI_PATTERNS.SCHEMA_INFO);
         if (schemaMatch && schemaMatch[1]) {
           const requestedSchema = schemaMatch[1];
           schemaName = requestedSchema;
@@ -461,7 +466,7 @@ export class ResourcePatterns {
         }
 
         // Check if URI is a partial table path
-        const tableMatch = uri.match(/^db:\/\/schemas\/([^/]+)\/tables\/([^/]+)$/);
+        const tableMatch = uri.match(URI_PATTERNS.TABLE_INFO);
         if (tableMatch && tableMatch[1] && tableMatch[2]) {
           const requestedSchema = tableMatch[1];
           const requestedTable = tableMatch[2];

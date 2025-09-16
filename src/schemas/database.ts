@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { Result, ok, err } from 'neverthrow';
+import { URI_PATTERNS } from '../constants/uri-patterns';
 
 /**
  * Database column schema representing column information from tbls markdown
@@ -118,14 +119,14 @@ export type SqlQueryRequest = z.infer<typeof SqlQueryRequestSchema>;
 export const SchemaListUriSchema = z.literal('db://schemas');
 export const SchemaTablesUriSchema = z
   .string()
-  .regex(/^db:\/\/schemas\/[^/]+\/tables$/);
+  .regex(URI_PATTERNS.SCHEMA_TABLES);
 export const SchemaInfoUriSchema = z
   .string()
-  .regex(/^db:\/\/schemas\/[^/]+$/);
-export const TableInfoUriSchema = z.string().regex(/^db:\/\/schemas\/[^/]+\/tables\/[^/]+$/);
+  .regex(URI_PATTERNS.SCHEMA_INFO);
+export const TableInfoUriSchema = z.string().regex(URI_PATTERNS.TABLE_INFO);
 export const TableIndexesUriSchema = z
   .string()
-  .regex(/^db:\/\/schemas\/[^/]+\/tables\/[^/]+\/indexes$/);
+  .regex(URI_PATTERNS.TABLE_INDEXES);
 export const UriPatternsUriSchema = z.literal('db://uri-patterns');
 
 export type SchemaListUri = z.infer<typeof SchemaListUriSchema>;
