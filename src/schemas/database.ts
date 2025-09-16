@@ -120,9 +120,7 @@ export const SchemaListUriSchema = z.literal('db://schemas');
 export const SchemaTablesUriSchema = z
   .string()
   .regex(URI_PATTERNS.SCHEMA_TABLES);
-export const SchemaInfoUriSchema = z
-  .string()
-  .regex(URI_PATTERNS.SCHEMA_INFO);
+export const SchemaInfoUriSchema = z.string().regex(URI_PATTERNS.SCHEMA_INFO);
 export const TableInfoUriSchema = z.string().regex(URI_PATTERNS.TABLE_INFO);
 export const TableIndexesUriSchema = z
   .string()

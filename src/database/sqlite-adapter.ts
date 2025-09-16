@@ -3,6 +3,11 @@ import sqlite3 from 'sqlite3';
 import { DatabaseConfig } from '../schemas/config';
 import { QueryResult } from '../schemas/database';
 import { safeExecuteAsync } from '../utils/result';
+import {
+  buildQueryResult,
+  createEmptyQueryResult,
+  executeTimedQuery,
+} from './query-executor';
 
 // Types for SQLite callback results
 interface SQLiteVersionRow {
@@ -114,74 +119,49 @@ export const executeSQLiteQuery = async (
   params: unknown[] = [],
   timeoutMs?: number
 ): Promise<Result<QueryResult, Error>> => {
-  const startTime = Date.now();
+  const timeout = timeoutMs ?? DEFAULT_TIMEOUT_MS;
 
-  return safeExecuteAsync(async () => {
-    const timeout = timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  return executeTimedQuery(
+    () => {
+      return new Promise<SQLiteRow[]>((resolve, reject) => {
+        const callback = (error: Error | null, rows: SQLiteRow[]): void => {
+          if (error) {
+            reject(
+              new Error(`SQLite query execution failed: ${error.message}`)
+            );
+            return;
+          }
+          resolve(rows || []);
+        };
 
-    const queryPromise = new Promise<QueryResult>((resolve, reject) => {
-      const callback = (error: Error | null, rows: SQLiteRow[]): void => {
-        if (error) {
-          reject(new Error(`SQLite query execution failed: ${error.message}`));
-          return;
+        // Execute query with or without parameters
+        if (params.length === 0) {
+          connection.database.all(query, callback);
+        } else {
+          connection.database.all(query, params, callback);
         }
-
-        const executionTimeMs = Date.now() - startTime;
-
-        // Handle empty result set
-        if (!rows || rows.length === 0) {
-          resolve({
-            columns: [],
-            rows: [],
-            rowCount: 0,
-            executionTimeMs,
-          });
-          return;
-        }
-
-        // Extract column names from the first row
-        const columns = Object.keys(rows[0]);
-
-        // Convert rows to array format
-        const resultRows = rows.map((row) => {
-          return columns.map((column) => row[column]);
-        });
-
-        resolve({
-          columns,
-          rows: resultRows,
-          rowCount: rows.length,
-          executionTimeMs,
-        });
-      };
-
-      // Execute query with or without parameters
-      if (params.length === 0) {
-        connection.database.all(query, callback);
-      } else {
-        connection.database.all(query, params, callback);
+      });
+    },
+    (rows, startTime) => {
+      // Handle empty result set
+      if (!rows || rows.length === 0) {
+        return createEmptyQueryResult(startTime);
       }
-    });
 
-    // Apply timeout if specified
-    if (timeout > 0) {
-      let timeoutId: NodeJS.Timeout;
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        timeoutId = setTimeout(
-          () => reject(new Error(`Query execution timeout after ${timeout}ms`)),
-          timeout
-        );
+      // Extract column names from the first row
+      const columns = Object.keys(rows[0]);
+
+      // Convert rows to array format
+      const resultRows = rows.map((row) => {
+        return columns.map((column) => row[column]);
       });
 
-      return Promise.race([queryPromise, timeoutPromise]).finally(() => {
-        if (timeoutId) {
-          clearTimeout(timeoutId);
-        }
-      });
-    }
-
-    return queryPromise;
-  }, 'SQLite query execution failed');
+      return buildQueryResult(columns, resultRows, startTime);
+    },
+    timeout > 0 ? timeout : undefined,
+    timeout > 0 ? `Query execution timeout after ${timeout}ms` : undefined,
+    'SQLite query execution failed'
+  );
 };
 
 /**

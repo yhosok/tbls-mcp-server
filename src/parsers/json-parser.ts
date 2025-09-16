@@ -38,13 +38,15 @@ export const parseJsonFile = (
 };
 
 /**
- * Parses JSON content string and returns a database schema
+ * Generic function to parse and validate JSON content with a custom parsing function
  * @param content - JSON content string
- * @returns Result containing parsed database schema or error
+ * @param parseFunction - Function to parse the validated JSON data
+ * @returns Result containing parsed data or error
  */
-export const parseJsonContent = (
-  content: string
-): Result<DatabaseSchema, Error> => {
+const parseJsonWithValidation = <T>(
+  content: string,
+  parseFunction: (data: unknown) => Result<T, Error>
+): Result<T, Error> => {
   // Validate content is not empty
   const trimmedContent = content.trim();
   if (trimmedContent.length === 0) {
@@ -59,8 +61,19 @@ export const parseJsonContent = (
     if (data === null) {
       return createError('Parsed JSON is null');
     }
-    return parseJsonSchema(data);
+    return parseFunction(data);
   });
+};
+
+/**
+ * Parses JSON content string and returns a database schema
+ * @param content - JSON content string
+ * @returns Result containing parsed database schema or error
+ */
+export const parseJsonContent = (
+  content: string
+): Result<DatabaseSchema, Error> => {
+  return parseJsonWithValidation(content, parseJsonSchema);
 };
 
 /**
@@ -71,22 +84,7 @@ export const parseJsonContent = (
 export const parseJsonSchemaList = (
   content: string
 ): Result<SchemaMetadata[], Error> => {
-  // Validate content is not empty
-  const trimmedContent = content.trim();
-  if (trimmedContent.length === 0) {
-    return createError('JSON content is empty');
-  }
-
-  // Parse JSON safely
-  return safeExecute(
-    () => JSON.parse(trimmedContent),
-    'Failed to parse JSON'
-  ).andThen((data) => {
-    if (data === null) {
-      return createError('Parsed JSON is null');
-    }
-    return parseJsonSchemaMetadataList(data);
-  });
+  return parseJsonWithValidation(content, parseJsonSchemaMetadataList);
 };
 
 /**
@@ -120,9 +118,15 @@ export const parseJsonSchemaMetadataList = (
       }
 
       const metadata: SchemaMetadata = {
-        name: (typeof schemaItem.name === 'string' ? schemaItem.name : null) || 'database_schema',
-        description: (typeof schemaItem.desc === 'string' ? schemaItem.desc : null) ||
-                     (typeof schemaItem.comment === 'string' ? schemaItem.comment : null) || null,
+        name:
+          (typeof schemaItem.name === 'string' ? schemaItem.name : null) ||
+          'database_schema',
+        description:
+          (typeof schemaItem.desc === 'string' ? schemaItem.desc : null) ||
+          (typeof schemaItem.comment === 'string'
+            ? schemaItem.comment
+            : null) ||
+          null,
         tableCount: schemaItem.tables.length,
         generated: null,
       };
@@ -139,8 +143,11 @@ export const parseJsonSchemaMetadataList = (
   }
 
   const metadata: SchemaMetadata = {
-    name: (typeof schemaObj.name === 'string' ? schemaObj.name : null) || 'database_schema',
-    description: (typeof schemaObj.desc === 'string' ? schemaObj.desc : null) || null,
+    name:
+      (typeof schemaObj.name === 'string' ? schemaObj.name : null) ||
+      'database_schema',
+    description:
+      (typeof schemaObj.desc === 'string' ? schemaObj.desc : null) || null,
     tableCount: schemaObj.tables.length,
     generated: null,
   };
@@ -158,22 +165,9 @@ export const parseJsonSchemaByName = (
   content: string,
   schemaName: string
 ): Result<DatabaseSchema, Error> => {
-  // Validate content is not empty
-  const trimmedContent = content.trim();
-  if (trimmedContent.length === 0) {
-    return createError('JSON content is empty');
-  }
-
-  // Parse JSON safely
-  return safeExecute(
-    () => JSON.parse(trimmedContent),
-    'Failed to parse JSON'
-  ).andThen((data) => {
-    if (data === null) {
-      return createError('Parsed JSON is null');
-    }
-    return parseJsonSchemaByNameFromData(data, schemaName);
-  });
+  return parseJsonWithValidation(content, (data) =>
+    parseJsonSchemaByNameFromData(data, schemaName)
+  );
 };
 
 /**
@@ -212,13 +206,17 @@ export const parseJsonSchemaByNameFromData = (
   }
 
   // Single schema format: check if the name matches or handle "default"
-  const singleSchemaName = (typeof schemaObj.name === 'string' ? schemaObj.name : null) || 'database_schema';
+  const singleSchemaName =
+    (typeof schemaObj.name === 'string' ? schemaObj.name : null) ||
+    'database_schema';
 
   if (schemaName === 'default' || schemaName === singleSchemaName) {
     return parseJsonSchema(schemaData);
   }
 
-  return createError(`Schema '${schemaName}' not found. Available schema: '${singleSchemaName}'`);
+  return createError(
+    `Schema '${schemaName}' not found. Available schema: '${singleSchemaName}'`
+  );
 };
 
 /**

@@ -54,7 +54,8 @@ export const URI_PATTERNS = {
   TABLE_INFO: /^db:\/\/schemas\/([a-zA-Z0-9_]+)\/tables\/([a-zA-Z0-9_]+)$/,
 
   /** Matches db://schemas/{schemaName}/tables/{tableName}/indexes with valid names */
-  TABLE_INDEXES: /^db:\/\/schemas\/([a-zA-Z0-9_]+)\/tables\/([a-zA-Z0-9_]+)\/indexes$/,
+  TABLE_INDEXES:
+    /^db:\/\/schemas\/([a-zA-Z0-9_]+)\/tables\/([a-zA-Z0-9_]+)\/indexes$/,
 
   /** Matches db://uri-patterns exactly */
   URI_PATTERNS: /^db:\/\/uri-patterns$/,
@@ -89,16 +90,16 @@ export const URI_TEMPLATES = {
  * Type for pattern ID values
  * @typedef {string} PatternId
  */
-export type PatternId = typeof PATTERN_IDS[keyof typeof PATTERN_IDS];
+export type PatternId = (typeof PATTERN_IDS)[keyof typeof PATTERN_IDS];
 
 /**
  * Type for URI pattern RegExp values
  * @typedef {RegExp} UriPattern
  */
-export type UriPattern = typeof URI_PATTERNS[keyof typeof URI_PATTERNS];
+export type UriPattern = (typeof URI_PATTERNS)[keyof typeof URI_PATTERNS];
 
 /**
  * Type for URI template string values
  * @typedef {string} UriTemplate
  */
-export type UriTemplate = typeof URI_TEMPLATES[keyof typeof URI_TEMPLATES];
+export type UriTemplate = (typeof URI_TEMPLATES)[keyof typeof URI_TEMPLATES];

@@ -31,7 +31,10 @@ interface ListResourcesResponse {
 }
 
 interface RequestHandler {
-  (request: { method: string; params: Record<string, unknown> }): Promise<ListResourcesResponse>;
+  (request: {
+    method: string;
+    params: Record<string, unknown>;
+  }): Promise<ListResourcesResponse>;
 }
 
 interface MockTblsServer {
@@ -67,21 +70,29 @@ describe('db:// URI Patterns', () => {
     server = new TblsMcpServer(mockConfig);
 
     // Mock schema resource responses
-    const mockSchemaResourceMod = schemaResource as jest.Mocked<typeof schemaResource>;
-    mockSchemaResourceMod.handleSchemaListResource.mockResolvedValue(ok({
-      schemas: [
-        { name: 'public', tableCount: 5 },
-        { name: 'auth', tableCount: 3 }
-      ]
-    }));
+    const mockSchemaResourceMod = schemaResource as jest.Mocked<
+      typeof schemaResource
+    >;
+    mockSchemaResourceMod.handleSchemaListResource.mockResolvedValue(
+      ok({
+        schemas: [
+          { name: 'public', tableCount: 5 },
+          { name: 'auth', tableCount: 3 },
+        ],
+      })
+    );
 
-    const mockTableResourceMod = tableResource as jest.Mocked<typeof tableResource>;
-    mockTableResourceMod.handleSchemaTablesResource.mockResolvedValue(ok({
-      tables: [
-        { name: 'users', columns: 4, rowCount: 1000 },
-        { name: 'posts', columns: 6, rowCount: 500 }
-      ]
-    }));
+    const mockTableResourceMod = tableResource as jest.Mocked<
+      typeof tableResource
+    >;
+    mockTableResourceMod.handleSchemaTablesResource.mockResolvedValue(
+      ok({
+        tables: [
+          { name: 'users', columns: 4, rowCount: 1000 },
+          { name: 'posts', columns: 6, rowCount: 500 },
+        ],
+      })
+    );
   });
 
   afterEach(async () => {
@@ -94,7 +105,6 @@ describe('db:// URI Patterns', () => {
   });
 
   describe('Pattern Matching System - db:// Hierarchical Structure', () => {
-
     describe('Root Schema List Pattern', () => {
       it('should match db://schemas URI pattern', () => {
         const match = ResourcePatterns.matchUri('db://schemas');
@@ -115,7 +125,9 @@ describe('db:// URI Patterns', () => {
         const match = ResourcePatterns.matchUri('db://schemas');
 
         expect(match?.pattern.namePattern).toBe('Database Schemas');
-        expect(match?.pattern.descriptionPattern).toContain('Complete list of all available database schemas');
+        expect(match?.pattern.descriptionPattern).toContain(
+          'Complete list of all available database schemas'
+        );
         expect(match?.pattern.mimeType).toBe('application/json');
       });
     });
@@ -126,7 +138,9 @@ describe('db:// URI Patterns', () => {
 
         expect(match).not.toBeNull();
         expect(match?.pattern.id).toBe('db-schema-tables');
-        expect(match?.pattern.uriPattern).toBe('db://schemas/{schemaName}/tables');
+        expect(match?.pattern.uriPattern).toBe(
+          'db://schemas/{schemaName}/tables'
+        );
         expect(match?.params).toEqual({ schemaName: 'public' });
       });
 
@@ -135,7 +149,10 @@ describe('db:// URI Patterns', () => {
           { uri: 'db://schemas/public/tables', expected: 'public' },
           { uri: 'db://schemas/auth/tables', expected: 'auth' },
           { uri: 'db://schemas/inventory/tables', expected: 'inventory' },
-          { uri: 'db://schemas/user_management/tables', expected: 'user_management' }
+          {
+            uri: 'db://schemas/user_management/tables',
+            expected: 'user_management',
+          },
         ];
 
         testCases.forEach(({ uri, expected }) => {
@@ -152,13 +169,13 @@ describe('db:// URI Patterns', () => {
 
       it('should not match malformed db:// patterns', () => {
         const malformedUris = [
-          'db://schemas/tables',  // missing schema name
+          'db://schemas/tables', // missing schema name
           'db://schemas//tables', // empty schema name
-          'db://schemas/public',  // missing /tables
+          'db://schemas/public', // missing /tables
           'db://schema/public/tables', // wrong schemes segment
         ];
 
-        malformedUris.forEach(uri => {
+        malformedUris.forEach((uri) => {
           const match = ResourcePatterns.matchUri(uri);
           expect(match).toBeNull();
         });
@@ -167,14 +184,18 @@ describe('db:// URI Patterns', () => {
 
     describe('Individual Table Pattern', () => {
       it('should match db://schemas/{schemaName}/tables/{tableName} URI pattern', () => {
-        const match = ResourcePatterns.matchUri('db://schemas/public/tables/users');
+        const match = ResourcePatterns.matchUri(
+          'db://schemas/public/tables/users'
+        );
 
         expect(match).not.toBeNull();
         expect(match?.pattern.id).toBe('db-table-info');
-        expect(match?.pattern.uriPattern).toBe('db://schemas/{schemaName}/tables/{tableName}');
+        expect(match?.pattern.uriPattern).toBe(
+          'db://schemas/{schemaName}/tables/{tableName}'
+        );
         expect(match?.params).toEqual({
           schemaName: 'public',
-          tableName: 'users'
+          tableName: 'users',
         });
       });
 
@@ -182,16 +203,16 @@ describe('db:// URI Patterns', () => {
         const testCases = [
           {
             uri: 'db://schemas/public/tables/users',
-            expected: { schemaName: 'public', tableName: 'users' }
+            expected: { schemaName: 'public', tableName: 'users' },
           },
           {
             uri: 'db://schemas/auth/tables/user_sessions',
-            expected: { schemaName: 'auth', tableName: 'user_sessions' }
+            expected: { schemaName: 'auth', tableName: 'user_sessions' },
           },
           {
             uri: 'db://schemas/inventory/tables/product_catalog',
-            expected: { schemaName: 'inventory', tableName: 'product_catalog' }
-          }
+            expected: { schemaName: 'inventory', tableName: 'product_catalog' },
+          },
         ];
 
         testCases.forEach(({ uri, expected }) => {
@@ -207,10 +228,16 @@ describe('db:// URI Patterns', () => {
       });
 
       it('should generate correct interpolated names and descriptions', () => {
-        const match = ResourcePatterns.matchUri('db://schemas/public/tables/users');
+        const match = ResourcePatterns.matchUri(
+          'db://schemas/public/tables/users'
+        );
 
-        expect(match?.pattern.namePattern).toBe('{tableName} table ({schemaName} schema)');
-        expect(match?.pattern.descriptionPattern).toContain('Complete detailed information about the {tableName} table');
+        expect(match?.pattern.namePattern).toBe(
+          '{tableName} table ({schemaName} schema)'
+        );
+        expect(match?.pattern.descriptionPattern).toContain(
+          'Complete detailed information about the {tableName} table'
+        );
 
         // Test interpolation
         const interpolatedName = ResourcePatterns.interpolate(
@@ -223,20 +250,26 @@ describe('db:// URI Patterns', () => {
         );
 
         expect(interpolatedName).toBe('users table (public schema)');
-        expect(interpolatedDesc).toContain('Complete detailed information about the users table');
+        expect(interpolatedDesc).toContain(
+          'Complete detailed information about the users table'
+        );
       });
     });
 
     describe('Table Indexes Pattern', () => {
       it('should match db://schemas/{schemaName}/tables/{tableName}/indexes URI pattern', () => {
-        const match = ResourcePatterns.matchUri('db://schemas/public/tables/users/indexes');
+        const match = ResourcePatterns.matchUri(
+          'db://schemas/public/tables/users/indexes'
+        );
 
         expect(match).not.toBeNull();
         expect(match?.pattern.id).toBe('db-table-indexes');
-        expect(match?.pattern.uriPattern).toBe('db://schemas/{schemaName}/tables/{tableName}/indexes');
+        expect(match?.pattern.uriPattern).toBe(
+          'db://schemas/{schemaName}/tables/{tableName}/indexes'
+        );
         expect(match?.params).toEqual({
           schemaName: 'public',
-          tableName: 'users'
+          tableName: 'users',
         });
       });
 
@@ -244,12 +277,12 @@ describe('db:// URI Patterns', () => {
         const testCases = [
           {
             uri: 'db://schemas/public/tables/users/indexes',
-            expected: { schemaName: 'public', tableName: 'users' }
+            expected: { schemaName: 'public', tableName: 'users' },
           },
           {
             uri: 'db://schemas/auth/tables/sessions/indexes',
-            expected: { schemaName: 'auth', tableName: 'sessions' }
-          }
+            expected: { schemaName: 'auth', tableName: 'sessions' },
+          },
         ];
 
         testCases.forEach(({ uri, expected }) => {
@@ -267,10 +300,10 @@ describe('db:// URI Patterns', () => {
   });
 
   describe('Progressive Resource Discovery with URI Patterns', () => {
-
     it('should discover schemas under db://schemas when listing resources', async () => {
       const mockServer = server as MockTblsServer;
-      const listHandler = mockServer.server._requestHandlers.get('resources/list');
+      const listHandler =
+        mockServer.server._requestHandlers.get('resources/list');
 
       const response = await listHandler({
         method: 'resources/list',
@@ -278,20 +311,29 @@ describe('db:// URI Patterns', () => {
       });
 
       // Should include the db://schemas resource
-      const dbSchemasResource = response.resources.find((r: ResourceResponse) => r.uri === 'db://schemas');
+      const dbSchemasResource = response.resources.find(
+        (r: ResourceResponse) => r.uri === 'db://schemas'
+      );
       expect(dbSchemasResource).toBeDefined();
       expect(dbSchemasResource.name).toBe('Database Schemas');
-      expect(dbSchemasResource.description).toContain('Complete list of all available database schemas');
+      expect(dbSchemasResource.description).toContain(
+        'Complete list of all available database schemas'
+      );
     });
 
     it('should progressively discover schema tables under db://schemas/{schemaName}/tables', async () => {
       // Mock the lazy registry to simulate discovery
-      const registry = new LazyResourceRegistry(mockConfig.schemaSource, new ResourceCache({
-        maxItems: 1000,
-        ttlMs: 300000,
-      }));
+      const registry = new LazyResourceRegistry(
+        mockConfig.schemaSource,
+        new ResourceCache({
+          maxItems: 1000,
+          ttlMs: 300000,
+        })
+      );
 
-      const discoveryResult = await registry.discoverResource('db://schemas/public/tables');
+      const discoveryResult = await registry.discoverResource(
+        'db://schemas/public/tables'
+      );
 
       expect(discoveryResult.isOk()).toBe(true);
       if (discoveryResult.isOk()) {
@@ -301,40 +343,57 @@ describe('db:// URI Patterns', () => {
     });
 
     it('should progressively discover individual tables under db://schemas/{schemaName}/tables/{tableName}', async () => {
-      const registry = new LazyResourceRegistry(mockConfig.schemaSource, new ResourceCache({
-        maxItems: 1000,
-        ttlMs: 300000,
-      }));
+      const registry = new LazyResourceRegistry(
+        mockConfig.schemaSource,
+        new ResourceCache({
+          maxItems: 1000,
+          ttlMs: 300000,
+        })
+      );
 
-      const discoveryResult = await registry.discoverResource('db://schemas/public/tables/users');
+      const discoveryResult = await registry.discoverResource(
+        'db://schemas/public/tables/users'
+      );
 
       expect(discoveryResult.isOk()).toBe(true);
       if (discoveryResult.isOk()) {
         expect(discoveryResult.value).toBeDefined();
-        expect(discoveryResult.value?.uri).toBe('db://schemas/public/tables/users');
+        expect(discoveryResult.value?.uri).toBe(
+          'db://schemas/public/tables/users'
+        );
       }
     });
 
     it('should progressively discover table indexes under db://schemas/{schemaName}/tables/{tableName}/indexes', async () => {
-      const registry = new LazyResourceRegistry(mockConfig.schemaSource, new ResourceCache({
-        maxItems: 1000,
-        ttlMs: 300000,
-      }));
+      const registry = new LazyResourceRegistry(
+        mockConfig.schemaSource,
+        new ResourceCache({
+          maxItems: 1000,
+          ttlMs: 300000,
+        })
+      );
 
-      const discoveryResult = await registry.discoverResource('db://schemas/public/tables/users/indexes');
+      const discoveryResult = await registry.discoverResource(
+        'db://schemas/public/tables/users/indexes'
+      );
 
       expect(discoveryResult.isOk()).toBe(true);
       if (discoveryResult.isOk()) {
         expect(discoveryResult.value).toBeDefined();
-        expect(discoveryResult.value?.uri).toBe('db://schemas/public/tables/users/indexes');
+        expect(discoveryResult.value?.uri).toBe(
+          'db://schemas/public/tables/users/indexes'
+        );
       }
     });
 
     it('should generate hierarchical resources in correct order', async () => {
-      const registry = new LazyResourceRegistry(mockConfig.schemaSource, new ResourceCache({
-        maxItems: 1000,
-        ttlMs: 300000,
-      }));
+      const registry = new LazyResourceRegistry(
+        mockConfig.schemaSource,
+        new ResourceCache({
+          maxItems: 1000,
+          ttlMs: 300000,
+        })
+      );
 
       // First, trigger discovery by accessing hierarchical resources in order
       await registry.handleResourceAccess('db://schemas'); // Triggers schema tables discovery
@@ -342,14 +401,18 @@ describe('db:// URI Patterns', () => {
       await registry.handleResourceAccess('db://schemas/auth/tables'); // Triggers table discovery for auth schema
       await registry.handleResourceAccess('db://schemas/public/tables/users'); // Triggers index discovery for users table
       await registry.handleResourceAccess('db://schemas/public/tables/posts'); // Triggers index discovery for posts table
-      await registry.handleResourceAccess('db://schemas/public/tables/users/indexes');
-      await registry.handleResourceAccess('db://schemas/public/tables/posts/indexes');
+      await registry.handleResourceAccess(
+        'db://schemas/public/tables/users/indexes'
+      );
+      await registry.handleResourceAccess(
+        'db://schemas/public/tables/posts/indexes'
+      );
 
       const allResources = await registry.listResources();
 
       expect(allResources.isOk()).toBe(true);
       if (allResources.isOk()) {
-        const uris = allResources.value.map(r => r.uri);
+        const uris = allResources.value.map((r) => r.uri);
 
         // Should include hierarchical db:// patterns after discovery
         expect(uris).toContain('db://schemas');
@@ -364,32 +427,35 @@ describe('db:// URI Patterns', () => {
   });
 
   describe('Error Handling with URI Patterns', () => {
-
     it('should provide helpful error messages for unrecognized db:// URIs', async () => {
       const mockServer = server as MockTblsServer;
-      const readHandler = mockServer.server._requestHandlers.get('resources/read');
+      const readHandler =
+        mockServer.server._requestHandlers.get('resources/read');
 
       try {
         await readHandler({
           method: 'resources/read',
-          params: { uri: 'db://invalid/path' }
+          params: { uri: 'db://invalid/path' },
         });
         fail('Expected error to be thrown');
       } catch (error: Error & { data?: Record<string, unknown> }) {
         expect(error.message).toContain('Unknown resource URI');
         expect(error.data?.suggestions).toContain('db://schemas');
-        expect(error.data?.validPatterns).toContain('db://schemas/{schemaName}/tables');
+        expect(error.data?.validPatterns).toContain(
+          'db://schemas/{schemaName}/tables'
+        );
       }
     });
 
     it('should treat old schema:// patterns as unknown URIs', async () => {
       const mockServer = server as MockTblsServer;
-      const readHandler = mockServer.server._requestHandlers.get('resources/read');
+      const readHandler =
+        mockServer.server._requestHandlers.get('resources/read');
 
       try {
         await readHandler({
           method: 'resources/read',
-          params: { uri: 'schema://list' }
+          params: { uri: 'schema://list' },
         });
         fail('Expected error to be thrown');
       } catch (error: Error & { data?: Record<string, unknown> }) {
@@ -401,12 +467,13 @@ describe('db:// URI Patterns', () => {
 
     it('should treat old table:// patterns as unknown URIs', async () => {
       const mockServer = server as MockTblsServer;
-      const readHandler = mockServer.server._requestHandlers.get('resources/read');
+      const readHandler =
+        mockServer.server._requestHandlers.get('resources/read');
 
       try {
         await readHandler({
           method: 'resources/read',
-          params: { uri: 'table://public/users' }
+          params: { uri: 'table://public/users' },
         });
         fail('Expected error to be thrown');
       } catch (error: Error & { data?: Record<string, unknown> }) {
@@ -418,29 +485,33 @@ describe('db:// URI Patterns', () => {
 
     it('should provide hierarchical path suggestions for partial matches', async () => {
       const mockServer = server as MockTblsServer;
-      const readHandler = mockServer.server._requestHandlers.get('resources/read');
+      const readHandler =
+        mockServer.server._requestHandlers.get('resources/read');
 
       try {
         await readHandler({
           method: 'resources/read',
-          params: { uri: 'db://schemas/nonexistent' }
+          params: { uri: 'db://schemas/nonexistent' },
         });
         fail('Expected error to be thrown');
       } catch (error: Error & { data?: Record<string, unknown> }) {
         expect(error.message).toContain('Resource not found');
-        expect(error.data?.suggestions).toContain('db://schemas/nonexistent/tables');
+        expect(error.data?.suggestions).toContain(
+          'db://schemas/nonexistent/tables'
+        );
         expect(error.data?.availableSchemas).toEqual(['public', 'auth']);
       }
     });
 
     it('should provide table suggestions when table not found in valid schema', async () => {
       const mockServer = server as MockTblsServer;
-      const readHandler = mockServer.server._requestHandlers.get('resources/read');
+      const readHandler =
+        mockServer.server._requestHandlers.get('resources/read');
 
       try {
         await readHandler({
           method: 'resources/read',
-          params: { uri: 'db://schemas/public/tables/nonexistent' }
+          params: { uri: 'db://schemas/public/tables/nonexistent' },
         });
         fail('Expected error to be thrown');
       } catch (error: Error & { data?: Record<string, unknown> }) {
@@ -452,14 +523,14 @@ describe('db:// URI Patterns', () => {
   });
 
   describe('Integration Tests - Complete Flow with URI Patterns', () => {
-
     it('should handle complete flow from db://schemas to resource content', async () => {
       const mockServer = server as MockTblsServer;
-      const readHandler = mockServer.server._requestHandlers.get('resources/read');
+      const readHandler =
+        mockServer.server._requestHandlers.get('resources/read');
 
       const response = await readHandler({
         method: 'resources/read',
-        params: { uri: 'db://schemas' }
+        params: { uri: 'db://schemas' },
       });
 
       expect(response.contents).toBeDefined();
@@ -473,11 +544,12 @@ describe('db:// URI Patterns', () => {
 
     it('should handle complete flow from db://schemas/{schemaName}/tables to resource content', async () => {
       const mockServer = server as MockTblsServer;
-      const readHandler = mockServer.server._requestHandlers.get('resources/read');
+      const readHandler =
+        mockServer.server._requestHandlers.get('resources/read');
 
       const response = await readHandler({
         method: 'resources/read',
-        params: { uri: 'db://schemas/public/tables' }
+        params: { uri: 'db://schemas/public/tables' },
       });
 
       expect(response.contents).toBeDefined();
@@ -491,28 +563,43 @@ describe('db:// URI Patterns', () => {
 
     it('should handle complete flow from db://schemas/{schemaName}/tables/{tableName} to resource content', async () => {
       // Mock the table info resource handler
-      const mockTableResourceMod = tableResource as jest.Mocked<typeof tableResource>;
-      mockTableResourceMod.handleTableInfoResource.mockResolvedValue(ok({
-        table: {
-          name: 'users',
-          schema: 'public',
-          columns: [
-            { name: 'id', type: 'integer', nullable: false, primaryKey: true },
-            { name: 'email', type: 'varchar(255)', nullable: false, unique: true },
-            { name: 'name', type: 'varchar(100)', nullable: true },
-            { name: 'created_at', type: 'timestamp', nullable: false }
-          ],
-          indexes: 2,
-          rowCount: 1000
-        }
-      }));
+      const mockTableResourceMod = tableResource as jest.Mocked<
+        typeof tableResource
+      >;
+      mockTableResourceMod.handleTableInfoResource.mockResolvedValue(
+        ok({
+          table: {
+            name: 'users',
+            schema: 'public',
+            columns: [
+              {
+                name: 'id',
+                type: 'integer',
+                nullable: false,
+                primaryKey: true,
+              },
+              {
+                name: 'email',
+                type: 'varchar(255)',
+                nullable: false,
+                unique: true,
+              },
+              { name: 'name', type: 'varchar(100)', nullable: true },
+              { name: 'created_at', type: 'timestamp', nullable: false },
+            ],
+            indexes: 2,
+            rowCount: 1000,
+          },
+        })
+      );
 
       const mockServer = server as MockTblsServer;
-      const readHandler = mockServer.server._requestHandlers.get('resources/read');
+      const readHandler =
+        mockServer.server._requestHandlers.get('resources/read');
 
       const response = await readHandler({
         method: 'resources/read',
-        params: { uri: 'db://schemas/public/tables/users' }
+        params: { uri: 'db://schemas/public/tables/users' },
       });
 
       expect(response.contents).toBeDefined();
@@ -534,26 +621,31 @@ describe('db:// URI Patterns', () => {
             name: 'users_pkey',
             type: 'PRIMARY KEY',
             columns: ['id'],
-            unique: true
+            unique: true,
           },
           {
             name: 'users_email_idx',
             type: 'UNIQUE',
             columns: ['email'],
-            unique: true
-          }
-        ]
+            unique: true,
+          },
+        ],
       };
 
-      const mockIndexResourceMod = indexResource as jest.Mocked<typeof indexResource>;
-      mockIndexResourceMod.handleTableIndexesResource.mockResolvedValue(ok(mockIndexesData));
+      const mockIndexResourceMod = indexResource as jest.Mocked<
+        typeof indexResource
+      >;
+      mockIndexResourceMod.handleTableIndexesResource.mockResolvedValue(
+        ok(mockIndexesData)
+      );
 
       const mockServer = server as MockTblsServer;
-      const readHandler = mockServer.server._requestHandlers.get('resources/read');
+      const readHandler =
+        mockServer.server._requestHandlers.get('resources/read');
 
       const response = await readHandler({
         method: 'resources/read',
-        params: { uri: 'db://schemas/public/tables/users/indexes' }
+        params: { uri: 'db://schemas/public/tables/users/indexes' },
       });
 
       expect(response.contents).toBeDefined();
@@ -568,13 +660,14 @@ describe('db:// URI Patterns', () => {
     it('should only support db:// patterns (no backward compatibility)', async () => {
       // This test ensures that old patterns are completely removed
       const mockServer = server as MockTblsServer;
-      const readHandler = mockServer.server._requestHandlers.get('resources/read');
+      const readHandler =
+        mockServer.server._requestHandlers.get('resources/read');
 
       // Test that old URIs are treated as unknown patterns
       try {
         await readHandler({
           method: 'resources/read',
-          params: { uri: 'schema://list' }
+          params: { uri: 'schema://list' },
         });
         fail('Expected error for unknown pattern');
       } catch (error: Error & { data?: Record<string, unknown> }) {
@@ -585,14 +678,13 @@ describe('db:// URI Patterns', () => {
       // Test that db:// URIs work correctly
       const response = await readHandler({
         method: 'resources/read',
-        params: { uri: 'db://schemas' }
+        params: { uri: 'db://schemas' },
       });
       expect(response.contents).toBeDefined();
     });
   });
 
   describe('Performance and Caching with URI Patterns', () => {
-
     it('should cache resources with db:// URI patterns efficiently', async () => {
       const cache = new ResourceCache({
         maxItems: 1000,
@@ -601,11 +693,15 @@ describe('db:// URI Patterns', () => {
       const registry = new LazyResourceRegistry(mockConfig.schemaSource, cache);
 
       // First access should hit the source
-      const firstAccess = await registry.discoverResource('db://schemas/public/tables');
+      const firstAccess = await registry.discoverResource(
+        'db://schemas/public/tables'
+      );
       expect(firstAccess.isOk()).toBe(true);
 
       // Second access should hit the cache
-      const secondAccess = await registry.discoverResource('db://schemas/public/tables');
+      const secondAccess = await registry.discoverResource(
+        'db://schemas/public/tables'
+      );
       expect(secondAccess.isOk()).toBe(true);
 
       // Both calls should return the same successful result
@@ -628,8 +724,12 @@ describe('db:// URI Patterns', () => {
       const registry = new LazyResourceRegistry(mockConfig.schemaSource, cache);
 
       // Access hierarchical resources
-      const result1 = await registry.discoverResource('db://schemas/public/tables');
-      const result2 = await registry.discoverResource('db://schemas/public/tables/users');
+      const result1 = await registry.discoverResource(
+        'db://schemas/public/tables'
+      );
+      const result2 = await registry.discoverResource(
+        'db://schemas/public/tables/users'
+      );
 
       // Both should succeed
       expect(result1.isOk()).toBe(true);

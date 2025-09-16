@@ -127,20 +127,24 @@ export const validateSqlQuery = (query: string): Result<string, string> => {
 };
 
 /**
- * Validates and sanitizes table names
- * @param tableName - Table name to validate
- * @returns Result containing sanitized table name or error message
+ * Generic function to validate and sanitize SQL identifiers (table names, column names, etc.)
+ * @param identifier - Identifier to validate
+ * @param entityType - Type of entity for error messages (e.g., 'table name', 'column name')
+ * @returns Result containing sanitized identifier or error message
  */
-export const sanitizeTableName = (
-  tableName: string
+export const sanitizeIdentifier = (
+  identifier: string,
+  entityType: string
 ): Result<string, string> => {
-  if (!tableName || typeof tableName !== 'string') {
-    return err('Table name must be a non-empty string');
+  if (!identifier || typeof identifier !== 'string') {
+    return err(
+      `${entityType.charAt(0).toUpperCase() + entityType.slice(1)} must be a non-empty string`
+    );
   }
 
-  const trimmedName = tableName.trim();
+  const trimmedName = identifier.trim();
   if (trimmedName.length === 0) {
-    return err('Invalid table name: cannot be empty');
+    return err(`Invalid ${entityType}: cannot be empty`);
   }
 
   // Check for valid identifier format (letters, numbers, underscore)
@@ -148,16 +152,27 @@ export const sanitizeTableName = (
   const validIdentifierRegex = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
   if (!validIdentifierRegex.test(trimmedName)) {
     return err(
-      'Invalid table name: must contain only letters, numbers, and underscores, and start with a letter or underscore'
+      `Invalid ${entityType}: must contain only letters, numbers, and underscores, and start with a letter or underscore`
     );
   }
 
   // Check against SQL keywords
   if (SQL_KEYWORDS.has(trimmedName.toLowerCase())) {
-    return err('Invalid table name: cannot use SQL keywords');
+    return err(`Invalid ${entityType}: cannot use SQL keywords`);
   }
 
   return ok(trimmedName);
+};
+
+/**
+ * Validates and sanitizes table names
+ * @param tableName - Table name to validate
+ * @returns Result containing sanitized table name or error message
+ */
+export const sanitizeTableName = (
+  tableName: string
+): Result<string, string> => {
+  return sanitizeIdentifier(tableName, 'table name');
 };
 
 /**
@@ -168,30 +183,7 @@ export const sanitizeTableName = (
 export const sanitizeColumnName = (
   columnName: string
 ): Result<string, string> => {
-  if (!columnName || typeof columnName !== 'string') {
-    return err('Column name must be a non-empty string');
-  }
-
-  const trimmedName = columnName.trim();
-  if (trimmedName.length === 0) {
-    return err('Invalid column name: cannot be empty');
-  }
-
-  // Check for valid identifier format (letters, numbers, underscore)
-  // Must start with letter or underscore
-  const validIdentifierRegex = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
-  if (!validIdentifierRegex.test(trimmedName)) {
-    return err(
-      'Invalid column name: must contain only letters, numbers, and underscores, and start with a letter or underscore'
-    );
-  }
-
-  // Check against SQL keywords
-  if (SQL_KEYWORDS.has(trimmedName.toLowerCase())) {
-    return err('Invalid column name: cannot use SQL keywords');
-  }
-
-  return ok(trimmedName);
+  return sanitizeIdentifier(columnName, 'column name');
 };
 
 /**

@@ -3,6 +3,11 @@ import mysql from 'mysql2';
 import { DatabaseConfig } from '../schemas/config';
 import { QueryResult } from '../schemas/database';
 import { safeExecuteAsync, fromPromise } from '../utils/result';
+import {
+  buildQueryResult,
+  transformRowsToArrayFormat,
+  executeTimedQuery,
+} from './query-executor';
 
 /**
  * MySQL connection type
@@ -121,55 +126,26 @@ export const executeMySQLQuery = async (
   params: unknown[] = [],
   timeoutMs?: number
 ): Promise<Result<QueryResult, Error>> => {
-  const startTime = Date.now();
+  return executeTimedQuery(
+    async () => {
+      const promisePool = connection.pool.promise();
+      return promisePool.execute(query, params) as Promise<
+        [mysql.RowDataPacket[], mysql.FieldPacket[]]
+      >;
+    },
+    ([rows, fields], startTime) => {
+      // Extract column names from fields
+      const columns = fields.map((field) => field.name);
 
-  return safeExecuteAsync(async () => {
-    const promisePool = connection.pool.promise();
+      // Convert rows to array format
+      const resultRows = transformRowsToArrayFormat(rows, columns);
 
-    let queryPromise = promisePool.execute(query, params) as Promise<
-      [mysql.RowDataPacket[], mysql.FieldPacket[]]
-    >;
-
-    // Apply timeout if specified
-    if (timeoutMs && timeoutMs > 0) {
-      let timeoutId: NodeJS.Timeout;
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        timeoutId = setTimeout(
-          () =>
-            reject(new Error(`Query execution timeout after ${timeoutMs}ms`)),
-          timeoutMs
-        );
-      });
-
-      queryPromise = Promise.race([queryPromise, timeoutPromise]).finally(
-        () => {
-          if (timeoutId) {
-            clearTimeout(timeoutId);
-          }
-        }
-      ) as typeof queryPromise;
-    }
-
-    const [rows, fields] = await queryPromise;
-    const executionTimeMs = Date.now() - startTime;
-
-    // Extract column names from fields
-    const columns = fields.map((field) => field.name);
-
-    // Convert rows to array format
-    const resultRows = rows.map((row) => {
-      return columns.map((column) => row[column]);
-    });
-
-    const result: QueryResult = {
-      columns,
-      rows: resultRows,
-      rowCount: rows.length,
-      executionTimeMs,
-    };
-
-    return result;
-  }, 'MySQL query execution failed');
+      return buildQueryResult(columns, resultRows, startTime);
+    },
+    timeoutMs,
+    timeoutMs ? `Query execution timeout after ${timeoutMs}ms` : undefined,
+    'MySQL query execution failed'
+  );
 };
 
 /**
@@ -349,26 +325,22 @@ export const executeMySQLPreparedStatement = async (
   query: string,
   params: unknown[] = []
 ): Promise<Result<QueryResult, Error>> => {
-  const startTime = Date.now();
+  return executeTimedQuery(
+    async () => {
+      const promisePool = connection.pool.promise();
+      // Use the execute method which automatically prepares the statement
+      return promisePool.execute(query, params) as Promise<
+        [mysql.RowDataPacket[], mysql.FieldPacket[]]
+      >;
+    },
+    ([rows, fields], startTime) => {
+      const columns = fields.map((field) => field.name);
+      const resultRows = transformRowsToArrayFormat(rows, columns);
 
-  return safeExecuteAsync(async () => {
-    const promisePool = connection.pool.promise();
-
-    // Use the execute method which automatically prepares the statement
-    const [rows, fields] = (await promisePool.execute(query, params)) as [
-      mysql.RowDataPacket[],
-      mysql.FieldPacket[],
-    ];
-    const executionTimeMs = Date.now() - startTime;
-
-    const columns = fields.map((field) => field.name);
-    const resultRows = rows.map((row) => columns.map((column) => row[column]));
-
-    return {
-      columns,
-      rows: resultRows,
-      rowCount: rows.length,
-      executionTimeMs,
-    };
-  }, 'MySQL prepared statement execution failed');
+      return buildQueryResult(columns, resultRows, startTime);
+    },
+    undefined, // No timeout for prepared statements by default
+    undefined,
+    'MySQL prepared statement execution failed'
+  );
 };

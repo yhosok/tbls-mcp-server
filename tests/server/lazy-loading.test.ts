@@ -10,63 +10,15 @@ import * as schemaResource from '../../src/resources/schema-resource.js';
 import * as tableResource from '../../src/resources/table-resource.js';
 import { ok } from 'neverthrow';
 
-// Test interfaces for proper typing
-interface MockRequest {
-  method: string;
-  params: Record<string, unknown>;
-}
-
-interface MockResourceListResponse {
-  resources: Array<{
-    uri: string;
-    mimeType: string;
-    name: string;
-    description: string;
-  }>;
-}
-
-interface MockResourceReadResponse {
-  contents: Array<{
-    uri: string;
-    mimeType: string;
-    text?: string;
-    blob?: Uint8Array;
-  }>;
-}
-
-interface MockServer {
-  _requestHandlers: Map<
-    string,
-    (
-      req: MockRequest
-    ) => Promise<MockResourceListResponse | MockResourceReadResponse>
-  >;
-}
-
-interface MockLazyResourceMetadata {
-  uri: string;
-  name: string;
-  lazy?: boolean;
-}
-
-interface MockLazyResourceResponse {
-  resources: MockLazyResourceMetadata[];
-}
-
-interface MockCacheEntry {
-  data: MockResourceReadResponse;
-  timestamp: number;
-}
-
-interface MockResourceRegistryMetadata {
-  discoveryHandler: string;
-  cacheStrategy: { ttlMs: number };
-}
-
-type MockDiscoveryHandler = (
-  uri: string,
-  cache?: ResourceCache
-) => Promise<MockResourceReadResponse>;
+import {
+  MockServer,
+  MockResourceListResponse,
+  MockResourceReadResponse,
+  MockLazyResourceResponse,
+  MockCacheEntry,
+  MockResourceRegistryMetadata,
+  MockDiscoveryHandler,
+} from '../test-utils';
 
 /**
  * Test suite for analyzing current resource registration performance problems
@@ -602,7 +554,11 @@ Generated at: 2024-01-15T10:30:00Z
               name: 'Schema Tables Pattern',
               lazy: true,
             },
-            { uri: 'db://schemas/*/tables/*', name: 'Table Info Pattern', lazy: true },
+            {
+              uri: 'db://schemas/*/tables/*',
+              name: 'Table Info Pattern',
+              lazy: true,
+            },
           ];
           const cost = Date.now() - start;
           lazyAccessLog.push({
@@ -717,7 +673,8 @@ Generated at: 2024-01-15T10:30:00Z
           // Simulate parsing time based on resource type
           let parseTime = 10;
           if (uri === 'db://schemas') parseTime = 100;
-          if (uri.includes('/tables/') && !uri.endsWith('/tables')) parseTime = 25;
+          if (uri.includes('/tables/') && !uri.endsWith('/tables'))
+            parseTime = 25;
 
           await new Promise((resolve) => setTimeout(resolve, parseTime));
 
@@ -745,7 +702,9 @@ Generated at: 2024-01-15T10:30:00Z
       await mockCachingLazyServer.readResourceWithCaching(
         'db://schemas/test/tables'
       );
-      await mockCachingLazyServer.readResourceWithCaching('db://schemas/test/tables/users');
+      await mockCachingLazyServer.readResourceWithCaching(
+        'db://schemas/test/tables/users'
+      );
       await mockCachingLazyServer.readResourceWithCaching(
         'db://schemas/test/tables/orders'
       );
@@ -754,7 +713,9 @@ Generated at: 2024-01-15T10:30:00Z
       await mockCachingLazyServer.readResourceWithCaching(
         'db://schemas/test/tables'
       );
-      await mockCachingLazyServer.readResourceWithCaching('db://schemas/test/tables/users');
+      await mockCachingLazyServer.readResourceWithCaching(
+        'db://schemas/test/tables/users'
+      );
 
       // Verify caching effectiveness
       expect(cacheHits).toBe(3); // db://schemas, db://schemas/test/tables, db://schemas/test/tables/users

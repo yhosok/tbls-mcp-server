@@ -16,9 +16,7 @@ jest.mock('../../src/resources/index-resource');
 import * as schemaResource from '../../src/resources/schema-resource';
 import * as tableResource from '../../src/resources/table-resource';
 
-interface MockServer {
-  _requestHandlers: Map<string, Function>;
-}
+import { MockServer } from '../test-utils';
 
 describe('Progressive Discovery Implementation', () => {
   let tempDir: string;
@@ -89,7 +87,9 @@ describe('Progressive Discovery Implementation', () => {
       );
 
       // Should not include dynamically discovered resources initially
-      const tableResources = resources.filter(r => r.uri.includes('/tables/'));
+      const tableResources = resources.filter((r) =>
+        r.uri.includes('/tables/')
+      );
       expect(tableResources).toHaveLength(0);
     });
 
@@ -149,8 +149,8 @@ describe('Progressive Discovery Implementation', () => {
       expect(result.isOk()).toBe(true);
       let resources = result._unsafeUnwrap();
 
-      const schemaTablesResources = resources.filter(r =>
-        r.uri.startsWith('db://schemas/') && r.uri.endsWith('/tables')
+      const schemaTablesResources = resources.filter(
+        (r) => r.uri.startsWith('db://schemas/') && r.uri.endsWith('/tables')
       );
       expect(schemaTablesResources).toHaveLength(0);
 
@@ -163,8 +163,8 @@ describe('Progressive Discovery Implementation', () => {
       expect(result.isOk()).toBe(true);
       resources = result._unsafeUnwrap();
 
-      const discoveredSchemaTablesResources = resources.filter(r =>
-        r.uri.startsWith('db://schemas/') && r.uri.endsWith('/tables')
+      const discoveredSchemaTablesResources = resources.filter(
+        (r) => r.uri.startsWith('db://schemas/') && r.uri.endsWith('/tables')
       );
       expect(discoveredSchemaTablesResources).toHaveLength(2);
       expect(discoveredSchemaTablesResources).toEqual(
@@ -206,7 +206,9 @@ describe('Progressive Discovery Implementation', () => {
       );
 
       // Access schema tables - this should trigger table resource discovery
-      const accessResult = await registry.handleResourceAccess('db://schemas/testschema/tables');
+      const accessResult = await registry.handleResourceAccess(
+        'db://schemas/testschema/tables'
+      );
       expect(accessResult.isOk()).toBe(true);
 
       // Now table resources should be discovered
@@ -214,8 +216,8 @@ describe('Progressive Discovery Implementation', () => {
       expect(result.isOk()).toBe(true);
       const resources = result._unsafeUnwrap();
 
-      const tableResources = resources.filter(r =>
-        r.uri.includes('/tables/') && !r.uri.endsWith('/indexes')
+      const tableResources = resources.filter(
+        (r) => r.uri.includes('/tables/') && !r.uri.endsWith('/indexes')
       );
       expect(tableResources).toHaveLength(2);
       expect(tableResources).toEqual(
@@ -256,7 +258,9 @@ describe('Progressive Discovery Implementation', () => {
       );
 
       // Access table - this should trigger index resource discovery
-      const accessResult = await registry.handleResourceAccess('db://schemas/testschema/tables/users');
+      const accessResult = await registry.handleResourceAccess(
+        'db://schemas/testschema/tables/users'
+      );
       expect(accessResult.isOk()).toBe(true);
 
       // Now index resources should be discovered
@@ -264,8 +268,8 @@ describe('Progressive Discovery Implementation', () => {
       expect(result.isOk()).toBe(true);
       const resources = result._unsafeUnwrap();
 
-      const indexResources = resources.filter(r =>
-        r.uri.includes('/tables/') && r.uri.endsWith('/indexes')
+      const indexResources = resources.filter(
+        (r) => r.uri.includes('/tables/') && r.uri.endsWith('/indexes')
       );
       expect(indexResources).toHaveLength(1);
       expect(indexResources).toEqual(
@@ -279,19 +283,25 @@ describe('Progressive Discovery Implementation', () => {
 
     it('should handle context extraction correctly', async () => {
       // Test schema list context
-      const schemaListResult = await registry.handleResourceAccess('db://schemas');
+      const schemaListResult =
+        await registry.handleResourceAccess('db://schemas');
       expect(schemaListResult.isOk()).toBe(true);
 
       // Test schema tables context
-      const schemaTablesResult = await registry.handleResourceAccess('db://schemas/test/tables');
+      const schemaTablesResult = await registry.handleResourceAccess(
+        'db://schemas/test/tables'
+      );
       expect(schemaTablesResult.isOk()).toBe(true);
 
       // Test table context
-      const tableResult = await registry.handleResourceAccess('db://schemas/test/tables/users');
+      const tableResult = await registry.handleResourceAccess(
+        'db://schemas/test/tables/users'
+      );
       expect(tableResult.isOk()).toBe(true);
 
       // Test invalid URI
-      const invalidResult = await registry.handleResourceAccess('invalid://uri');
+      const invalidResult =
+        await registry.handleResourceAccess('invalid://uri');
       expect(invalidResult.isOk()).toBe(true); // Should return ok with no action
 
       // Verify accessed contexts are tracked
@@ -408,7 +418,9 @@ describe('Progressive Discovery Implementation', () => {
 
       // Verify the server's lazy registry has been updated
       const stats = server.getCacheStats();
-      expect(stats.lazyRegistry.progressiveCache.accessedContexts).toBeGreaterThan(0);
+      expect(
+        stats.lazyRegistry.progressiveCache.accessedContexts
+      ).toBeGreaterThan(0);
     });
 
     it('should handle fallback gracefully when progressive discovery fails', async () => {
@@ -418,9 +430,9 @@ describe('Progressive Discovery Implementation', () => {
 
       // Mock the lazy registry to fail
       const originalListResources = server['lazyRegistry'].listResources;
-      server['lazyRegistry'].listResources = jest.fn().mockResolvedValue(
-        err(new Error('Mock discovery failure'))
-      );
+      server['lazyRegistry'].listResources = jest
+        .fn()
+        .mockResolvedValue(err(new Error('Mock discovery failure')));
 
       const result = await listHandler({
         method: 'resources/list',
@@ -496,8 +508,8 @@ describe('Progressive Discovery Implementation', () => {
 
       // Should only contain static resources initially
       const resources = result._unsafeUnwrap();
-      const dynamicResources = resources.filter(r =>
-        r.uri.includes('default') || r.uri.includes('schema')
+      const dynamicResources = resources.filter(
+        (r) => r.uri.includes('default') || r.uri.includes('schema')
       );
       expect(dynamicResources.length).toBeLessThan(mockSchemas.length * 2); // Much less than full discovery
 
@@ -576,7 +588,9 @@ describe('Progressive Discovery Implementation', () => {
       );
 
       // Progressive discovery should handle errors
-      const result = await registry.handleResourceAccess('db://schemas/test/tables');
+      const result = await registry.handleResourceAccess(
+        'db://schemas/test/tables'
+      );
       expect(result.isOk()).toBe(true); // Should not fail the access
 
       // List resources should still work
@@ -586,9 +600,13 @@ describe('Progressive Discovery Implementation', () => {
 
     it('should handle pattern not found errors', async () => {
       // Test with non-existent pattern
-      const result = await registry.discoverResourcesOnDemand('non-existent-pattern');
+      const result = await registry.discoverResourcesOnDemand(
+        'non-existent-pattern'
+      );
       expect(result.isErr()).toBe(true);
-      expect(result._unsafeUnwrapErr().message).toContain('Pattern non-existent-pattern not found');
+      expect(result._unsafeUnwrapErr().message).toContain(
+        'Pattern non-existent-pattern not found'
+      );
     });
   });
 });

@@ -40,31 +40,47 @@ describe('Document Generation Scripts', () => {
         expect(patterns).toHaveLength(5); // We know there are 5 patterns from ResourcePatterns class
 
         // Verify schema list pattern
-        const schemaListPattern = patterns.find(p => p.id === 'db-schemas');
+        const schemaListPattern = patterns.find((p) => p.id === 'db-schemas');
         expect(schemaListPattern).toBeDefined();
         expect(schemaListPattern?.uriPattern).toBe('db://schemas');
         expect(schemaListPattern?.namePattern).toBe('Database Schemas');
         expect(schemaListPattern?.requiresDiscovery).toBe(false);
 
         // Verify schema tables pattern
-        const schemaTablesPattern = patterns.find(p => p.id === 'db-schema-tables');
+        const schemaTablesPattern = patterns.find(
+          (p) => p.id === 'db-schema-tables'
+        );
         expect(schemaTablesPattern).toBeDefined();
-        expect(schemaTablesPattern?.uriPattern).toBe('db://schemas/{schemaName}/tables');
-        expect(schemaTablesPattern?.namePattern).toBe('{schemaName} Schema Tables');
+        expect(schemaTablesPattern?.uriPattern).toBe(
+          'db://schemas/{schemaName}/tables'
+        );
+        expect(schemaTablesPattern?.namePattern).toBe(
+          '{schemaName} Schema Tables'
+        );
         expect(schemaTablesPattern?.requiresDiscovery).toBe(true);
 
         // Verify table info pattern
-        const tableInfoPattern = patterns.find(p => p.id === 'db-table-info');
+        const tableInfoPattern = patterns.find((p) => p.id === 'db-table-info');
         expect(tableInfoPattern).toBeDefined();
-        expect(tableInfoPattern?.uriPattern).toBe('db://schemas/{schemaName}/tables/{tableName}');
-        expect(tableInfoPattern?.namePattern).toBe('{tableName} table ({schemaName} schema)');
+        expect(tableInfoPattern?.uriPattern).toBe(
+          'db://schemas/{schemaName}/tables/{tableName}'
+        );
+        expect(tableInfoPattern?.namePattern).toBe(
+          '{tableName} table ({schemaName} schema)'
+        );
         expect(tableInfoPattern?.requiresDiscovery).toBe(true);
 
         // Verify table indexes pattern
-        const tableIndexesPattern = patterns.find(p => p.id === 'db-table-indexes');
+        const tableIndexesPattern = patterns.find(
+          (p) => p.id === 'db-table-indexes'
+        );
         expect(tableIndexesPattern).toBeDefined();
-        expect(tableIndexesPattern?.uriPattern).toBe('db://schemas/{schemaName}/tables/{tableName}/indexes');
-        expect(tableIndexesPattern?.namePattern).toBe('{tableName} table indexes ({schemaName} schema)');
+        expect(tableIndexesPattern?.uriPattern).toBe(
+          'db://schemas/{schemaName}/tables/{tableName}/indexes'
+        );
+        expect(tableIndexesPattern?.namePattern).toBe(
+          '{tableName} table indexes ({schemaName} schema)'
+        );
         expect(tableIndexesPattern?.requiresDiscovery).toBe(true);
       }
     });
@@ -105,10 +121,18 @@ describe('Document Generation Scripts', () => {
 
       if (result.isOk()) {
         const table = result.value;
-        expect(table).toContain('| URI Pattern | Description | Discovery Required |');
-        expect(table).toContain('|-------------|-------------|-------------------|');
-        expect(table).toContain('| `test://{id}` | A test pattern for {id} | No |');
-        expect(table).toContain('| `discover://{type}/{name}` | Discovery pattern for {name} of type {type} | Yes |');
+        expect(table).toContain(
+          '| URI Pattern | Description | Discovery Required |'
+        );
+        expect(table).toContain(
+          '|-------------|-------------|-------------------|'
+        );
+        expect(table).toContain(
+          '| `test://{id}` | A test pattern for {id} | No |'
+        );
+        expect(table).toContain(
+          '| `discover://{type}/{name}` | Discovery pattern for {name} of type {type} | Yes |'
+        );
       }
     });
 
@@ -118,8 +142,12 @@ describe('Document Generation Scripts', () => {
 
       if (result.isOk()) {
         const table = result.value;
-        expect(table).toContain('| URI Pattern | Description | Discovery Required |');
-        expect(table).toContain('|-------------|-------------|-------------------|');
+        expect(table).toContain(
+          '| URI Pattern | Description | Discovery Required |'
+        );
+        expect(table).toContain(
+          '|-------------|-------------|-------------------|'
+        );
         expect(table).toContain('*No resources currently defined.*');
       }
     });
@@ -131,7 +159,8 @@ describe('Document Generation Scripts', () => {
           uriPattern: 'special://test',
           mimeType: 'application/json',
           namePattern: 'Special Test',
-          descriptionPattern: 'Description with |pipes| and *asterisks* and `backticks`',
+          descriptionPattern:
+            'Description with |pipes| and *asterisks* and `backticks`',
           requiresDiscovery: false,
           matcher: () => null,
         },
@@ -143,7 +172,9 @@ describe('Document Generation Scripts', () => {
       if (result.isOk()) {
         const table = result.value;
         // Verify that special characters are properly escaped
-        expect(table).toContain('Description with \\|pipes\\| and \\*asterisks\\* and \\`backticks\\`');
+        expect(table).toContain(
+          'Description with \\|pipes\\| and \\*asterisks\\* and \\`backticks\\`'
+        );
       }
     });
   });
@@ -173,16 +204,23 @@ More static content.
 
       await fs.writeFile(tempReadmePath, originalReadme);
 
-      const result = await updateReadmeWithGeneratedContent(tempReadmePath, newContent);
+      const result = await updateReadmeWithGeneratedContent(
+        tempReadmePath,
+        newContent
+      );
       expect(result.isOk()).toBe(true);
 
       const updatedContent = await fs.readFile(tempReadmePath, 'utf-8');
-      expect(updatedContent).toContain('<!-- AUTO-GENERATED:START - Do not modify this section manually -->');
+      expect(updatedContent).toContain(
+        '<!-- AUTO-GENERATED:START - Do not modify this section manually -->'
+      );
       expect(updatedContent).toContain(newContent);
       expect(updatedContent).toContain('<!-- AUTO-GENERATED:END -->');
       expect(updatedContent).toContain('This is static content.');
       expect(updatedContent).toContain('More static content.');
-      expect(updatedContent).not.toContain('Old content that should be replaced');
+      expect(updatedContent).not.toContain(
+        'Old content that should be replaced'
+      );
     });
 
     test('should handle README without existing auto-generated section', async () => {
@@ -203,18 +241,26 @@ More content.
 
       await fs.writeFile(tempReadmePath, originalReadme);
 
-      const result = await updateReadmeWithGeneratedContent(tempReadmePath, newContent);
+      const result = await updateReadmeWithGeneratedContent(
+        tempReadmePath,
+        newContent
+      );
       expect(result.isOk()).toBe(true);
 
       const updatedContent = await fs.readFile(tempReadmePath, 'utf-8');
-      expect(updatedContent).toContain('<!-- AUTO-GENERATED:START - Do not modify this section manually -->');
+      expect(updatedContent).toContain(
+        '<!-- AUTO-GENERATED:START - Do not modify this section manually -->'
+      );
       expect(updatedContent).toContain(newContent);
       expect(updatedContent).toContain('<!-- AUTO-GENERATED:END -->');
     });
 
     test('should handle file not found error', async () => {
       const nonExistentPath = path.join(tempDir, 'non-existent.md');
-      const result = await updateReadmeWithGeneratedContent(nonExistentPath, 'content');
+      const result = await updateReadmeWithGeneratedContent(
+        nonExistentPath,
+        'content'
+      );
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
@@ -271,10 +317,18 @@ More content.
 
       if (result.isOk()) {
         expect(result.value.isConsistent).toBe(false);
-        expect(result.value.missingPatterns).toContain('db://schemas/{schemaName}/tables');
-        expect(result.value.missingPatterns).toContain('db://schemas/{schemaName}');
-        expect(result.value.missingPatterns).toContain('db://schemas/{schemaName}/tables/{tableName}');
-        expect(result.value.missingPatterns).toContain('db://schemas/{schemaName}/tables/{tableName}/indexes');
+        expect(result.value.missingPatterns).toContain(
+          'db://schemas/{schemaName}/tables'
+        );
+        expect(result.value.missingPatterns).toContain(
+          'db://schemas/{schemaName}'
+        );
+        expect(result.value.missingPatterns).toContain(
+          'db://schemas/{schemaName}/tables/{tableName}'
+        );
+        expect(result.value.missingPatterns).toContain(
+          'db://schemas/{schemaName}/tables/{tableName}/indexes'
+        );
       }
     });
 
@@ -292,7 +346,9 @@ Manual content about resources.
       expect(result.isErr()).toBe(true);
 
       if (result.isErr()) {
-        expect(result.error.message).toContain('Auto-generated section not found');
+        expect(result.error.message).toContain(
+          'Auto-generated section not found'
+        );
       }
     });
   });

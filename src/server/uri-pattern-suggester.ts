@@ -31,14 +31,25 @@ export class UriPatternSuggester {
     const suggestions: PatternSuggestion[] = [];
 
     for (const pattern of allPatterns) {
-      let similarity = this.calculateSimilarity(uri.toLowerCase(), pattern.toLowerCase());
+      let similarity = this.calculateSimilarity(
+        uri.toLowerCase(),
+        pattern.toLowerCase()
+      );
 
       // Boost similarity for semantic matches and prefix matches
-      similarity = this.boostSimilarityForSemanticMatches(uri.toLowerCase(), pattern.toLowerCase(), similarity);
+      similarity = this.boostSimilarityForSemanticMatches(
+        uri.toLowerCase(),
+        pattern.toLowerCase(),
+        similarity
+      );
 
       // Boost valid db:// patterns to ensure they're prioritized (but not for exact matches)
       // Only boost if there's already some baseline similarity
-      if (pattern.startsWith('db://') && similarity < 1.0 && similarity >= 0.3) {
+      if (
+        pattern.startsWith('db://') &&
+        similarity < 1.0 &&
+        similarity >= 0.3
+      ) {
         // Extra boost for basic patterns that users should discover first
         if (pattern === 'db://schemas' || pattern === 'db://uri-patterns') {
           similarity = Math.min(0.98, similarity + 0.3);
@@ -190,8 +201,8 @@ export class UriPatternSuggester {
         const cost = str1[i - 1] === str2[j - 1] ? 0 : 1;
 
         matrix[i][j] = Math.min(
-          matrix[i - 1][j] + 1,     // deletion
-          matrix[i][j - 1] + 1,     // insertion
+          matrix[i - 1][j] + 1, // deletion
+          matrix[i][j - 1] + 1, // insertion
           matrix[i - 1][j - 1] + cost // substitution
         );
       }
@@ -220,10 +231,10 @@ export class UriPatternSuggester {
 
     // Add variations that users might try
     patterns.add('db://uri-patterns');
-    patterns.add('schemas://list');          // common typo
-    patterns.add('tables://list');           // common typo
-    patterns.add('db://schema');             // incomplete pattern
-    patterns.add('db://tables');             // incomplete pattern
+    patterns.add('schemas://list'); // common typo
+    patterns.add('tables://list'); // common typo
+    patterns.add('db://schema'); // incomplete pattern
+    patterns.add('db://tables'); // incomplete pattern
 
     return Array.from(patterns);
   }
@@ -231,7 +242,11 @@ export class UriPatternSuggester {
   /**
    * Boost similarity scores for semantic and structural matches
    */
-  private boostSimilarityForSemanticMatches(inputUri: string, candidatePattern: string, baseSimilarity: number): number {
+  private boostSimilarityForSemanticMatches(
+    inputUri: string,
+    candidatePattern: string,
+    baseSimilarity: number
+  ): number {
     // Don't boost if we already have an exact match
     if (baseSimilarity >= 1.0) {
       return baseSimilarity;
@@ -241,7 +256,10 @@ export class UriPatternSuggester {
 
     // Boost for prefix matches (candidate contains input as prefix)
     // Only boost if it's a meaningful prefix (not just different by a few characters)
-    if (candidatePattern.startsWith(inputUri) && candidatePattern.length > inputUri.length + 3) {
+    if (
+      candidatePattern.startsWith(inputUri) &&
+      candidatePattern.length > inputUri.length + 3
+    ) {
       boostedSimilarity = Math.min(0.95, boostedSimilarity + 0.3); // Cap below 1.0 for non-exact matches
     }
 
@@ -261,7 +279,10 @@ export class UriPatternSuggester {
   /**
    * Check if input URI is a partial path that could extend to candidate
    */
-  private isPartialPathMatch(inputUri: string, candidatePattern: string): boolean {
+  private isPartialPathMatch(
+    inputUri: string,
+    candidatePattern: string
+  ): boolean {
     const inputParts = inputUri.split('/');
     const candidateParts = candidatePattern.split('/');
 
@@ -282,7 +303,10 @@ export class UriPatternSuggester {
   /**
    * Check for semantic similarity between words
    */
-  private hasSemanticSimilarity(inputUri: string, candidatePattern: string): boolean {
+  private hasSemanticSimilarity(
+    inputUri: string,
+    candidatePattern: string
+  ): boolean {
     // Extract the last component for comparison
     const inputLastPart = inputUri.split('/').pop() || '';
     const candidateLastPart = candidatePattern.split('/').pop() || '';
@@ -290,10 +314,14 @@ export class UriPatternSuggester {
     // Check for plural/singular matches
     if (inputLastPart === 'user' && candidateLastPart === 'users') return true;
     if (inputLastPart === 'users' && candidateLastPart === 'user') return true;
-    if (inputLastPart === 'table' && candidateLastPart === 'tables') return true;
-    if (inputLastPart === 'tables' && candidateLastPart === 'table') return true;
-    if (inputLastPart === 'schema' && candidateLastPart === 'schemas') return true;
-    if (inputLastPart === 'schemas' && candidateLastPart === 'schema') return true;
+    if (inputLastPart === 'table' && candidateLastPart === 'tables')
+      return true;
+    if (inputLastPart === 'tables' && candidateLastPart === 'table')
+      return true;
+    if (inputLastPart === 'schema' && candidateLastPart === 'schemas')
+      return true;
+    if (inputLastPart === 'schemas' && candidateLastPart === 'schema')
+      return true;
 
     return false;
   }
@@ -334,13 +362,21 @@ export class UriPatternSuggester {
 
     // Common character substitutions
     const substitutions = [
-      ['l', '1'], ['i', '1'], ['o', '0'], ['s', '$'],
-      ['a', '@'], ['e', '3'], ['l', '_'], ['_', '-']
+      ['l', '1'],
+      ['i', '1'],
+      ['o', '0'],
+      ['s', '$'],
+      ['a', '@'],
+      ['e', '3'],
+      ['l', '_'],
+      ['_', '-'],
     ];
 
     for (const [char1, char2] of substitutions) {
-      if ((s1.includes(char1) && s2.includes(char2)) ||
-          (s1.includes(char2) && s2.includes(char1))) {
+      if (
+        (s1.includes(char1) && s2.includes(char2)) ||
+        (s1.includes(char2) && s2.includes(char1))
+      ) {
         return true;
       }
     }
@@ -368,7 +404,10 @@ export class UriPatternSuggester {
       }
 
       // Calculate structural similarity
-      const structuralSimilarity = this.calculateStructuralSimilarity(uriParts, patternParts);
+      const structuralSimilarity = this.calculateStructuralSimilarity(
+        uriParts,
+        patternParts
+      );
 
       if (structuralSimilarity > 0.5) {
         suggestions.push({
@@ -385,14 +424,16 @@ export class UriPatternSuggester {
   /**
    * Parse URI into components for structural comparison
    */
-  private parseUri(uri: string): { scheme: string; path: string; segments: string[] } | null {
+  private parseUri(
+    uri: string
+  ): { scheme: string; path: string; segments: string[] } | null {
     const match = uri.match(/^([^:]+):\/\/(.*)$/);
     if (!match) {
       return null;
     }
 
     const [, scheme, path] = match;
-    const segments = path.split('/').filter(s => s.length > 0);
+    const segments = path.split('/').filter((s) => s.length > 0);
 
     return { scheme, path, segments };
   }
@@ -413,13 +454,18 @@ export class UriPatternSuggester {
       score += 0.3;
     } else {
       // Partial credit for similar schemes
-      const schemeSimilarity = this.calculateSimilarity(uri1.scheme, uri2.scheme);
+      const schemeSimilarity = this.calculateSimilarity(
+        uri1.scheme,
+        uri2.scheme
+      );
       score += 0.3 * schemeSimilarity;
     }
 
     // Segment count similarity (20% weight)
     maxScore += 0.2;
-    const segmentCountDiff = Math.abs(uri1.segments.length - uri2.segments.length);
+    const segmentCountDiff = Math.abs(
+      uri1.segments.length - uri2.segments.length
+    );
     const maxSegments = Math.max(uri1.segments.length, uri2.segments.length);
     if (maxSegments > 0) {
       score += 0.2 * (1 - segmentCountDiff / maxSegments);
@@ -433,7 +479,10 @@ export class UriPatternSuggester {
     if (minSegments > 0) {
       let segmentScore = 0;
       for (let i = 0; i < minSegments; i++) {
-        segmentScore += this.calculateSimilarity(uri1.segments[i], uri2.segments[i]);
+        segmentScore += this.calculateSimilarity(
+          uri1.segments[i],
+          uri2.segments[i]
+        );
       }
       score += 0.5 * (segmentScore / minSegments);
     }

@@ -1,6 +1,5 @@
 import { jest } from '@jest/globals';
 import { promises as fs, watch, FSWatcher } from 'fs';
-import { EventEmitter } from 'events';
 import { FileWatcher } from '../../src/cache/file-watcher';
 
 // Mock fs module
@@ -11,16 +10,7 @@ jest.mock('fs', () => ({
   watch: jest.fn(),
 }));
 
-// Type-safe mock interfaces
-interface MockStats {
-  mtime: Date;
-  isFile: () => boolean;
-  isDirectory?: () => boolean;
-}
-
-interface MockFSWatcher extends EventEmitter {
-  close: jest.Mock;
-}
+import { MockFSWatcher, createFileStats, createDirectoryStats, createMockFSWatcher } from '../test-utils';
 
 const mockFs = fs as jest.Mocked<typeof fs>;
 // Get the mock watch function after mocking
@@ -32,9 +22,7 @@ describe('FileWatcher', () => {
 
   beforeEach((): void => {
     fileWatcher = new FileWatcher();
-    mockWatcher = Object.assign(new EventEmitter(), {
-      close: jest.fn(),
-    }) as MockFSWatcher;
+    mockWatcher = createMockFSWatcher();
     mockFsWatch.mockReturnValue(mockWatcher as FSWatcher);
     jest.clearAllMocks();
   });
@@ -52,14 +40,8 @@ describe('FileWatcher', () => {
       const updatedMtime = new Date('2024-01-01T11:00:00Z');
 
       mockFs.stat
-        .mockResolvedValueOnce({
-          mtime: initialMtime,
-          isFile: (): boolean => true,
-        } as MockStats)
-        .mockResolvedValueOnce({
-          mtime: updatedMtime,
-          isFile: (): boolean => true,
-        } as MockStats);
+        .mockResolvedValueOnce(createFileStats(initialMtime))
+        .mockResolvedValueOnce(createFileStats(updatedMtime));
 
       // Act
       await fileWatcher.watchFile(filePath, changeCallback);
@@ -85,10 +67,7 @@ describe('FileWatcher', () => {
       const changeCallback = jest.fn();
       const mtime = new Date('2024-01-01T10:00:00Z');
 
-      mockFs.stat.mockResolvedValue({
-        mtime,
-        isFile: (): boolean => true,
-      } as MockStats);
+      mockFs.stat.mockResolvedValue(createFileStats(mtime));
 
       // Act
       await fileWatcher.watchFile(filePath, changeCallback);
@@ -139,16 +118,8 @@ describe('FileWatcher', () => {
       const updatedMtime = new Date('2024-01-01T11:00:00Z');
 
       mockFs.stat
-        .mockResolvedValueOnce({
-          mtime: initialMtime,
-          isFile: (): boolean => false,
-          isDirectory: (): boolean => true,
-        } as MockStats)
-        .mockResolvedValueOnce({
-          mtime: updatedMtime,
-          isFile: (): boolean => false,
-          isDirectory: (): boolean => true,
-        } as MockStats);
+        .mockResolvedValueOnce(createDirectoryStats(initialMtime))
+        .mockResolvedValueOnce(createDirectoryStats(updatedMtime));
 
       // Act
       await fileWatcher.watchDirectory(dirPath, changeCallback);
@@ -176,16 +147,8 @@ describe('FileWatcher', () => {
       const updatedMtime = new Date('2024-01-01T11:00:00Z');
 
       mockFs.stat
-        .mockResolvedValueOnce({
-          mtime: initialMtime,
-          isFile: (): boolean => false,
-          isDirectory: (): boolean => true,
-        } as MockStats)
-        .mockResolvedValueOnce({
-          mtime: updatedMtime,
-          isFile: (): boolean => false,
-          isDirectory: (): boolean => true,
-        } as MockStats);
+        .mockResolvedValueOnce(createDirectoryStats(initialMtime))
+        .mockResolvedValueOnce(createDirectoryStats(updatedMtime));
 
       const fileFilter = (filename: string): boolean =>
         filename.endsWith('.json');
@@ -219,26 +182,13 @@ describe('FileWatcher', () => {
       const newMtime = new Date('2024-01-01T11:00:00Z');
 
       // Create separate mock watchers for each file
-      const mockWatcher1 = Object.assign(new EventEmitter(), {
-        close: jest.fn(),
-      }) as MockFSWatcher;
-      const mockWatcher2 = Object.assign(new EventEmitter(), {
-        close: jest.fn(),
-      }) as MockFSWatcher;
+      const mockWatcher1 = createMockFSWatcher();
+      const mockWatcher2 = createMockFSWatcher();
 
       mockFs.stat
-        .mockResolvedValueOnce({
-          mtime,
-          isFile: (): boolean => true,
-        } as MockStats)
-        .mockResolvedValueOnce({
-          mtime,
-          isFile: (): boolean => true,
-        } as MockStats)
-        .mockResolvedValueOnce({
-          mtime: newMtime,
-          isFile: (): boolean => true,
-        } as MockStats);
+        .mockResolvedValueOnce(createFileStats(mtime))
+        .mockResolvedValueOnce(createFileStats(mtime))
+        .mockResolvedValueOnce(createFileStats(newMtime));
 
       mockFsWatch
         .mockReturnValueOnce(mockWatcher1 as FSWatcher)
@@ -266,10 +216,7 @@ describe('FileWatcher', () => {
       const changeCallback = jest.fn();
       const mtime = new Date('2024-01-01T10:00:00Z');
 
-      mockFs.stat.mockResolvedValue({
-        mtime,
-        isFile: (): boolean => true,
-      } as MockStats);
+      mockFs.stat.mockResolvedValue(createFileStats(mtime));
 
       mockWatcher.close = jest.fn();
 
@@ -297,10 +244,7 @@ describe('FileWatcher', () => {
       const errorCallback = jest.fn();
       const mtime = new Date('2024-01-01T10:00:00Z');
 
-      mockFs.stat.mockResolvedValue({
-        mtime,
-        isFile: (): boolean => true,
-      } as MockStats);
+      mockFs.stat.mockResolvedValue(createFileStats(mtime));
 
       // Act
       await fileWatcher.watchFile(filePath, changeCallback, errorCallback);
@@ -333,17 +277,10 @@ describe('FileWatcher', () => {
       const callback = jest.fn();
       const mtime = new Date('2024-01-01T10:00:00Z');
 
-      mockFs.stat.mockResolvedValue({
-        mtime,
-        isFile: (): boolean => true,
-      } as MockStats);
+      mockFs.stat.mockResolvedValue(createFileStats(mtime));
 
-      const mockWatcher1 = Object.assign(new EventEmitter(), {
-        close: jest.fn(),
-      }) as MockFSWatcher;
-      const mockWatcher2 = Object.assign(new EventEmitter(), {
-        close: jest.fn(),
-      }) as MockFSWatcher;
+      const mockWatcher1 = createMockFSWatcher();
+      const mockWatcher2 = createMockFSWatcher();
 
       mockFsWatch
         .mockReturnValueOnce(mockWatcher1 as FSWatcher)
@@ -370,18 +307,9 @@ describe('FileWatcher', () => {
       const newMtime2 = new Date('2024-01-01T10:00:02Z');
 
       mockFs.stat
-        .mockResolvedValueOnce({
-          mtime,
-          isFile: (): boolean => true,
-        } as MockStats)
-        .mockResolvedValueOnce({
-          mtime: newMtime1,
-          isFile: (): boolean => true,
-        } as MockStats)
-        .mockResolvedValueOnce({
-          mtime: newMtime2,
-          isFile: (): boolean => true,
-        } as MockStats);
+        .mockResolvedValueOnce(createFileStats(mtime))
+        .mockResolvedValueOnce(createFileStats(newMtime1))
+        .mockResolvedValueOnce(createFileStats(newMtime2));
 
       // Act
       await fileWatcher.watchFile(filePath, changeCallback);

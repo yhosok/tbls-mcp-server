@@ -8,7 +8,11 @@ import {
   validateSchemaData,
 } from '../schemas/database';
 import { createError, safeExecuteAsync } from '../utils/result';
-import { parseJsonFile, parseJsonSchemaList, parseJsonSchemaByName } from './json-parser';
+import {
+  parseJsonFile,
+  parseJsonSchemaList,
+  parseJsonSchemaByName,
+} from './json-parser';
 import { ResourceCache } from '../cache/resource-cache';
 
 /**
@@ -31,7 +35,10 @@ export interface SchemaParser {
   ): Result<DatabaseSchema, Error>;
   parseSchemaOverview(filePath: string): Result<SchemaMetadata, Error>;
   parseTableReferences(filePath: string): Result<TableReference[], Error>;
-  parseSchemaByName(filePath: string, schemaName: string): Result<DatabaseSchema, Error>;
+  parseSchemaByName(
+    filePath: string,
+    schemaName: string
+  ): Result<DatabaseSchema, Error>;
 }
 
 /**
@@ -94,12 +101,17 @@ class JsonSchemaParser implements SchemaParser {
     );
   }
 
-  parseSchemaByName(filePath: string, schemaName: string): Result<DatabaseSchema, Error> {
+  parseSchemaByName(
+    filePath: string,
+    schemaName: string
+  ): Result<DatabaseSchema, Error> {
     try {
       const content = require('fs').readFileSync(filePath, 'utf-8');
       return parseJsonSchemaByName(content, schemaName);
     } catch (error) {
-      return createError(`Failed to read file: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      return createError(
+        `Failed to read file: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 }
@@ -454,7 +466,9 @@ export const resolveSchemaName = (
         // Multi-schema file
         if (metadataList.length > 1) {
           // Check if the requested schema exists
-          const schemaExists = metadataList.some(metadata => metadata.name === requestedSchemaName);
+          const schemaExists = metadataList.some(
+            (metadata) => metadata.name === requestedSchemaName
+          );
 
           if (schemaExists) {
             return ok({
@@ -466,13 +480,13 @@ export const resolveSchemaName = (
 
           // Handle "default" for multi-schema - should fail unless there's actually a schema named "default"
           if (requestedSchemaName === 'default') {
-            const schemaNames = metadataList.map(m => m.name).join(', ');
+            const schemaNames = metadataList.map((m) => m.name).join(', ');
             return createError(
               `Schema 'default' not found in multi-schema file. Available schemas: ${schemaNames}`
             );
           }
 
-          const schemaNames = metadataList.map(m => m.name).join(', ');
+          const schemaNames = metadataList.map((m) => m.name).join(', ');
           return createError(
             `Schema '${requestedSchemaName}' not found. Available schemas: ${schemaNames}`
           );

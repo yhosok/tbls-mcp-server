@@ -160,10 +160,7 @@ const PATTERN_EXAMPLES: Record<string, string[]> = {
     'db://schemas/public/tables',
     'db://schemas/default/tables',
   ],
-  [PATTERN_IDS.SCHEMA_INFO]: [
-    'db://schemas/public',
-    'db://schemas/default',
-  ],
+  [PATTERN_IDS.SCHEMA_INFO]: ['db://schemas/public', 'db://schemas/default'],
   [PATTERN_IDS.TABLE_INFO]: [
     'db://schemas/public/tables/users',
     'db://schemas/default/tables/products',

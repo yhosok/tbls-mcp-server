@@ -44,7 +44,9 @@ describe('URI Patterns Resource Handler', () => {
         );
 
         expect(schemaTablesPattern).toBeDefined();
-        expect(schemaTablesPattern?.uri).toBe('db://schemas/{schema_name}/tables');
+        expect(schemaTablesPattern?.uri).toBe(
+          'db://schemas/{schema_name}/tables'
+        );
         expect(schemaTablesPattern?.description).toContain('tables');
         expect(schemaTablesPattern?.examples).toContain(
           'db://schemas/public/tables'
@@ -73,7 +75,9 @@ describe('URI Patterns Resource Handler', () => {
           'db://schemas/{schema_name}/tables/{table_name}'
         );
         expect(tableInfoPattern?.description).toContain('detailed information');
-        expect(tableInfoPattern?.examples).toContain('db://schemas/public/tables/users');
+        expect(tableInfoPattern?.examples).toContain(
+          'db://schemas/public/tables/users'
+        );
         expect(tableInfoPattern?.parameters).toHaveLength(2);
         expect(tableInfoPattern?.parameters).toContainEqual({
           name: 'schema_name',
@@ -381,9 +385,7 @@ describe('URI Patterns Resource Handler', () => {
         const tableInfoPattern = resource.patterns.find(
           (p) => p.id === 'db-table-info'
         );
-        expect(tableInfoPattern?.description).toContain(
-          'detailed information'
-        );
+        expect(tableInfoPattern?.description).toContain('detailed information');
 
         const tableIndexesPattern = resource.patterns.find(
           (p) => p.id === 'db-table-indexes'

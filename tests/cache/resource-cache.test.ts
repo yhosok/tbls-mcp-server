@@ -14,12 +14,7 @@ jest.mock('fs', () => ({
   },
 }));
 
-// Type-safe mock interfaces
-interface MockStats {
-  mtime: Date;
-  isFile: () => boolean;
-  isDirectory?: () => boolean;
-}
+import { createFileStats, createDirectoryStats } from '../test-utils';
 
 const mockFs = fs as jest.Mocked<typeof fs>;
 
@@ -45,10 +40,7 @@ describe('ResourceCache', () => {
       const content = '{"name": "test_schema"}';
       const mtime = new Date('2024-01-01T10:00:00Z');
 
-      mockFs.stat.mockResolvedValue({
-        mtime,
-        isFile: (): boolean => true,
-      } as MockStats);
+      mockFs.stat.mockResolvedValue(createFileStats(mtime));
 
       // Act
       await cache.setFileContent(filePath, content);
@@ -67,17 +59,11 @@ describe('ResourceCache', () => {
       const newMtime = new Date('2024-01-01T11:00:00Z');
 
       // Cache with old mtime
-      mockFs.stat.mockResolvedValueOnce({
-        mtime: oldMtime,
-        isFile: (): boolean => true,
-      } as MockStats);
+      mockFs.stat.mockResolvedValueOnce(createFileStats(oldMtime));
       await cache.setFileContent(filePath, content);
 
       // Check with new mtime
-      mockFs.stat.mockResolvedValueOnce({
-        mtime: newMtime,
-        isFile: (): boolean => true,
-      } as MockStats);
+      mockFs.stat.mockResolvedValueOnce(createFileStats(newMtime));
 
       // Act
       const cached = await cache.getFileContent(filePath);
@@ -117,11 +103,7 @@ describe('ResourceCache', () => {
       };
       const mtime = new Date('2024-01-01T10:00:00Z');
 
-      mockFs.stat.mockResolvedValue({
-        mtime,
-        isFile: (): boolean => false,
-        isDirectory: (): boolean => true,
-      } as MockStats);
+      mockFs.stat.mockResolvedValue(createDirectoryStats(mtime));
 
       // Act
       await cache.setSchema(schemaPath, schema);
@@ -150,19 +132,11 @@ describe('ResourceCache', () => {
       const newMtime = new Date('2024-01-01T11:00:00Z');
 
       // Cache with old mtime
-      mockFs.stat.mockResolvedValueOnce({
-        mtime: oldMtime,
-        isFile: (): boolean => false,
-        isDirectory: (): boolean => true,
-      } as MockStats);
+      mockFs.stat.mockResolvedValueOnce(createDirectoryStats(oldMtime));
       await cache.setSchema(schemaPath, schema);
 
       // Check with new mtime
-      mockFs.stat.mockResolvedValueOnce({
-        mtime: newMtime,
-        isFile: (): boolean => false,
-        isDirectory: (): boolean => true,
-      } as MockStats);
+      mockFs.stat.mockResolvedValueOnce(createDirectoryStats(newMtime));
 
       // Act
       const cached = await cache.getSchema(schemaPath);
@@ -182,11 +156,7 @@ describe('ResourceCache', () => {
       ];
       const mtime = new Date('2024-01-01T10:00:00Z');
 
-      mockFs.stat.mockResolvedValue({
-        mtime,
-        isFile: (): boolean => false,
-        isDirectory: (): boolean => true,
-      } as MockStats);
+      mockFs.stat.mockResolvedValue(createDirectoryStats(mtime));
 
       // Act
       await cache.setTableReferences(schemaPath, tableReferences);
@@ -218,10 +188,7 @@ describe('ResourceCache', () => {
       };
       const mtime = new Date('2024-01-01T10:00:00Z');
 
-      mockFs.stat.mockResolvedValue({
-        mtime,
-        isFile: (): boolean => true,
-      } as MockStats);
+      mockFs.stat.mockResolvedValue(createFileStats(mtime));
 
       // Act
       await cache.setTable(tablePath, table);
@@ -239,10 +206,7 @@ describe('ResourceCache', () => {
       const content = '{"name": "test"}';
       const mtime = new Date('2024-01-01T10:00:00Z');
 
-      mockFs.stat.mockResolvedValue({
-        mtime,
-        isFile: (): boolean => true,
-      } as MockStats);
+      mockFs.stat.mockResolvedValue(createFileStats(mtime));
 
       // Act
       await cache.getFileContent(filePath); // miss
@@ -261,10 +225,7 @@ describe('ResourceCache', () => {
     it('should track cache size', async () => {
       // Arrange
       const mtime = new Date('2024-01-01T10:00:00Z');
-      mockFs.stat.mockResolvedValue({
-        mtime,
-        isFile: (): boolean => true,
-      } as MockStats);
+      mockFs.stat.mockResolvedValue(createFileStats(mtime));
 
       // Act
       await cache.setFileContent('/test/file1.json', 'content1');
@@ -283,10 +244,7 @@ describe('ResourceCache', () => {
       const smallCache = new ResourceCache({ maxItems: 2, ttlMs: 60000 });
       const mtime = new Date('2024-01-01T10:00:00Z');
 
-      mockFs.stat.mockResolvedValue({
-        mtime,
-        isFile: (): boolean => true,
-      } as MockStats);
+      mockFs.stat.mockResolvedValue(createFileStats(mtime));
 
       // Act - add 3 items to cache with max 2
       await smallCache.setFileContent('/test/file1.json', 'content1');
@@ -316,10 +274,7 @@ describe('ResourceCache', () => {
       const content = '{"name": "test"}';
       const mtime = new Date('2024-01-01T10:00:00Z');
 
-      mockFs.stat.mockResolvedValue({
-        mtime,
-        isFile: (): boolean => true,
-      } as MockStats);
+      mockFs.stat.mockResolvedValue(createFileStats(mtime));
 
       await cache.setFileContent(filePath, content);
       expect(await cache.getFileContent(filePath)).toBe(content);

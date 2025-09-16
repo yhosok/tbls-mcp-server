@@ -94,7 +94,8 @@ export class LazyResourceRegistry {
         uri: 'db://uri-patterns',
         mimeType: 'application/json',
         name: 'Available URI Patterns',
-        description: 'List of all available URI patterns and their descriptions for resource discovery',
+        description:
+          'List of all available URI patterns and their descriptions for resource discovery',
       });
 
       // Add progressively discovered resources based on accessed contexts
@@ -198,37 +199,43 @@ export class LazyResourceRegistry {
   /**
    * Get available URI patterns for client discovery
    */
-  async getUriPatterns(): Promise<Result<{
-    patterns: Array<{
-      id: string;
-      uriPattern: string;
-      namePattern: string;
-      descriptionPattern: string;
-      requiresDiscovery: boolean;
-      mimeType: string;
-      examples: string[];
-    }>;
-    discovery: {
-      progressive: boolean;
-      description: string;
-    };
-  }, Error>> {
+  async getUriPatterns(): Promise<
+    Result<
+      {
+        patterns: Array<{
+          id: string;
+          uriPattern: string;
+          namePattern: string;
+          descriptionPattern: string;
+          requiresDiscovery: boolean;
+          mimeType: string;
+          examples: string[];
+        }>;
+        discovery: {
+          progressive: boolean;
+          description: string;
+        };
+      },
+      Error
+    >
+  > {
     try {
       const patterns = ResourcePatterns.getAllPatterns();
       const uriPatterns = {
-        patterns: patterns.map(pattern => ({
+        patterns: patterns.map((pattern) => ({
           id: pattern.id,
           uriPattern: pattern.uriPattern,
           namePattern: pattern.namePattern,
           descriptionPattern: pattern.descriptionPattern,
           requiresDiscovery: pattern.requiresDiscovery,
           mimeType: pattern.mimeType,
-          examples: this.generatePatternExamples(pattern)
+          examples: this.generatePatternExamples(pattern),
         })),
         discovery: {
           progressive: true,
-          description: "Resources are discovered progressively as contexts are accessed. Access db://schemas to discover schema-specific resources, then access specific schemas to discover table-specific resources."
-        }
+          description:
+            'Resources are discovered progressively as contexts are accessed. Access db://schemas to discover schema-specific resources, then access specific schemas to discover table-specific resources.',
+        },
       };
 
       return ok(uriPatterns);
@@ -312,7 +319,11 @@ export class LazyResourceRegistry {
     progressiveCache: {
       size: number;
       accessedContexts: number;
-      entries: Array<{ contextKey: string; age: number; resourceCount: number }>;
+      entries: Array<{
+        contextKey: string;
+        age: number;
+        resourceCount: number;
+      }>;
     };
     resourceCache?: {
       hits: number;
@@ -365,14 +376,16 @@ export class LazyResourceRegistry {
   /**
    * Extract context information from URI for progressive discovery
    */
-  private extractContextFromUri(uri: string): { key: string; type: string; params: Record<string, string> } | null {
+  private extractContextFromUri(
+    uri: string
+  ): { key: string; type: string; params: Record<string, string> } | null {
     // New db:// hierarchical patterns
     // db://schemas access triggers schema discovery
     if (uri === 'db://schemas') {
       return {
         key: 'db-schemas-accessed',
         type: PATTERN_IDS.SCHEMA_LIST,
-        params: {}
+        params: {},
       };
     }
 
@@ -382,7 +395,7 @@ export class LazyResourceRegistry {
       return {
         key: `db-schema-tables-${dbSchemaTablesMatch[1]}`,
         type: PATTERN_IDS.SCHEMA_TABLES,
-        params: { schemaName: dbSchemaTablesMatch[1] }
+        params: { schemaName: dbSchemaTablesMatch[1] },
       };
     }
 
@@ -392,7 +405,7 @@ export class LazyResourceRegistry {
       return {
         key: `db-table-${dbTableMatch[1]}-${dbTableMatch[2]}`,
         type: PATTERN_IDS.TABLE_INFO,
-        params: { schemaName: dbTableMatch[1], tableName: dbTableMatch[2] }
+        params: { schemaName: dbTableMatch[1], tableName: dbTableMatch[2] },
       };
     }
 
@@ -402,7 +415,10 @@ export class LazyResourceRegistry {
       return {
         key: `db-table-indexes-${dbTableIndexesMatch[1]}-${dbTableIndexesMatch[2]}`,
         type: PATTERN_IDS.TABLE_INDEXES,
-        params: { schemaName: dbTableIndexesMatch[1], tableName: dbTableIndexesMatch[2] }
+        params: {
+          schemaName: dbTableIndexesMatch[1],
+          tableName: dbTableIndexesMatch[2],
+        },
       };
     }
 
@@ -412,7 +428,11 @@ export class LazyResourceRegistry {
   /**
    * Discover resources for a specific context
    */
-  private async discoverContextResources(context: { key: string; type: string; params: Record<string, string> }): Promise<Result<ResourceMetadata[], Error>> {
+  private async discoverContextResources(context: {
+    key: string;
+    type: string;
+    params: Record<string, string>;
+  }): Promise<Result<ResourceMetadata[], Error>> {
     try {
       const resources: ResourceMetadata[] = [];
 
@@ -420,7 +440,8 @@ export class LazyResourceRegistry {
         // New db:// hierarchical patterns
         case PATTERN_IDS.SCHEMA_LIST: {
           // After db://schemas access, discover all schema tables resources
-          const schemaTablesResult = await this.discoverAllDbSchemaTablesResources();
+          const schemaTablesResult =
+            await this.discoverAllDbSchemaTablesResources();
           if (schemaTablesResult.isOk()) {
             resources.push(...schemaTablesResult.value);
           }
@@ -429,7 +450,10 @@ export class LazyResourceRegistry {
 
         case PATTERN_IDS.SCHEMA_TABLES: {
           // After db://schemas/{schemaName}/tables access, discover all table resources for that schema
-          const tableResourcesResult = await this.discoverDbSchemaTableResources(context.params.schemaName);
+          const tableResourcesResult =
+            await this.discoverDbSchemaTableResources(
+              context.params.schemaName
+            );
           if (tableResourcesResult.isOk()) {
             resources.push(...tableResourcesResult.value);
           }
@@ -438,7 +462,10 @@ export class LazyResourceRegistry {
 
         case PATTERN_IDS.TABLE_INFO: {
           // After db://schemas/{schemaName}/tables/{tableName} access, discover index resources for that table
-          const indexResourcesResult = await this.discoverDbTableIndexResources(context.params.schemaName, context.params.tableName);
+          const indexResourcesResult = await this.discoverDbTableIndexResources(
+            context.params.schemaName,
+            context.params.tableName
+          );
           if (indexResourcesResult.isOk()) {
             resources.push(...indexResourcesResult.value);
           }
@@ -464,8 +491,12 @@ export class LazyResourceRegistry {
   /**
    * Discover all schema tables resources for db:// patterns
    */
-  private async discoverAllDbSchemaTablesResources(): Promise<Result<ResourceMetadata[], Error>> {
-    const pattern = ResourcePatterns.getAllPatterns().find(p => p.id === PATTERN_IDS.SCHEMA_TABLES);
+  private async discoverAllDbSchemaTablesResources(): Promise<
+    Result<ResourceMetadata[], Error>
+  > {
+    const pattern = ResourcePatterns.getAllPatterns().find(
+      (p) => p.id === PATTERN_IDS.SCHEMA_TABLES
+    );
     if (!pattern) {
       return err(new Error('DB schema tables pattern not found'));
     }
@@ -480,15 +511,19 @@ export class LazyResourceRegistry {
   /**
    * Discover table resources for a specific schema for db:// patterns
    */
-  private async discoverDbSchemaTableResources(schemaName: string): Promise<Result<ResourceMetadata[], Error>> {
-    const pattern = ResourcePatterns.getAllPatterns().find(p => p.id === PATTERN_IDS.TABLE_INFO);
+  private async discoverDbSchemaTableResources(
+    schemaName: string
+  ): Promise<Result<ResourceMetadata[], Error>> {
+    const pattern = ResourcePatterns.getAllPatterns().find(
+      (p) => p.id === PATTERN_IDS.TABLE_INFO
+    );
     if (!pattern) {
       return err(new Error('DB table info pattern not found'));
     }
 
     const context: GenerationContext = {
       schemaSource: this.schemaSource,
-      scope: { schemaName }
+      scope: { schemaName },
     };
 
     return ResourcePatterns.generateResources(pattern, context);
@@ -497,15 +532,20 @@ export class LazyResourceRegistry {
   /**
    * Discover index resources for a specific table for db:// patterns
    */
-  private async discoverDbTableIndexResources(schemaName: string, tableName: string): Promise<Result<ResourceMetadata[], Error>> {
-    const pattern = ResourcePatterns.getAllPatterns().find(p => p.id === PATTERN_IDS.TABLE_INDEXES);
+  private async discoverDbTableIndexResources(
+    schemaName: string,
+    tableName: string
+  ): Promise<Result<ResourceMetadata[], Error>> {
+    const pattern = ResourcePatterns.getAllPatterns().find(
+      (p) => p.id === PATTERN_IDS.TABLE_INDEXES
+    );
     if (!pattern) {
       return err(new Error('DB table indexes pattern not found'));
     }
 
     const context: GenerationContext = {
       schemaSource: this.schemaSource,
-      scope: { schemaName, tableName }
+      scope: { schemaName, tableName },
     };
 
     return ResourcePatterns.generateResources(pattern, context);
@@ -516,19 +556,31 @@ export class LazyResourceRegistry {
    */
   private generatePatternExamples(pattern: ResourcePattern): string[] {
     const examples: string[] = [];
-    
+
     switch (pattern.id) {
       case PATTERN_IDS.SCHEMA_LIST:
         examples.push('db://schemas');
         break;
       case PATTERN_IDS.SCHEMA_TABLES:
-        examples.push('db://schemas/default/tables', 'db://schemas/public/tables', 'db://schemas/main/tables');
+        examples.push(
+          'db://schemas/default/tables',
+          'db://schemas/public/tables',
+          'db://schemas/main/tables'
+        );
         break;
       case PATTERN_IDS.TABLE_INFO:
-        examples.push('db://schemas/default/tables/users', 'db://schemas/public/tables/orders', 'db://schemas/main/tables/products');
+        examples.push(
+          'db://schemas/default/tables/users',
+          'db://schemas/public/tables/orders',
+          'db://schemas/main/tables/products'
+        );
         break;
       case PATTERN_IDS.TABLE_INDEXES:
-        examples.push('db://schemas/default/tables/users/indexes', 'db://schemas/public/tables/orders/indexes', 'db://schemas/main/tables/products/indexes');
+        examples.push(
+          'db://schemas/default/tables/users/indexes',
+          'db://schemas/public/tables/orders/indexes',
+          'db://schemas/main/tables/products/indexes'
+        );
         break;
     }
 
@@ -545,7 +597,7 @@ export class LazyResourceRegistry {
     }
 
     const now = Date.now();
-    return (now - timestamp) < this.discoveryTtl;
+    return now - timestamp < this.discoveryTtl;
   }
 
   /**

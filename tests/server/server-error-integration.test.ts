@@ -16,8 +16,12 @@ describe('Enhanced Error Message Components Integration', () => {
       const uri = 'invalid://completely/wrong';
       const errorData = errorGenerator.generateMcpErrorData(uri);
 
-      expect(errorData.message).toContain('Unknown resource URI: invalid://completely/wrong');
-      expect(errorData.message).toContain('See \'data\' field for available patterns and suggestions');
+      expect(errorData.message).toContain(
+        'Unknown resource URI: invalid://completely/wrong'
+      );
+      expect(errorData.message).toContain(
+        "See 'data' field for available patterns and suggestions"
+      );
 
       // Check error data structure
       expect(errorData.data.uri).toBe(uri);
@@ -37,16 +41,25 @@ describe('Enhanced Error Message Components Integration', () => {
 
     it('should provide appropriate guidance for different URI types', () => {
       // Test schema URI guidance
-      const schemaErrorData = errorGenerator.generateMcpErrorData('db://schemas/invalid');
-      expect(schemaErrorData.data.guidance).toContain('db://schemas/[schema_name]/tables');
+      const schemaErrorData = errorGenerator.generateMcpErrorData(
+        'db://schemas/invalid'
+      );
+      expect(schemaErrorData.data.guidance).toContain(
+        'db://schemas/[schema_name]/tables'
+      );
       expect(schemaErrorData.data.guidance).toContain('db://schemas');
 
       // Test table URI guidance
-      const tableErrorData = errorGenerator.generateMcpErrorData('db://schemas/schema/tables/invalid');
-      expect(tableErrorData.data.guidance).toContain('db://schemas/[schema_name]/tables/[table_name]');
+      const tableErrorData = errorGenerator.generateMcpErrorData(
+        'db://schemas/schema/tables/invalid'
+      );
+      expect(tableErrorData.data.guidance).toContain(
+        'db://schemas/[schema_name]/tables/[table_name]'
+      );
 
       // Test unknown protocol guidance
-      const protocolErrorData = errorGenerator.generateMcpErrorData('http://invalid');
+      const protocolErrorData =
+        errorGenerator.generateMcpErrorData('http://invalid');
       expect(protocolErrorData.data.guidance).toContain('db://schemas');
     });
   });
@@ -56,7 +69,9 @@ describe('Enhanced Error Message Components Integration', () => {
       const uri = 'db://schemas/nonexistent/tables';
       const message = errorGenerator.generatePatternMatchFailureMessage(uri);
 
-      expect(message).toContain('Resource not found: db://schemas/nonexistent/tables');
+      expect(message).toContain(
+        'Resource not found: db://schemas/nonexistent/tables'
+      );
       expect(message).toContain('The URI format is correct');
       expect(message).toContain('db://schemas');
       expect(message).toContain('available schemas');
@@ -66,7 +81,9 @@ describe('Enhanced Error Message Components Integration', () => {
       const uri = 'db://schemas/default/tables/nonexistent';
       const message = errorGenerator.generatePatternMatchFailureMessage(uri);
 
-      expect(message).toContain('Resource not found: db://schemas/default/tables/nonexistent');
+      expect(message).toContain(
+        'Resource not found: db://schemas/default/tables/nonexistent'
+      );
       expect(message).toContain('db://schemas/default/tables');
       expect(message).toContain('available tables in the default schema');
     });
@@ -75,7 +92,9 @@ describe('Enhanced Error Message Components Integration', () => {
       const uri = 'db://schemas/default/tables/missing/indexes';
       const message = errorGenerator.generatePatternMatchFailureMessage(uri);
 
-      expect(message).toContain('Resource not found: db://schemas/default/tables/missing/indexes');
+      expect(message).toContain(
+        'Resource not found: db://schemas/default/tables/missing/indexes'
+      );
       expect(message).toContain('db://schemas/default/tables/missing');
       expect(message).toContain('table exists');
     });
@@ -86,25 +105,45 @@ describe('Enhanced Error Message Components Integration', () => {
       const testCases = [
         { input: 'db://schema', expected: 'db://schemas', minSimilarity: 0.8 },
         { input: 'db://schemes', expected: 'db://schemas', minSimilarity: 0.8 },
-        { input: 'db://schemas/defaut/tables/users', expected: 'db://schemas/default/tables/users', minSimilarity: 0.9 },
-        { input: 'db://schemas/publik/tables', expected: 'db://schemas/public/tables', minSimilarity: 0.8 },
+        {
+          input: 'db://schemas/defaut/tables/users',
+          expected: 'db://schemas/default/tables/users',
+          minSimilarity: 0.9,
+        },
+        {
+          input: 'db://schemas/publik/tables',
+          expected: 'db://schemas/public/tables',
+          minSimilarity: 0.8,
+        },
       ];
 
       for (const testCase of testCases) {
-        const suggestions = suggester.findSimilarPatterns(testCase.input, 3, 0.5);
+        const suggestions = suggester.findSimilarPatterns(
+          testCase.input,
+          3,
+          0.5
+        );
 
         expect(suggestions.length).toBeGreaterThan(0);
-        const topSuggestion = suggestions.find(s => s.pattern === testCase.expected);
+        const topSuggestion = suggestions.find(
+          (s) => s.pattern === testCase.expected
+        );
         expect(topSuggestion).toBeDefined();
-        expect(topSuggestion!.similarity).toBeGreaterThan(testCase.minSimilarity);
+        expect(topSuggestion!.similarity).toBeGreaterThan(
+          testCase.minSimilarity
+        );
       }
     });
 
     it('should provide structural similarity for incomplete URIs', () => {
-      const suggestions = suggester.findStructurallySimilar('db://schemas/default');
+      const suggestions = suggester.findStructurallySimilar(
+        'db://schemas/default'
+      );
 
       expect(suggestions.length).toBeGreaterThan(0);
-      const tablePatterns = suggestions.filter(s => s.pattern.startsWith('db://schemas/default/'));
+      const tablePatterns = suggestions.filter((s) =>
+        s.pattern.startsWith('db://schemas/default/')
+      );
       expect(tablePatterns.length).toBeGreaterThan(0);
     });
 
@@ -112,7 +151,7 @@ describe('Enhanced Error Message Components Integration', () => {
       const suggestions = suggester.findSimilarPatterns('DB://SCHEMAS', 5, 0.5);
 
       expect(suggestions.length).toBeGreaterThan(0);
-      const exactMatch = suggestions.find(s => s.pattern === 'db://schemas');
+      const exactMatch = suggestions.find((s) => s.pattern === 'db://schemas');
       expect(exactMatch).toBeDefined();
       expect(exactMatch!.similarity).toBe(1.0);
     });

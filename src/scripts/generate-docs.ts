@@ -29,11 +29,13 @@ export interface DocumentationConsistencyResult {
 /**
  * Extract resource pattern information from the ResourcePatterns class
  */
-export async function extractResourcePatternsInfo(): Promise<Result<ResourcePatternInfo[], Error>> {
+export async function extractResourcePatternsInfo(): Promise<
+  Result<ResourcePatternInfo[], Error>
+> {
   try {
     const patterns = ResourcePatterns.getAllPatterns();
 
-    const patternInfos: ResourcePatternInfo[] = patterns.map(pattern => ({
+    const patternInfos: ResourcePatternInfo[] = patterns.map((pattern) => ({
       id: pattern.id,
       uriPattern: pattern.uriPattern,
       namePattern: pattern.namePattern,
@@ -44,14 +46,20 @@ export async function extractResourcePatternsInfo(): Promise<Result<ResourcePatt
 
     return ok(patternInfos);
   } catch (error) {
-    return err(new Error(`Failed to extract resource patterns info: ${error instanceof Error ? error.message : 'Unknown error'}`));
+    return err(
+      new Error(
+        `Failed to extract resource patterns info: ${error instanceof Error ? error.message : 'Unknown error'}`
+      )
+    );
   }
 }
 
 /**
  * Generate markdown table from resource patterns
  */
-export function generateResourcesTable(patterns: ResourcePattern[]): Result<string, Error> {
+export function generateResourcesTable(
+  patterns: ResourcePattern[]
+): Result<string, Error> {
   try {
     if (patterns.length === 0) {
       return ok(`| URI Pattern | Description | Discovery Required |
@@ -62,7 +70,7 @@ export function generateResourcesTable(patterns: ResourcePattern[]): Result<stri
     const header = `| URI Pattern | Description | Discovery Required |
 |-------------|-------------|-------------------|`;
 
-    const rows = patterns.map(pattern => {
+    const rows = patterns.map((pattern) => {
       // Escape markdown special characters in description
       const escapedDescription = pattern.descriptionPattern
         .replace(/\|/g, '\\|')
@@ -77,7 +85,11 @@ export function generateResourcesTable(patterns: ResourcePattern[]): Result<stri
 
     return ok([header, ...rows].join('\n'));
   } catch (error) {
-    return err(new Error(`Failed to generate resources table: ${error instanceof Error ? error.message : 'Unknown error'}`));
+    return err(
+      new Error(
+        `Failed to generate resources table: ${error instanceof Error ? error.message : 'Unknown error'}`
+      )
+    );
   }
 }
 
@@ -91,7 +103,8 @@ export async function updateReadmeWithGeneratedContent(
   try {
     const readmeContent = await fs.readFile(readmePath, 'utf-8');
 
-    const startMarker = '<!-- AUTO-GENERATED:START - Do not modify this section manually -->';
+    const startMarker =
+      '<!-- AUTO-GENERATED:START - Do not modify this section manually -->';
     const endMarker = '<!-- AUTO-GENERATED:END -->';
 
     const startIndex = readmeContent.indexOf(startMarker);
@@ -101,17 +114,27 @@ export async function updateReadmeWithGeneratedContent(
 
     if (startIndex !== -1 && endIndex !== -1) {
       // Replace existing auto-generated section
-      const beforeSection = readmeContent.substring(0, startIndex + startMarker.length);
+      const beforeSection = readmeContent.substring(
+        0,
+        startIndex + startMarker.length
+      );
       const afterSection = readmeContent.substring(endIndex);
       updatedContent = `${beforeSection}\n${newContent}\n${afterSection}`;
     } else if (readmeContent.includes('## MCP Resources')) {
       // Find MCP Resources section and add auto-generated markers
       const mcpSectionIndex = readmeContent.indexOf('## MCP Resources');
-      const nextSectionIndex = readmeContent.indexOf('\n## ', mcpSectionIndex + 1);
+      const nextSectionIndex = readmeContent.indexOf(
+        '\n## ',
+        mcpSectionIndex + 1
+      );
 
       const beforeMcpSection = readmeContent.substring(0, mcpSectionIndex);
-      const mcpSectionHeader = '## MCP Resources\n\nThe server exposes tbls-generated schema information through the following MCP resources:\n\n';
-      const afterMcpSection = nextSectionIndex !== -1 ? readmeContent.substring(nextSectionIndex) : '';
+      const mcpSectionHeader =
+        '## MCP Resources\n\nThe server exposes tbls-generated schema information through the following MCP resources:\n\n';
+      const afterMcpSection =
+        nextSectionIndex !== -1
+          ? readmeContent.substring(nextSectionIndex)
+          : '';
 
       updatedContent = `${beforeMcpSection}${mcpSectionHeader}${startMarker}\n${newContent}\n${endMarker}\n\n${afterMcpSection}`;
     } else {
@@ -122,7 +145,11 @@ export async function updateReadmeWithGeneratedContent(
     await fs.writeFile(readmePath, updatedContent, 'utf-8');
     return ok(undefined);
   } catch (error) {
-    return err(new Error(`Failed to update README: ${error instanceof Error ? error.message : 'Unknown error'}`));
+    return err(
+      new Error(
+        `Failed to update README: ${error instanceof Error ? error.message : 'Unknown error'}`
+      )
+    );
   }
 }
 
@@ -134,7 +161,8 @@ export async function validateDocumentationConsistency(
 ): Promise<Result<DocumentationConsistencyResult, Error>> {
   try {
     const readmeContent = await fs.readFile(readmePath, 'utf-8');
-    const startMarker = '<!-- AUTO-GENERATED:START - Do not modify this section manually -->';
+    const startMarker =
+      '<!-- AUTO-GENERATED:START - Do not modify this section manually -->';
     const endMarker = '<!-- AUTO-GENERATED:END -->';
 
     const startIndex = readmeContent.indexOf(startMarker);
@@ -164,11 +192,15 @@ export async function validateDocumentationConsistency(
       return err(patternsResult.error);
     }
 
-    const currentPatterns = patternsResult.value.map(p => p.uriPattern);
+    const currentPatterns = patternsResult.value.map((p) => p.uriPattern);
 
     // Find missing and extra patterns
-    const missingPatterns = currentPatterns.filter(p => !documentedPatterns.includes(p));
-    const extraPatterns = documentedPatterns.filter(p => !currentPatterns.includes(p));
+    const missingPatterns = currentPatterns.filter(
+      (p) => !documentedPatterns.includes(p)
+    );
+    const extraPatterns = documentedPatterns.filter(
+      (p) => !currentPatterns.includes(p)
+    );
 
     return ok({
       isConsistent: missingPatterns.length === 0 && extraPatterns.length === 0,
@@ -178,16 +210,23 @@ export async function validateDocumentationConsistency(
       documentedPatterns: documentedPatterns.length,
     });
   } catch (error) {
-    return err(new Error(`Failed to validate documentation consistency: ${error instanceof Error ? error.message : 'Unknown error'}`));
+    return err(
+      new Error(
+        `Failed to validate documentation consistency: ${error instanceof Error ? error.message : 'Unknown error'}`
+      )
+    );
   }
 }
 
 /**
  * Main function to generate and update documentation
  */
-export async function generateDocumentation(readmePath?: string): Promise<Result<void, Error>> {
+export async function generateDocumentation(
+  readmePath?: string
+): Promise<Result<void, Error>> {
   try {
-    const targetReadmePath = readmePath || path.join(process.cwd(), 'README.md');
+    const targetReadmePath =
+      readmePath || path.join(process.cwd(), 'README.md');
 
     // Extract resource patterns information
     const patternsResult = await extractResourcePatternsInfo();
@@ -196,13 +235,18 @@ export async function generateDocumentation(readmePath?: string): Promise<Result
     }
 
     // Generate markdown table
-    const tableResult = generateResourcesTable(ResourcePatterns.getAllPatterns());
+    const tableResult = generateResourcesTable(
+      ResourcePatterns.getAllPatterns()
+    );
     if (tableResult.isErr()) {
       return err(tableResult.error);
     }
 
     // Update README with generated content
-    const updateResult = await updateReadmeWithGeneratedContent(targetReadmePath, tableResult.value);
+    const updateResult = await updateReadmeWithGeneratedContent(
+      targetReadmePath,
+      tableResult.value
+    );
     if (updateResult.isErr()) {
       return err(updateResult.error);
     }
@@ -210,7 +254,8 @@ export async function generateDocumentation(readmePath?: string): Promise<Result
     console.log(`✅ Documentation updated successfully: ${targetReadmePath}`);
 
     // Validate consistency
-    const validationResult = await validateDocumentationConsistency(targetReadmePath);
+    const validationResult =
+      await validateDocumentationConsistency(targetReadmePath);
     if (validationResult.isOk()) {
       const validation = validationResult.value;
       if (validation.isConsistent) {
@@ -218,17 +263,25 @@ export async function generateDocumentation(readmePath?: string): Promise<Result
       } else {
         console.warn('⚠️  Documentation inconsistencies detected:');
         if (validation.missingPatterns.length > 0) {
-          console.warn(`  Missing patterns: ${validation.missingPatterns.join(', ')}`);
+          console.warn(
+            `  Missing patterns: ${validation.missingPatterns.join(', ')}`
+          );
         }
         if (validation.extraPatterns.length > 0) {
-          console.warn(`  Extra patterns: ${validation.extraPatterns.join(', ')}`);
+          console.warn(
+            `  Extra patterns: ${validation.extraPatterns.join(', ')}`
+          );
         }
       }
     }
 
     return ok(undefined);
   } catch (error) {
-    return err(new Error(`Failed to generate documentation: ${error instanceof Error ? error.message : 'Unknown error'}`));
+    return err(
+      new Error(
+        `Failed to generate documentation: ${error instanceof Error ? error.message : 'Unknown error'}`
+      )
+    );
   }
 }
 
@@ -238,14 +291,17 @@ export async function generateDocumentation(readmePath?: string): Promise<Result
 if (require.main === module) {
   const args = process.argv.slice(2);
   const validateFlag = args.includes('--validate') || args.includes('-v');
-  const readmePath = args.find(arg => !arg.startsWith('--') && !arg.startsWith('-'));
+  const readmePath = args.find(
+    (arg) => !arg.startsWith('--') && !arg.startsWith('-')
+  );
 
   if (validateFlag) {
     // Validation mode - check if documentation is consistent
-    const targetReadmePath = readmePath || path.join(process.cwd(), 'README.md');
+    const targetReadmePath =
+      readmePath || path.join(process.cwd(), 'README.md');
 
     validateDocumentationConsistency(targetReadmePath)
-      .then(result => {
+      .then((result) => {
         if (result.isErr()) {
           console.error('❌ Validation error:', result.error.message);
           process.exit(1);
@@ -254,37 +310,54 @@ if (require.main === module) {
         const validation = result.value;
         if (validation.isConsistent) {
           console.log('✅ Documentation is consistent with resource patterns');
-          console.log(`   Patterns documented: ${validation.documentedPatterns}/${validation.totalPatterns}`);
+          console.log(
+            `   Patterns documented: ${validation.documentedPatterns}/${validation.totalPatterns}`
+          );
           process.exit(0);
         } else {
-          console.error('❌ Documentation is inconsistent with resource patterns');
-          console.error(`   Patterns documented: ${validation.documentedPatterns}/${validation.totalPatterns}`);
+          console.error(
+            '❌ Documentation is inconsistent with resource patterns'
+          );
+          console.error(
+            `   Patterns documented: ${validation.documentedPatterns}/${validation.totalPatterns}`
+          );
 
           if (validation.missingPatterns.length > 0) {
-            console.error('   Missing patterns:', validation.missingPatterns.join(', '));
+            console.error(
+              '   Missing patterns:',
+              validation.missingPatterns.join(', ')
+            );
           }
           if (validation.extraPatterns.length > 0) {
-            console.error('   Extra patterns:', validation.extraPatterns.join(', '));
+            console.error(
+              '   Extra patterns:',
+              validation.extraPatterns.join(', ')
+            );
           }
 
-          console.error('   Run "npm run docs:generate" to update documentation');
+          console.error(
+            '   Run "npm run docs:generate" to update documentation'
+          );
           process.exit(1);
         }
       })
-      .catch(error => {
+      .catch((error) => {
         console.error('❌ Unexpected validation error:', error);
         process.exit(1);
       });
   } else {
     // Generation mode
     generateDocumentation(readmePath)
-      .then(result => {
+      .then((result) => {
         if (result.isErr()) {
-          console.error('❌ Error generating documentation:', result.error.message);
+          console.error(
+            '❌ Error generating documentation:',
+            result.error.message
+          );
           process.exit(1);
         }
       })
-      .catch(error => {
+      .catch((error) => {
         console.error('❌ Unexpected error:', error);
         process.exit(1);
       });

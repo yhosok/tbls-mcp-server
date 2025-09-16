@@ -41,10 +41,14 @@ describe('Documentation Validation (Integration)', () => {
 
     // Run validation and expect success
     try {
-      const { stdout, stderr } = await execAsync(`npx tsx src/scripts/generate-docs.ts --validate "${tempReadmePath}"`);
+      const { stdout, stderr } = await execAsync(
+        `npx tsx src/scripts/generate-docs.ts --validate "${tempReadmePath}"`
+      );
 
       expect(stderr).toBe('');
-      expect(stdout).toContain('✅ Documentation is consistent with resource patterns');
+      expect(stdout).toContain(
+        '✅ Documentation is consistent with resource patterns'
+      );
       expect(stdout).toContain('Patterns documented: 5/5');
     } catch (error: unknown) {
       // CLI should exit with code 0 on success
@@ -71,14 +75,18 @@ describe('Documentation Validation (Integration)', () => {
 
     // Run validation and expect failure
     try {
-      await execAsync(`npx tsx src/scripts/generate-docs.ts --validate "${tempReadmePath}"`);
+      await execAsync(
+        `npx tsx src/scripts/generate-docs.ts --validate "${tempReadmePath}"`
+      );
 
       // Should not reach here - validation should fail
       expect(true).toBe(false);
     } catch (error: unknown) {
       // CLI should exit with non-zero code on validation failure
       expect(error.code).toBe(1);
-      expect(error.stderr).toContain('❌ Documentation is inconsistent with resource patterns');
+      expect(error.stderr).toContain(
+        '❌ Documentation is inconsistent with resource patterns'
+      );
       expect(error.stderr).toContain('Patterns documented: 1/5');
       expect(error.stderr).toContain('Missing patterns:');
     }
@@ -88,7 +96,9 @@ describe('Documentation Validation (Integration)', () => {
     const nonExistentPath = path.join(tempDir, 'non-existent.md');
 
     try {
-      await execAsync(`npx tsx src/scripts/generate-docs.ts --validate "${nonExistentPath}"`);
+      await execAsync(
+        `npx tsx src/scripts/generate-docs.ts --validate "${nonExistentPath}"`
+      );
 
       // Should not reach here - validation should fail
       expect(true).toBe(false);
@@ -114,15 +124,21 @@ Some existing content about resources.
 
     // Run generation and expect success
     try {
-      const { stdout, stderr } = await execAsync(`npx tsx src/scripts/generate-docs.ts "${tempReadmePath}"`);
+      const { stdout, stderr } = await execAsync(
+        `npx tsx src/scripts/generate-docs.ts "${tempReadmePath}"`
+      );
 
       expect(stderr).toBe('');
       expect(stdout).toContain('✅ Documentation updated successfully');
-      expect(stdout).toContain('✅ Documentation is consistent with resource patterns');
+      expect(stdout).toContain(
+        '✅ Documentation is consistent with resource patterns'
+      );
 
       // Verify the file was updated
       const updatedContent = await fs.readFile(tempReadmePath, 'utf-8');
-      expect(updatedContent).toContain('<!-- AUTO-GENERATED:START - Do not modify this section manually -->');
+      expect(updatedContent).toContain(
+        '<!-- AUTO-GENERATED:START - Do not modify this section manually -->'
+      );
       expect(updatedContent).toContain('db://schemas');
       expect(updatedContent).toContain('<!-- AUTO-GENERATED:END -->');
     } catch (error: unknown) {

@@ -296,16 +296,21 @@ const parseMultiSchemaInfo = async (
       const metadataList = metadataListResult.value;
 
       // If there's only one schema and no explicit name, handle as single schema with "default"
-      if (metadataList.length === 1 && metadataList[0].name === 'database_schema') {
-        return ok([{
-          name: 'default',
-          tableCount: metadataList[0].tableCount ?? undefined,
-          description: metadataList[0].description || 'Default schema',
-        }]);
+      if (
+        metadataList.length === 1 &&
+        metadataList[0].name === 'database_schema'
+      ) {
+        return ok([
+          {
+            name: 'default',
+            tableCount: metadataList[0].tableCount ?? undefined,
+            description: metadataList[0].description || 'Default schema',
+          },
+        ]);
       }
 
       // Convert metadata to schema info format
-      const schemas = metadataList.map(metadata => ({
+      const schemas = metadataList.map((metadata) => ({
         name: metadata.name || 'database_schema',
         tableCount: metadata.tableCount ?? undefined,
         description: metadata.description,
@@ -338,7 +343,9 @@ const parseMultiSchemaInfo = async (
 
     return createError('Failed to parse multi-schema format');
   } catch (error) {
-    return createError(`Failed to parse multi-schema file: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    return createError(
+      `Failed to parse multi-schema file: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
   }
 };
 

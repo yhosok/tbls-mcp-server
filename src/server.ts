@@ -105,7 +105,8 @@ export class TblsMcpServer {
                 uri: 'db://uri-patterns',
                 mimeType: 'application/json',
                 name: 'Available URI Patterns',
-                description: 'List of all available URI patterns and their descriptions for resource discovery',
+                description:
+                  'List of all available URI patterns and their descriptions for resource discovery',
               },
             ],
           };
@@ -128,7 +129,8 @@ export class TblsMcpServer {
               uri: 'db://uri-patterns',
               mimeType: 'application/json',
               name: 'Available URI Patterns',
-              description: 'List of all available URI patterns and their descriptions for resource discovery',
+              description:
+                'List of all available URI patterns and their descriptions for resource discovery',
             },
           ],
         };
@@ -151,7 +153,9 @@ export class TblsMcpServer {
           const match = this.lazyRegistry.matchUri(uri);
           if (!match) {
             // Import error message generator
-            const { ErrorMessageGenerator } = await import('./server/error-message-generator');
+            const { ErrorMessageGenerator } = await import(
+              './server/error-message-generator'
+            );
             const errorGenerator = new ErrorMessageGenerator();
             const errorData = errorGenerator.generateMcpErrorData(uri);
 
@@ -176,9 +180,15 @@ export class TblsMcpServer {
           // If resource doesn't exist, provide enhanced error message
           if (!discoveredResource.value) {
             // Import error message generator for pattern match failures
-            const { ErrorMessageGenerator } = await import('./server/error-message-generator');
+            const { ErrorMessageGenerator } = await import(
+              './server/error-message-generator'
+            );
             const errorGenerator = new ErrorMessageGenerator();
-            const errorData = await errorGenerator.generateResourceNotFoundErrorData(uri, this.config.schemaSource);
+            const errorData =
+              await errorGenerator.generateResourceNotFoundErrorData(
+                uri,
+                this.config.schemaSource
+              );
 
             throw new McpError(
               ErrorCode.InvalidRequest,
@@ -205,7 +215,6 @@ export class TblsMcpServer {
           if (uri.startsWith('db://schemas/') && uri.endsWith('/indexes')) {
             return await this.handleTableIndexesResource(uri);
           }
-
 
           // This should not happen if pattern matching works correctly
           throw new McpError(

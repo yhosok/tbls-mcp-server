@@ -53,7 +53,7 @@ export class ErrorMessageGenerator {
       'db://schemas/default/tables',
       'db://schemas/default/tables/users',
       'db://schemas/public/tables/orders/indexes',
-      'db://uri-patterns'
+      'db://uri-patterns',
     ];
 
     // Add key examples first, then others up to limit
@@ -64,7 +64,8 @@ export class ErrorMessageGenerator {
       }
     }
 
-    for (const example of allExamples.slice(0, 8)) { // Limit to 8 examples
+    for (const example of allExamples.slice(0, 8)) {
+      // Limit to 8 examples
       message += `  • ${example}\n`;
     }
 
@@ -76,7 +77,8 @@ export class ErrorMessageGenerator {
    */
   generatePatternMatchFailureMessage(uri: string): string {
     let message = `Resource not found: ${uri}\n`;
-    message += 'The URI format is correct, but the specific resource does not exist.';
+    message +=
+      'The URI format is correct, but the specific resource does not exist.';
 
     // Add specific guidance based on URI pattern
     if (uri.match(URI_PATTERNS.SCHEMA_TABLES)) {
@@ -100,23 +102,29 @@ export class ErrorMessageGenerator {
    * Generate contextual error data for resource not found scenarios
    * This method should be called instead of generatePatternMatchFailureMessage for better error handling
    */
-  async generateResourceNotFoundErrorData(uri: string, schemaSource: string): Promise<{
+  async generateResourceNotFoundErrorData(
+    uri: string,
+    schemaSource: string
+  ): Promise<{
     message: string;
     data: Record<string, unknown>;
   }> {
     try {
-      const error = await ResourcePatterns.createResourceNotFoundError(uri, schemaSource);
+      const error = await ResourcePatterns.createResourceNotFoundError(
+        uri,
+        schemaSource
+      );
       return {
         message: error.message,
-        data: (error as Error & { data?: Record<string, unknown> }).data || {}
+        data: (error as Error & { data?: Record<string, unknown> }).data || {},
       };
     } catch {
       return {
         message: 'Resource not found',
         data: {
           uri,
-          suggestions: ['db://schemas']
-        }
+          suggestions: ['db://schemas'],
+        },
       };
     }
   }
@@ -158,18 +166,19 @@ export class ErrorMessageGenerator {
       guidance?: string;
     };
   } {
-
     // For unrecognized patterns, provide basic suggestions
     const patterns = ResourcePatterns.getAllPatterns();
     const suggestions = this.suggester.findSimilarPatterns(uri, 3, 0.5);
 
     // Ensure we always include the basic db://schemas pattern for users to discover
-    const hasSchemasPattern = suggestions.some(s => s.pattern === 'db://schemas');
+    const hasSchemasPattern = suggestions.some(
+      (s) => s.pattern === 'db://schemas'
+    );
     if (!hasSchemasPattern) {
       suggestions.push({ pattern: 'db://schemas', similarity: 0.5 });
     }
 
-    const availablePatterns = patterns.map(pattern => ({
+    const availablePatterns = patterns.map((pattern) => ({
       pattern: pattern.uriPattern,
       description: pattern.descriptionPattern,
       examples: this.suggester.generateExamplesForPattern(pattern.id),
@@ -179,11 +188,14 @@ export class ErrorMessageGenerator {
       message: `Unknown resource URI: ${uri}. See 'data' field for available patterns and suggestions.`,
       data: {
         uri,
-        suggestions: suggestions.length > 0 ? suggestions.map(s => s.pattern) : undefined,
+        suggestions:
+          suggestions.length > 0
+            ? suggestions.map((s) => s.pattern)
+            : undefined,
         validPatterns: ResourcePatterns.getValidPatterns(),
         availablePatterns,
-        guidance: this.generateContextualGuidance(uri)
-      }
+        guidance: this.generateContextualGuidance(uri),
+      },
     };
   }
 
@@ -222,5 +234,4 @@ export class ErrorMessageGenerator {
       .replace(/\{schemaName\}/g, '[schema_name]')
       .replace(/\{tableName\}/g, '[table_name]');
   }
-
 }

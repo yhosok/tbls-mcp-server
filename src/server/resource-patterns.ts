@@ -107,7 +107,8 @@ export class ResourcePatterns {
       uriPattern: 'db://schemas/{schemaName}/tables',
       mimeType: 'application/json',
       namePattern: '{schemaName} Schema Tables',
-      descriptionPattern: 'Comprehensive list of all tables within the {schemaName} schema, including table metadata, row counts, and basic structure information.',
+      descriptionPattern:
+        'Comprehensive list of all tables within the {schemaName} schema, including table metadata, row counts, and basic structure information.',
       requiresDiscovery: true,
       matcher: (uri: string): ResourcePatternMatch | null => {
         const match = uri.match(URI_PATTERNS.SCHEMA_TABLES);
@@ -147,9 +148,12 @@ export class ResourcePatterns {
 
           return ok(resources);
         } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
+          const errorMessage =
+            error instanceof Error ? error.message : String(error);
           return err(
-            new Error(`Failed to generate schema tables resources: ${errorMessage}`)
+            new Error(
+              `Failed to generate schema tables resources: ${errorMessage}`
+            )
           );
         }
       },
@@ -252,9 +256,12 @@ export class ResourcePatterns {
 
           return ok(resources);
         } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
+          const errorMessage =
+            error instanceof Error ? error.message : String(error);
           return err(
-            new Error(`Failed to generate table info resources: ${errorMessage}`)
+            new Error(
+              `Failed to generate table info resources: ${errorMessage}`
+            )
           );
         }
       },
@@ -266,7 +273,8 @@ export class ResourcePatterns {
       uriPattern: 'db://schemas/{schemaName}/tables/{tableName}/indexes',
       mimeType: 'application/json',
       namePattern: '{tableName} table indexes ({schemaName} schema)',
-      descriptionPattern: 'Detailed index information for the {tableName} table including index names, types (primary, unique, regular), column compositions, and performance statistics.',
+      descriptionPattern:
+        'Detailed index information for the {tableName} table including index names, types (primary, unique, regular), column compositions, and performance statistics.',
       requiresDiscovery: true,
       matcher: (uri: string): ResourcePatternMatch | null => {
         const match = uri.match(URI_PATTERNS.TABLE_INDEXES);
@@ -326,9 +334,12 @@ export class ResourcePatterns {
 
           return ok(resources);
         } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
+          const errorMessage =
+            error instanceof Error ? error.message : String(error);
           return err(
-            new Error(`Failed to generate table indexes resources: ${errorMessage}`)
+            new Error(
+              `Failed to generate table indexes resources: ${errorMessage}`
+            )
           );
         }
       },
@@ -415,19 +426,21 @@ export class ResourcePatterns {
     return result;
   }
 
-
   /**
    * Get valid pattern suggestions for error messages
    */
   static getValidPatterns(): string[] {
     this.initializePatterns();
-    return this.patterns.map(p => p.uriPattern);
+    return this.patterns.map((p) => p.uriPattern);
   }
 
   /**
    * Suggest valid patterns and available resources based on partial URI
    */
-  static async suggestResources(uri: string, schemaSource: string): Promise<{
+  static async suggestResources(
+    uri: string,
+    schemaSource: string
+  ): Promise<{
     suggestions: string[];
     availableSchemas?: string[];
     availableTables?: string[];
@@ -450,7 +463,7 @@ export class ResourcePatterns {
       // Get available schemas
       const schemaListResult = await handleSchemaListResource(schemaSource);
       if (schemaListResult.isOk()) {
-        availableSchemas = schemaListResult.value.schemas.map(s => s.name);
+        availableSchemas = schemaListResult.value.schemas.map((s) => s.name);
 
         // Check if URI is a partial schema path
         const schemaMatch = uri.match(URI_PATTERNS.SCHEMA_INFO);
@@ -474,16 +487,21 @@ export class ResourcePatterns {
 
           if (availableSchemas.includes(requestedSchema)) {
             // Get available tables for this schema
-            const tablesResult = await handleSchemaTablesResource(schemaSource, requestedSchema);
+            const tablesResult = await handleSchemaTablesResource(
+              schemaSource,
+              requestedSchema
+            );
             if (tablesResult.isOk()) {
-              availableTables = tablesResult.value.tables.map(t => t.name);
+              availableTables = tablesResult.value.tables.map((t) => t.name);
 
               // If table doesn't exist, we'll return availableTables
               if (!availableTables.includes(requestedTable)) {
                 // No additional suggestions needed
               } else {
                 // Table exists, suggest indexes
-                suggestions.push(`db://schemas/${requestedSchema}/tables/${requestedTable}/indexes`);
+                suggestions.push(
+                  `db://schemas/${requestedSchema}/tables/${requestedTable}/indexes`
+                );
               }
             }
           }
@@ -500,7 +518,9 @@ export class ResourcePatterns {
       if (availableSchemas && availableSchemas.length > 0) {
         suggestions.push(`db://schemas/{schemaName}/tables`);
         suggestions.push(`db://schemas/{schemaName}/tables/{tableName}`);
-        suggestions.push(`db://schemas/{schemaName}/tables/{tableName}/indexes`);
+        suggestions.push(
+          `db://schemas/{schemaName}/tables/{tableName}/indexes`
+        );
       }
     }
 
@@ -508,15 +528,17 @@ export class ResourcePatterns {
       suggestions,
       availableSchemas,
       availableTables,
-      schemaName
+      schemaName,
     };
   }
-
 
   /**
    * Create contextual error for resource not found scenarios
    */
-  static async createResourceNotFoundError(uri: string, schemaSource: string): Promise<Error> {
+  static async createResourceNotFoundError(
+    uri: string,
+    schemaSource: string
+  ): Promise<Error> {
     const suggestions = await this.suggestResources(uri, schemaSource);
 
     let message = 'Resource not found';
@@ -524,9 +546,10 @@ export class ResourcePatterns {
       message = 'Table not found';
     }
 
-    const error = new Error(message) as Error & { data: Record<string, unknown> };
+    const error = new Error(message) as Error & {
+      data: Record<string, unknown>;
+    };
     error.data = suggestions;
     return error;
   }
 }
-

@@ -19,8 +19,12 @@ describe('ErrorMessageGenerator', () => {
       expect(message).toContain('Available URI patterns:');
       expect(message).toContain('db://schemas');
       expect(message).toContain('db://schemas/[schema_name]/tables');
-      expect(message).toContain('db://schemas/[schema_name]/tables/[table_name]');
-      expect(message).toContain('db://schemas/[schema_name]/tables/[table_name]/indexes');
+      expect(message).toContain(
+        'db://schemas/[schema_name]/tables/[table_name]'
+      );
+      expect(message).toContain(
+        'db://schemas/[schema_name]/tables/[table_name]/indexes'
+      );
     });
 
     it('should include pattern examples in error message', () => {
@@ -37,7 +41,9 @@ describe('ErrorMessageGenerator', () => {
       const uri = 'invalid://path';
       const message = errorGenerator.generateInvalidUriMessage(uri);
 
-      expect(message).toContain('Complete list of all available database schemas');
+      expect(message).toContain(
+        'Complete list of all available database schemas'
+      );
       expect(message).toContain('Comprehensive list of all tables');
       expect(message).toContain('Complete detailed information about the');
       expect(message).toContain('Detailed index information');
@@ -49,7 +55,9 @@ describe('ErrorMessageGenerator', () => {
       const uri = 'db://schemas/nonexistent/tables';
       const message = errorGenerator.generatePatternMatchFailureMessage(uri);
 
-      expect(message).toContain('Resource not found: db://schemas/nonexistent/tables');
+      expect(message).toContain(
+        'Resource not found: db://schemas/nonexistent/tables'
+      );
       expect(message).toContain('The URI format is correct');
       expect(message).toContain('db://schemas');
       expect(message).toContain('available schemas');
@@ -59,7 +67,9 @@ describe('ErrorMessageGenerator', () => {
       const uri = 'db://schemas/default/tables/nonexistent';
       const message = errorGenerator.generatePatternMatchFailureMessage(uri);
 
-      expect(message).toContain('Resource not found: db://schemas/default/tables/nonexistent');
+      expect(message).toContain(
+        'Resource not found: db://schemas/default/tables/nonexistent'
+      );
       expect(message).toContain('db://schemas/default/tables');
       expect(message).toContain('available tables in the default schema');
     });
@@ -68,7 +78,9 @@ describe('ErrorMessageGenerator', () => {
       const uri = 'db://schemas/default/tables/nonexistent/indexes';
       const message = errorGenerator.generatePatternMatchFailureMessage(uri);
 
-      expect(message).toContain('Resource not found: db://schemas/default/tables/nonexistent/indexes');
+      expect(message).toContain(
+        'Resource not found: db://schemas/default/tables/nonexistent/indexes'
+      );
       expect(message).toContain('db://schemas/default/tables/nonexistent');
       expect(message).toContain('table exists');
     });
@@ -130,7 +142,11 @@ describe('UriPatternSuggester', () => {
 
   describe('findSimilarPatterns', () => {
     it('should find exact matches with high score', () => {
-      const suggestions = suggester.findSimilarPatterns('db://schemas', 5, 0.99);
+      const suggestions = suggester.findSimilarPatterns(
+        'db://schemas',
+        5,
+        0.99
+      );
 
       expect(suggestions).toHaveLength(1);
       expect(suggestions[0].pattern).toBe('db://schemas');
@@ -149,7 +165,9 @@ describe('UriPatternSuggester', () => {
       const suggestions = suggester.findSimilarPatterns('db://schemas/default');
 
       expect(suggestions.length).toBeGreaterThan(0);
-      const tablePatterns = suggestions.filter(s => s.pattern.startsWith('db://schemas/default/'));
+      const tablePatterns = suggestions.filter((s) =>
+        s.pattern.startsWith('db://schemas/default/')
+      );
       expect(tablePatterns.length).toBeGreaterThan(0);
     });
 
@@ -158,7 +176,9 @@ describe('UriPatternSuggester', () => {
 
       expect(suggestions.length).toBeGreaterThan(1);
       for (let i = 1; i < suggestions.length; i++) {
-        expect(suggestions[i].similarity).toBeLessThanOrEqual(suggestions[i-1].similarity);
+        expect(suggestions[i].similarity).toBeLessThanOrEqual(
+          suggestions[i - 1].similarity
+        );
       }
     });
 
@@ -169,7 +189,11 @@ describe('UriPatternSuggester', () => {
     });
 
     it('should filter by minimum similarity threshold', () => {
-      const suggestions = suggester.findSimilarPatterns('completely-unrelated', 5, 0.9);
+      const suggestions = suggester.findSimilarPatterns(
+        'completely-unrelated',
+        5,
+        0.9
+      );
 
       expect(suggestions.length).toBe(0);
     });
@@ -177,7 +201,10 @@ describe('UriPatternSuggester', () => {
 
   describe('calculateSimilarity', () => {
     it('should return 1.0 for identical strings', () => {
-      const similarity = suggester.calculateSimilarity('db://schemas', 'db://schemas');
+      const similarity = suggester.calculateSimilarity(
+        'db://schemas',
+        'db://schemas'
+      );
       expect(similarity).toBe(1.0);
     });
 
@@ -187,7 +214,10 @@ describe('UriPatternSuggester', () => {
     });
 
     it('should handle single character differences', () => {
-      const similarity = suggester.calculateSimilarity('db://schemas', 'db://schemas_ist');
+      const similarity = suggester.calculateSimilarity(
+        'db://schemas',
+        'db://schemas_ist'
+      );
       expect(similarity).toBeGreaterThan(0.8);
       expect(similarity).toBeLessThan(1.0);
     });

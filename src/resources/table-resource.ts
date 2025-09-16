@@ -1,14 +1,21 @@
 import { Result, ok, err } from 'neverthrow';
 import * as path from 'path';
 import { existsSync } from 'fs';
-import { SchemaTablesResource, TableInfoResource, TableReference } from '../schemas/database';
+import {
+  SchemaTablesResource,
+  TableInfoResource,
+  TableReference,
+} from '../schemas/database';
 import {
   parseTableReferences,
-  parseSingleTableFile,
   resolveSchemaName,
   createSchemaParser,
 } from '../parsers/schema-adapter';
 import { ResourceCache } from '../cache/resource-cache';
+import {
+  handleTableResource,
+  ResourceResolutionConfig,
+} from '../utils/resource-handlers';
 
 /**
  * Handles the db://schemas/{schema_name}/tables MCP resource
@@ -77,7 +84,10 @@ export const handleSchemaTablesResource = async (
       const parser = createSchemaParser(schemaPath);
       if (parser.isOk() && resolvedSchemaName !== 'default') {
         // Try to parse the specific schema by name
-        const schemaResult = parser.value.parseSchemaByName(schemaPath, resolvedSchemaName);
+        const schemaResult = parser.value.parseSchemaByName(
+          schemaPath,
+          resolvedSchemaName
+        );
         if (schemaResult.isOk()) {
           tableRefsResult = ok(schemaResult.value.tableReferences);
         } else {
@@ -130,73 +140,22 @@ export const handleTableInfoResource = async (
   tableName: string,
   cache?: ResourceCache
 ): Promise<Result<TableInfoResource, Error>> => {
-  // Resolve schema name
-  const schemaResolveResult = resolveSchemaName(
+  // Configuration for schema name resolution with byName caching
+  const config: ResourceResolutionConfig = {
+    useSchemaNameResolution: true, // Use advanced schema name resolution
+    cacheStrategy: 'byName', // Use modern getTableByName/setTableByName cache methods
+  };
+
+  // Use generic resource handler with full table extraction function
+  return handleTableResource(
     schemaSource,
     schemaName,
-    cache
+    tableName,
+    config,
+    cache,
+    (table, resolvedSchemaName) => ({
+      schemaName: resolvedSchemaName,
+      table,
+    })
   );
-  if (schemaResolveResult.isErr()) {
-    return err(schemaResolveResult.error);
-  }
-
-  const { resolvedSchemaName, schemaPath, sourceType } =
-    schemaResolveResult.value;
-
-  // Determine the path to the schema.json file
-  let schemaJsonPath: string;
-
-  if (sourceType === 'file') {
-    // Single schema.json file - use directly
-    schemaJsonPath = schemaPath;
-  } else {
-    // Directory - use the resolved schema path
-    schemaJsonPath = schemaPath;
-
-    // Verify schema.json exists in directory
-    if (!existsSync(schemaJsonPath)) {
-      return err(
-        new Error(
-          `Schema file not found: ${schemaJsonPath}. Only JSON schema files are supported.`
-        )
-      );
-    }
-  }
-
-  // Try to get cached table first using table-specific cache key
-  if (cache) {
-    const cachedTable = await cache.getTableByName(schemaJsonPath, tableName);
-    if (cachedTable) {
-      return ok({
-        schemaName: resolvedSchemaName,
-        table: cachedTable,
-      });
-    }
-  }
-
-  // Parse the table from the schema.json file
-  const parseResult = parseSingleTableFile(schemaJsonPath, tableName, cache);
-
-  if (parseResult.isErr()) {
-    return err(
-      new Error(`Failed to parse table: ${parseResult.error.message}`)
-    );
-  }
-
-  const schema = parseResult.value;
-  if (schema.tables.length === 0) {
-    return err(new Error('No table found in schema file'));
-  }
-
-  const table = schema.tables[0];
-
-  // Cache the individual table using table-specific cache key if cache is available
-  if (cache) {
-    await cache.setTableByName(schemaJsonPath, tableName, table);
-  }
-
-  return ok({
-    schemaName: resolvedSchemaName,
-    table,
-  });
 };
