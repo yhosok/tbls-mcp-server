@@ -6,6 +6,7 @@ import {
   validateSqlQuery,
   sanitizeQuery,
   validateSqlQueryRequest,
+  enforceLimitOnQuery,
 } from '../schemas/database';
 import { getPooledConnection, executeQuery } from '../database/connection';
 import { safeExecuteAsync } from '../utils/result';
@@ -15,6 +16,7 @@ interface SqlQueryToolInput {
   query: string;
   parameters?: unknown[];
   timeout?: number;
+  maxRows?: number;
 }
 
 // Type for database connection info
@@ -54,6 +56,16 @@ const DEFAULT_QUERY_TIMEOUT_MS = 30000;
 const MAX_QUERY_TIMEOUT_MS = 300000;
 
 /**
+ * Default maximum number of rows to return
+ */
+const DEFAULT_MAX_ROWS = 20;
+
+/**
+ * Maximum allowed rows to return
+ */
+const MAX_ALLOWED_ROWS = 500;
+
+/**
  * Handle SQL query execution with comprehensive security and validation
  * @param request - SQL query request
  * @param config - Database configuration
@@ -73,7 +85,12 @@ export const handleSqlQuery = async (
     );
   }
 
-  const { query, parameters = [] } = validationResult.value;
+  const { query, parameters = [], maxRows } = validationResult.value;
+
+  // Validate parameter count
+  if (parameters.length > 100) {
+    return err(new Error('Too many parameters. Maximum 100 parameters allowed.'));
+  }
 
   // Sanitize the query
   const sanitizeResult = sanitizeQuery(query);
@@ -81,12 +98,19 @@ export const handleSqlQuery = async (
     return err(sanitizeResult.error);
   }
 
-  const sanitizedQuery = sanitizeResult.value;
+  let sanitizedQuery = sanitizeResult.value;
 
   // Validate that it's a SELECT query
   const queryValidationResult = validateSqlQuery(sanitizedQuery);
   if (queryValidationResult.isErr()) {
     return err(queryValidationResult.error);
+  }
+
+  // Enforce row limit for SELECT queries
+  const actualMaxRows = Math.min(maxRows || DEFAULT_MAX_ROWS, MAX_ALLOWED_ROWS);
+  const cleanQuery = sanitizedQuery.toLowerCase().trim();
+  if (cleanQuery.startsWith('select')) {
+    sanitizedQuery = enforceLimitOnQuery(sanitizedQuery, actualMaxRows);
   }
 
   // Validate timeout
@@ -117,7 +141,25 @@ export const handleSqlQuery = async (
       throw queryResult.error;
     }
 
-    return queryResult.value;
+    const result = queryResult.value;
+
+    // Handle result truncation if needed
+    if (result.rows.length > actualMaxRows) {
+      const truncatedRows = result.rows.slice(0, actualMaxRows);
+      return {
+        ...result,
+        rows: truncatedRows,
+        rowCount: truncatedRows.length,
+        truncated: true,
+        totalRows: result.rows.length,
+      };
+    }
+
+    // Return result with truncation metadata
+    return {
+      ...result,
+      truncated: false,
+    };
   }, 'SQL query execution failed');
 };
 
@@ -136,6 +178,14 @@ export { validateSqlQuery };
 export { sanitizeQuery };
 
 /**
+ * Enforce LIMIT clause on SELECT queries
+ * @param query - SQL query string
+ * @param maxRows - Maximum number of rows to return
+ * @returns Query with enforced LIMIT
+ */
+export { enforceLimitOnQuery };
+
+/**
  * MCP Tool definition for SQL query execution
  */
 export interface SqlQueryTool {
@@ -148,12 +198,14 @@ export interface SqlQueryTool {
         type: 'string';
         description: string;
         minLength: number;
+        maxLength?: number;
       };
       parameters: {
         type: 'array';
         description: string;
-        items: {};
+        items: unknown;
         default: never[];
+        maxItems?: number;
       };
       timeout?: {
         type: 'number';
@@ -162,8 +214,17 @@ export interface SqlQueryTool {
         maximum: number;
         default: number;
       };
+      maxRows?: {
+        type: 'number';
+        description: string;
+        minimum: number;
+        maximum: number;
+        default: number;
+      };
     };
     required: string[];
+    // Allow extra JSON schema keywords
+    [key: string]: unknown;
   };
   handler: (input: SqlQueryToolInput) => Promise<Result<QueryResult, Error>>;
 }
@@ -203,18 +264,32 @@ export const createSqlQueryTool = (config: DatabaseConfig): SqlQueryTool => {
     ].join('\n'),
     inputSchema: {
       type: 'object',
+      // Prevent unknown extra properties to keep tool input strict
+      // (helps MCP clients validate more reliably)
+      additionalProperties: false,
       properties: {
         query: {
           type: 'string',
           description: 'SQL SELECT query to execute',
           minLength: 1,
+          // Reasonable upper bound to avoid extremely large prompt injection / DOS payloads
+          maxLength: 50000,
         },
         parameters: {
           type: 'array',
           description:
             'Query parameters for prepared statements (use ? placeholders in query)',
-          items: {},
+          // Allow only primitive scalar JSON types & null used for binding
+          items: { type: ['string', 'number', 'boolean', 'null'] as const },
+          maxItems: 100,
           default: [],
+        },
+        maxRows: {
+          type: 'number',
+          description: 'Maximum rows to return (1-500, default 20)',
+          minimum: 1,
+          maximum: MAX_ALLOWED_ROWS,
+          default: DEFAULT_MAX_ROWS,
         },
         timeout: {
           type: 'number',
@@ -234,6 +309,7 @@ export const createSqlQueryTool = (config: DatabaseConfig): SqlQueryTool => {
         const request: SqlQueryRequest = {
           query: input.query,
           parameters: input.parameters || [],
+          maxRows: input.maxRows,
         };
 
         const timeout = input.timeout || DEFAULT_QUERY_TIMEOUT_MS;

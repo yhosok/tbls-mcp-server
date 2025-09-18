@@ -46,6 +46,7 @@ export const buildQueryResult = (
     columns,
     rows,
     rowCount: rows.length,
+    truncated: false,
     executionTimeMs: Date.now() - startTime,
   };
 };
